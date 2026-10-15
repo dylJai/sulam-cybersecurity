@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { SpotCluesQuestion } from '@/types/challenge';
-import { AlertCircle, CheckCircle2, Search, HelpCircle, ExternalLink, ShieldCheck } from 'lucide-react';
+import { Check, HelpCircle, ExternalLink } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface SpotTheCluesProps {
@@ -30,133 +30,110 @@ export const SpotTheCluesQuestionView: React.FC<SpotTheCluesProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Interactive Helper Banner */}
-      <div className="p-4 rounded-xl bg-cyan-950/40 border border-cyan-800/60 flex items-start gap-3">
-        <Search className="w-5 h-5 text-cyan-400 shrink-0 mt-0.5" />
-        <div className="text-sm">
-          <p className="font-semibold text-cyan-200">
-            Aktiviti Interaktif: Terokai Petunjuk Bahaya
-          </p>
-          <p className="text-slate-300 text-xs mt-0.5">
-            Klik pada setiap zon petunjuk bernombor (1-4) di dalam emel di bawah untuk menyiasat helah penipu.
-            <span className="font-bold text-cyan-300 ml-1">
-              Petunjuk Diterokai: {inspectedClues.size} / {question.clues.length}
-            </span>
-          </p>
-        </div>
+      {/* Activity Guide Header */}
+      <div className="p-3.5 bg-[#ECEAE2] border border-[#171914]/15 rounded-sm flex flex-col sm:flex-row sm:items-center justify-between gap-2 font-mono text-xs">
+        <span className="font-bold text-[#171914] uppercase tracking-wider">
+          Aktiviti Siasatan: Klik Zon Bertanda (1–4)
+        </span>
+        <span className="text-[#575953] bg-white px-2 py-0.5 rounded-xs border border-[#171914]/10 self-start sm:self-auto">
+          Zon Diteliti: {inspectedClues.size} / {question.clues.length}
+        </span>
       </div>
 
-      {/* Mock Email with Interactive Highlight Zones */}
-      <div className="rounded-2xl border-2 border-slate-700 bg-slate-900/90 overflow-hidden shadow-2xl">
+      {/* Mock Document / Email with Annotated Hotspots */}
+      <div className="rounded-sm border border-[#171914]/20 bg-white shadow-xs overflow-hidden">
         {/* Email Header */}
-        <div className="bg-slate-950 px-4 py-3 border-b border-slate-800 flex items-center justify-between">
-          <span className="text-xs font-semibold text-slate-300 flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-cyan-400" />
-            Emel Amaran Bil Elektrik (Siasat Zon Bertanda)
-          </span>
-          <span className="text-[11px] text-slate-400">{question.receivedTime}</span>
+        <div className="bg-[#FAF9F5] px-4 py-2.5 border-b border-[#171914]/12 flex items-center justify-between font-mono text-xs">
+          <span className="font-bold text-[#171914]">Emel Tuntutan Bil Elektrik</span>
+          <span className="text-[#7C7E77]">{question.receivedTime}</span>
         </div>
 
         {/* Sender Area (Zone 1) */}
-        <div className="p-4 border-b border-slate-800/80 bg-slate-900/50">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div className="text-xs space-y-1">
-              <span className="text-slate-400 mr-2 font-medium">Pengirim:</span>
-              <span className="font-bold text-slate-200">{question.sender}</span>
-            </div>
-            {/* Clue 1 Button */}
-            <button
-              type="button"
-              onClick={() => handleClueClick('clue-sender')}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-mono transition-all cursor-pointer border ${
-                activeClueId === 'clue-sender'
-                  ? 'bg-rose-950/80 border-rose-500 text-rose-300 shadow-md shadow-rose-900/30'
-                  : 'bg-slate-950 border-slate-700 text-cyan-300 hover:border-cyan-500'
-              }`}
-            >
-              <span className="font-bold px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300">
-                Zon 1
-              </span>
-              <span>{question.senderEmail}</span>
-              {inspectedClues.has('clue-sender') && (
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-              )}
-            </button>
+        <div className="p-4 border-b border-[#171914]/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white">
+          <div className="text-xs">
+            <span className="font-mono uppercase text-[#7C7E77] text-[10px] block">Nama Pengirim</span>
+            <span className="font-semibold text-[#171914]">{question.sender}</span>
           </div>
+          {/* Zone 1 Hotspot Button */}
+          <button
+            type="button"
+            onClick={() => handleClueClick('clue-sender')}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-sm font-mono text-xs transition-colors cursor-pointer border ${
+              activeClueId === 'clue-sender'
+                ? 'bg-[#171914] text-[#D9FA62] border-[#171914]'
+                : 'bg-[#ECEAE2] text-[#171914] border-[#171914]/20 hover:border-[#171914]'
+            }`}
+          >
+            <span className="font-bold">[Zon 1]</span>
+            <span className="underline">{question.senderEmail}</span>
+            {inspectedClues.has('clue-sender') && <Check className="w-3.5 h-3.5" />}
+          </button>
         </div>
 
         {/* Subject & Urgency Threat (Zone 2) */}
-        <div className="p-4 border-b border-slate-800/80 bg-slate-900/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="p-4 border-b border-[#171914]/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#FAF9F5]">
           <div>
-            <span className="text-xs text-slate-400 block font-medium">Perkara:</span>
-            <span className="text-sm font-bold text-rose-300">{question.subject}</span>
+            <span className="font-mono uppercase text-[#7C7E77] text-[10px] block">Perkara</span>
+            <span className="font-bold text-sm text-[#171914]">{question.subject}</span>
           </div>
-          {/* Clue 2 Button */}
+          {/* Zone 2 Hotspot Button */}
           <button
             type="button"
             onClick={() => handleClueClick('clue-urgency')}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer border ${
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-sm font-mono text-xs transition-colors cursor-pointer border ${
               activeClueId === 'clue-urgency'
-                ? 'bg-rose-950/80 border-rose-500 text-rose-300 shadow-md shadow-rose-900/30'
-                : 'bg-slate-950 border-slate-700 text-amber-300 hover:border-amber-500'
+                ? 'bg-[#171914] text-[#D9FA62] border-[#171914]'
+                : 'bg-[#ECEAE2] text-[#171914] border-[#171914]/20 hover:border-[#171914]'
             }`}
           >
-            <span className="font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300">
-              Zon 2
-            </span>
-            <span>Ugutan Potong 2 Jam</span>
-            {inspectedClues.has('clue-urgency') && (
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-            )}
+            <span className="font-bold">[Zon 2]</span>
+            <span>Ugutan Masa: 2 Jam</span>
+            {inspectedClues.has('clue-urgency') && <Check className="w-3.5 h-3.5" />}
           </button>
         </div>
 
         {/* Body Content with Link (Zone 3) and Sensitive Request (Zone 4) */}
-        <div className="p-5 text-sm text-slate-200 space-y-4">
+        <div className="p-5 text-sm text-[#171914] space-y-4 leading-relaxed">
           <p>
             Pelanggan yang dihormati, akaun anda mempunyai tunggakan tertunggak sebanyak RM84.20. Tindakan pemotongan bekalan elektrik serta-merta akan dilaksanakan dalam tempoh <strong>2 Jam</strong> melainkan pembayaran disahkan sekarang.
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-            {/* Clue 3: Fake Payment Link */}
+            {/* Zone 3: Fake Payment Link */}
             <button
               type="button"
               onClick={() => handleClueClick('clue-link')}
-              className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
+              className={`p-3.5 rounded-sm border text-left transition-colors cursor-pointer ${
                 activeClueId === 'clue-link'
-                  ? 'bg-rose-950/70 border-rose-500 text-rose-200 ring-2 ring-rose-500/30'
-                  : 'bg-slate-950/80 border-slate-800 text-slate-300 hover:border-cyan-500'
+                  ? 'bg-[#171914] text-[#D9FA62] border-[#171914]'
+                  : 'bg-[#ECEAE2] text-[#171914] border-[#171914]/20 hover:border-[#171914]'
               }`}
             >
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-bold text-rose-400">Zon 3: Pautan Bayaran</span>
-                {inspectedClues.has('clue-link') && (
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                )}
+              <div className="flex items-center justify-between mb-1 font-mono text-xs">
+                <span className="font-bold">[Zon 3] Pautan Bayaran</span>
+                {inspectedClues.has('clue-link') && <Check className="w-3.5 h-3.5" />}
               </div>
-              <div className="text-xs font-mono text-cyan-300 underline flex items-center gap-1">
-                <span>http://tenaga-quickpay.xyz/bill</span>
+              <div className="font-mono text-xs flex items-center gap-1">
+                <span className="underline">http://tenaga-quickpay.xyz/bill</span>
                 <ExternalLink className="w-3 h-3" />
               </div>
             </button>
 
-            {/* Clue 4: Sensitive Data Demand */}
+            {/* Zone 4: Sensitive Data Demand */}
             <button
               type="button"
               onClick={() => handleClueClick('clue-sensitive')}
-              className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
+              className={`p-3.5 rounded-sm border text-left transition-colors cursor-pointer ${
                 activeClueId === 'clue-sensitive'
-                  ? 'bg-rose-950/70 border-rose-500 text-rose-200 ring-2 ring-rose-500/30'
-                  : 'bg-slate-950/80 border-slate-800 text-slate-300 hover:border-cyan-500'
+                  ? 'bg-[#171914] text-[#D9FA62] border-[#171914]'
+                  : 'bg-[#ECEAE2] text-[#171914] border-[#171914]/20 hover:border-[#171914]'
               }`}
             >
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-bold text-rose-400">Zon 4: Permintaan Rahsia</span>
-                {inspectedClues.has('clue-sensitive') && (
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                )}
+              <div className="flex items-center justify-between mb-1 font-mono text-xs">
+                <span className="font-bold">[Zon 4] Permintaan Sulit</span>
+                {inspectedClues.has('clue-sensitive') && <Check className="w-3.5 h-3.5" />}
               </div>
-              <p className="text-xs text-slate-300">
+              <p className="text-xs">
                 &ldquo;Masukkan Kata Laluan Bank & TAC untuk semakan status&rdquo;
               </p>
             </button>
@@ -167,16 +144,15 @@ export const SpotTheCluesQuestionView: React.FC<SpotTheCluesProps> = ({
       {/* Clue Detail Drawer */}
       {activeClue && (
         <motion.div
-          initial={{ opacity: 0, y: 10 }}
+          initial={{ opacity: 0, y: 4 }}
           animate={{ opacity: 1, y: 0 }}
           key={activeClue.id}
-          className="p-4 rounded-xl bg-slate-900 border-2 border-cyan-500/50 shadow-lg text-slate-200"
+          className="p-4 rounded-sm bg-white border-l-4 border-l-[#171914] border border-[#171914]/15 shadow-xs"
         >
-          <div className="flex items-center gap-2 mb-2 text-cyan-300 font-bold text-sm">
-            <AlertCircle className="w-4 h-4 text-cyan-400" />
-            <span>Penerangan Petunjuk: {activeClue.label}</span>
+          <div className="font-mono text-xs font-bold uppercase tracking-wider text-[#171914] mb-1">
+            Penjelasan Zon: {activeClue.label}
           </div>
-          <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+          <p className="text-xs sm:text-sm text-[#575953] leading-relaxed">
             {activeClue.explanation}
           </p>
         </motion.div>
@@ -184,27 +160,27 @@ export const SpotTheCluesQuestionView: React.FC<SpotTheCluesProps> = ({
 
       {/* Decision Question and Options */}
       <div className="pt-2">
-        <h4 className="text-base font-bold text-slate-100 mb-3 flex items-center gap-2">
-          <HelpCircle className="w-5 h-5 text-cyan-400" />
+        <h4 className="text-base font-bold text-[#171914] mb-3 flex items-center gap-2">
+          <HelpCircle className="w-4 h-4 text-[#7C7E77]" />
           <span>{question.questionText}</span>
         </h4>
 
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           {question.options.map((option) => {
             const isSelected = selectedOptionId === option.id;
-            let optionStyles = 'border-slate-800 bg-slate-900/80 hover:border-cyan-500 hover:bg-slate-900';
+            let optionStyles = 'border-[#171914]/20 bg-white hover:border-[#171914] text-[#171914]';
 
             if (isSelected) {
-              optionStyles = 'border-cyan-500 bg-cyan-950/40 text-cyan-100 shadow-md shadow-cyan-950/50';
+              optionStyles = 'border-2 border-[#171914] bg-[#F5F4EE] text-[#171914] shadow-xs';
             }
 
             if (isSubmitted) {
               if (option.isCorrect) {
-                optionStyles = 'border-emerald-500 bg-emerald-950/50 text-emerald-100';
+                optionStyles = 'border-2 border-[#1E4D2B] bg-[#E7F3EB] text-[#123E23]';
               } else if (isSelected && !option.isCorrect) {
-                optionStyles = 'border-rose-500 bg-rose-950/50 text-rose-100';
+                optionStyles = 'border-2 border-[#8A241C] bg-[#FAF0E6] text-[#78271C]';
               } else {
-                optionStyles = 'border-slate-800 bg-slate-900/40 opacity-50';
+                optionStyles = 'border-[#171914]/10 bg-[#ECEAE2]/40 text-[#82847C]';
               }
             }
 
@@ -214,18 +190,18 @@ export const SpotTheCluesQuestionView: React.FC<SpotTheCluesProps> = ({
                 type="button"
                 disabled={isSubmitted}
                 onClick={() => onSelectOption(option.id)}
-                className={`w-full p-4 rounded-xl border text-left transition-all duration-150 flex items-start gap-3 cursor-pointer ${optionStyles}`}
+                className={`w-full p-3.5 rounded-sm border text-left transition-colors flex items-start gap-3 cursor-pointer ${optionStyles}`}
               >
                 <span
-                  className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 mt-0.5 ${
+                  className={`w-6 h-6 rounded-xs flex items-center justify-center font-mono font-bold text-xs shrink-0 mt-0.5 ${
                     isSelected
-                      ? 'bg-cyan-500 text-slate-950'
-                      : 'bg-slate-800 text-slate-300'
+                      ? 'bg-[#171914] text-[#D9FA62]'
+                      : 'bg-[#ECEAE2] text-[#171914]'
                   }`}
                 >
                   {option.id}
                 </span>
-                <span className="text-sm font-medium leading-relaxed">{option.text}</span>
+                <span className="text-sm leading-relaxed">{option.text}</span>
               </button>
             );
           })}

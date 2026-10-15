@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'CyberSafe Community | Bengkel Keselamatan Siber Komuniti',
-  description: 'Learn to spot online threats, phishing SMS, fake emails, and weak passwords in an interactive workshop environment.',
+  title: 'CyberSafe Community — Bengkel Keselamatan Siber',
+  description: 'Bengkel interaktif kesedaran keselamatan siber komuniti: Pengesanan Phishing & Perlindungan Kata Laluan.',
 };
 
 export default function RootLayout({
@@ -27,9 +27,9 @@ export default function RootLayout({
   return (
     <html
       lang="ms"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`}
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-[#090d16] text-slate-100 selection:bg-cyan-500/30 selection:text-cyan-200">
+      <body className="min-h-full flex flex-col bg-[#F5F4EE] text-[#171914] selection:bg-[#D9FA62] selection:text-[#171914]">
         <Header />
         <main className="flex-1 flex flex-col">{children}</main>
         <Footer />

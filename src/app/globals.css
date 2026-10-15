@@ -1,72 +1,68 @@
 @import "tailwindcss";
 
 :root {
-  --background: #090d16;
-  --foreground: #f1f5f9;
-  --surface: #0f172a;
-  --surface-border: #1e293b;
-  --accent-cyan: #06b6d4;
-  --accent-blue: #3b82f6;
-  --accent-teal: #14b8a6;
+  --bg-canvas: #F5F4EE;
+  --bg-surface: #FFFFFF;
+  --bg-muted: #ECEAE2;
+  --bg-subtle: #E4E1D6;
+  --text-primary: #171914;
+  --text-secondary: #575953;
+  --text-muted: #82847C;
+  --accent-lime: #D9FA62;
+  --accent-lime-hover: #CCF050;
+  --border-hairline: rgba(23, 25, 20, 0.12);
+  --border-strong: #171914;
 }
 
 body {
-  background-color: var(--background);
-  color: var(--foreground);
+  background-color: var(--bg-canvas);
+  color: var(--text-primary);
   font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   min-height: 100vh;
   overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Subtle glow accents */
-.glow-cyan {
-  box-shadow: 0 0 25px -5px rgba(6, 182, 212, 0.2);
+/* Swiss typography utilities */
+.font-mono-tabular {
+  font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-feature-settings: "tnum" 1;
 }
 
-.glow-blue {
-  box-shadow: 0 0 25px -5px rgba(59, 130, 246, 0.2);
-}
-
-.glow-emerald {
-  box-shadow: 0 0 25px -5px rgba(16, 185, 129, 0.2);
-}
-
-/* Custom scrollbar for scenarios */
+/* Clean minimal scrollbars */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #0f172a;
+  background: var(--bg-canvas);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #334155;
-  border-radius: 4px;
+  background: #CFCBC0;
+  border-radius: 2px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+  background: #9D998E;
 }
 
-/* Accessible focus ring for workshop laptops */
+/* Restrained accessible focus states */
 button:focus-visible,
 a:focus-visible,
 input:focus-visible {
-  outline: 2px solid #06b6d4;
-  outline-offset: 3px;
+  outline: 2px solid var(--text-primary);
+  outline-offset: 2px;
 }
 
-/* High contrast card borders */
-.cyber-card {
-  background: rgba(15, 23, 42, 0.75);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(51, 65, 85, 0.6);
-  border-radius: 1rem;
-}
-
-.cyber-card-active {
-  border-color: rgba(6, 182, 212, 0.6);
-  box-shadow: 0 0 20px -3px rgba(6, 182, 212, 0.25);
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

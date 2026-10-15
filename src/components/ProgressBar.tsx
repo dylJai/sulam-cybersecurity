@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Award } from 'lucide-react';
 
 interface ProgressBarProps {
   currentQuestionIndex: number;
@@ -18,34 +17,38 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
   maxScore
 }) => {
   const percentage = Math.round(((currentQuestionIndex + 1) / totalQuestions) * 100);
+  const formattedCurrent = String(currentQuestionIndex + 1).padStart(2, '0');
+  const formattedTotal = String(totalQuestions).padStart(2, '0');
 
   return (
-    <div className="w-full bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-lg">
-      <div className="flex items-center justify-between gap-4 mb-3">
+    <div className="w-full bg-white border border-[#171914]/15 rounded-sm p-4 sm:p-5 shadow-xs">
+      <div className="flex items-center justify-between gap-4 mb-3 font-mono text-xs">
         {/* Step indicator */}
         <div className="flex items-center gap-2">
-          <span className="text-xs uppercase tracking-wider font-semibold text-cyan-400 bg-cyan-950/80 border border-cyan-800/60 px-2.5 py-1 rounded-full">
-            Soalan {currentQuestionIndex + 1} / {totalQuestions}
+          <span className="font-bold text-[#171914] bg-[#ECEAE2] px-2 py-0.5 rounded-xs">
+            SOALAN {formattedCurrent} / {formattedTotal}
           </span>
-          <span className="text-xs text-slate-400 hidden sm:inline">
-            ({percentage}% Selesai)
+          <span className="text-[#82847C] hidden sm:inline">
+            [{percentage}% Lengkap]
           </span>
         </div>
 
         {/* Current challenge score */}
-        <div className="flex items-center gap-2 text-xs font-semibold text-amber-300 bg-amber-950/40 border border-amber-800/50 px-3 py-1 rounded-full">
-          <Award className="w-3.5 h-3.5 text-amber-400" />
-          <span>Markah Cabaran: {currentScore} / {maxScore}</span>
+        <div className="flex items-center gap-1.5 font-bold text-[#171914]">
+          <span className="text-[#82847C] font-normal uppercase text-[10px] tracking-wider">Mata Cabaran:</span>
+          <span className="bg-[#D9FA62] px-2 py-0.5 rounded-xs border border-[#171914]/20">
+            {currentScore} / {maxScore}
+          </span>
         </div>
       </div>
 
       {/* Progress Bar Track */}
-      <div className="h-3 w-full bg-slate-800 rounded-full overflow-hidden p-0.5">
+      <div className="h-2 w-full bg-[#ECEAE2] rounded-xs overflow-hidden border border-[#171914]/10">
         <motion.div
-          className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full"
+          className="h-full bg-[#171914]"
           initial={{ width: 0 }}
           animate={{ width: `${percentage}%` }}
-          transition={{ duration: 0.4, ease: 'easeOut' }}
+          transition={{ duration: 0.3, ease: 'easeInOut' }}
         />
       </div>
     </div>
