@@ -69,7 +69,7 @@ export interface ChallengeMeta {
   title: string;
   shortDescription: string;
   learningObjective: string;
-  difficulty: 'Beginner' | 'Intermediate';
+  difficulty: 'Asas' | 'Pertengahan' | 'Beginner' | 'Intermediate';
   estimatedTime: string;
   iconName: 'ShieldAlert' | 'KeyRound';
   accentColor: string;

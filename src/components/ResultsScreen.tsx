@@ -40,7 +40,7 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
   }
 
   const nextChallengeId = meta.id === 'phishing' ? 'passwords' : 'phishing';
-  const nextChallengeTitle = meta.id === 'phishing' ? '02 / Password Protector' : '01 / Phishing Detection';
+  const nextChallengeTitle = meta.id === 'phishing' ? '02 / Pelindung Kata Laluan' : '01 / Pengesanan Phishing';
 
   return (
     <motion.div

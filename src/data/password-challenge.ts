@@ -2,26 +2,26 @@ import { ChallengeMeta, ChallengeQuestion } from '@/types/challenge';
 
 export const passwordMeta: ChallengeMeta = {
   id: 'passwords',
-  title: 'Password Protector',
-  shortDescription: 'Master the art of creating unbreakable passphrases, stopping account takeover, and using 2FA & password managers.',
-  learningObjective: 'Understand how hackers crack weak credentials, why password length beats complexity, and how multi-factor authentication (MFA) keeps your personal accounts secure.',
-  difficulty: 'Beginner',
-  estimatedTime: '5-7 Minutes',
+  title: 'Pelindung Kata Laluan',
+  shortDescription: 'Kuasai cara membina frasa laluan kukuh yang sukar dipecahkan, hentikan pengambilalihan akaun, dan fahami 2FA serta pengurus kata laluan.',
+  learningObjective: 'Memahami bagaimana penggodam memecahkan kata laluan yang lemah, mengapa panjang frasa laluan mengatasi kerumitan simbol, dan bagaimana Pengesahan Dua Faktor (2FA) melindungi akaun peribadi anda.',
+  difficulty: 'Asas',
+  estimatedTime: '5-7 Minit',
   iconName: 'KeyRound',
   accentColor: 'from-emerald-500 to-cyan-500',
-  badgeText: 'Challenge 2',
+  badgeText: 'Cabaran 02',
   instructions: [
-    'Analyze realistic password habits, security prompts, and common mistakes.',
-    'Test and compare different password strengths with your team.',
-    'Learn how modern security tools like 2FA and password managers work.',
-    'Earn 10 points for every correct security practice (50 points max)!'
+    'Bincangkan tabiat kata laluan, amaran keselamatan, dan kesilapan lazim bersama pasukan.',
+    'Uji dan bandingkan ketahanan kata laluan yang berbeza secara interaktif.',
+    'Pelajari fungsi alat keselamatan moden seperti 2FA dan Pengurus Kata Laluan (Password Manager).',
+    'Kumpul 10 mata bagi setiap amalan keselamatan yang tepat (Maksimum: 50 mata)!'
   ],
   keyTakeaways: [
-    'Length is king: A passphrase of 4-5 random words is easy for you to remember and virtually impossible for computers to brute-force.',
-    'Never reuse the same password across multiple websites—a single breach can expose all your accounts.',
-    'Two-Factor Authentication (2FA) adds a vital second layer of defense even if someone learns your password.',
-    'Use a reputable Password Manager to safely generate and remember unique credentials.',
-    'Never share One-Time Passwords (OTP) or verification codes with anyone over the phone or text.'
+    'Panjang adalah kunci: Frasa laluan gabungan 4–5 perkataan rawak mudah diingati oleh manusia tetapi memerlukan ribuan tahun untuk dipecahkan oleh komputer.',
+    'Jangan guna kata laluan yang sama untuk pelbagai akaun—kebocoran satu laman web boleh mendedahkan semua akaun anda yang lain.',
+    'Pengesahan Dua Faktor (2FA) bertindak sebagai benteng kedua sekiranya kata laluan anda terlepas ke tangan orang lain.',
+    'Gunakan aplikasi Pengurus Kata Laluan (Password Manager) yang dipercayai untuk menjana dan menyimpan kata laluan unik dengan selamat.',
+    'Jangan sesekali berkongsi Kod Pengesahan Sekali Sahaja (OTP / TAC) dengan sesiapa pun melalui telefon atau mesej.'
   ],
   totalQuestions: 5,
   maxScore: 50
@@ -31,77 +31,77 @@ export const passwordQuestions: ChallengeQuestion[] = [
   {
     id: 1,
     type: 'multiple-choice',
-    title: 'One Password for Everything',
-    scenarioContext: 'Pak Ali uses the exact same password ("KampungDamai2024!") for his personal Gmail, online shopping app, social media, and electricity payment portal.',
-    questionText: 'Why is using the same password across multiple accounts extremely dangerous?',
+    title: 'Satu Kata Laluan Untuk Semua Akaun',
+    scenarioContext: 'Pak Ali menggunakan kata laluan yang sama ("KampungDamai2024!") untuk emel peribadi, aplikasi membeli-belah, media sosial, dan portal bayaran bil elektrik.',
+    questionText: 'Mengapakah tabiat menggunakan satu kata laluan bagi banyak akaun sangat berbahaya?',
     options: [
       {
         id: 'A',
-        text: 'It slows down your computer’s processor and reduces internet speed.',
+        text: 'Ia melambatkan pemproses komputer dan mengurangkan kelajuan internet di rumah.',
         isCorrect: false
       },
       {
         id: 'B',
-        text: 'If even one small shopping website suffers a data breach, hackers will use that stolen password to unlock your email, bank, and all other accounts.',
+        text: 'Sekiranya salah satu laman web membeli-belah mengalami kebocoran data, penggodam akan menggunakan kata laluan itu untuk membuka emel, perbankan, dan semua akaun anda yang lain.',
         isCorrect: true
       },
       {
         id: 'C',
-        text: 'The Malaysian Communications and Multimedia Commission (MCMC) will automatically delete your accounts.',
+        text: 'Suruhanjaya Komunikasi dan Multimedia Malaysia (MCMC) akan memadam akaun tersebut secara automatik.',
         isCorrect: false
       },
       {
         id: 'D',
-        text: 'It causes your Wi-Fi router to disconnect automatically every evening.',
+        text: 'Ia menyebabkan penghala (router) Wi-Fi terputus sambungan setiap malam.',
         isCorrect: false
       }
     ],
-    explanation: 'This attack is called "Credential Stuffing". Hackers automate testing leaked username-and-password combinations across hundreds of other services. If you reuse your password, a breach on one minor website compromises your most sensitive accounts.',
+    explanation: 'Serangan ini dinamakan "Credential Stuffing". Penggodam menggunakan perisian automatik untuk menguji gabungan emel dan kata laluan yang bocor pada ratusan laman web lain. Jika anda mengulang kata laluan yang sama, kebocoran pada laman kecil yang kurang selamat boleh mendedahkan akaun bank dan emel utama anda.',
     points: 10
   },
   {
     id: 2,
     type: 'password-compare',
-    title: 'Interactive Feature: Choose the Safer Password',
-    scenarioContext: 'Compare the three fictional password choices below created for an email account. Inspect their characteristics and security estimates:',
-    questionPrompt: 'Based on security principles, which password provides the strongest protection and why?',
+    title: 'Aktiviti Interaktif: Pilih Kata Laluan Paling Selamat',
+    scenarioContext: 'Bandingkan tiga contoh kata laluan di bawah yang dicipta untuk akaun emel. Klik pada setiap contoh untuk meneliti anggaran masa komputer penggodam memecahkannya:',
+    questionPrompt: 'Berdasarkan prinsip keselamatan siber, pilihan manakah yang memberikan perlindungan paling kukuh dan mengapa?',
     passwords: [
       {
         id: 'pw-1',
-        label: 'Option A: Short & Predictable',
+        label: 'Pilihan A: Pendek & Mudah Diteka',
         passwordText: 'password123',
         entropy: 'very-weak',
-        crackTimeEstimate: 'Less than 1 millisecond',
+        crackTimeEstimate: 'Kurang daripada 1 milisaat',
         characteristics: [
-          'Extremely common dictionary word',
-          'Sequential numbers (123)',
-          'Top 10 most hacked passwords in history'
+          'Perkataan kamus yang sangat lazim digunakan',
+          'Urutan nombor mudah (123)',
+          'Antara 10 kata laluan paling kerap digodam di dunia'
         ],
         isSafest: false
       },
       {
         id: 'pw-2',
-        label: 'Option B: Personal Info + Symbol',
+        label: 'Pilihan B: Nama + Tahun Lahir + Simbol',
         passwordText: 'Kamal1985!',
         entropy: 'weak',
-        crackTimeEstimate: 'Under 5 seconds on modern GPU',
+        crackTimeEstimate: 'Bawah 5 saat pada kad grafik moden',
         characteristics: [
-          'Uses first name and birth year',
-          'Easily discovered from IC, Facebook, or WhatsApp profile',
-          'Replacing letters with symbols or adding "!" does not stop automated tools'
+          'Menggunakan nama dan tahun kelahiran',
+          'Mudah dicari penipu daripada kad pengenalan atau profil media sosial',
+          'Sekadar menambah simbol tanda seru (!) tidak mencukupi untuk menghalang serangan automatik'
         ],
         isSafest: false
       },
       {
         id: 'pw-3',
-        label: 'Option C: Memorable Passphrase',
+        label: 'Pilihan C: Frasa Laluan Pelbagai Perkataan',
         passwordText: 'kucing-suka-makan-ikan-kembung',
         entropy: 'strong',
-        crackTimeEstimate: 'Thousands of years',
+        crackTimeEstimate: 'Ribuan tahun',
         characteristics: [
-          '31 characters long (Length is King!)',
-          '5 random memorable Malay words chained together',
-          'Easy for a human to picture, nearly impossible for bots to guess'
+          'Sepanjang 31 aksara (Panjang Frasa Mengatasi Simbol!)',
+          'Gabungan 5 perkataan Bahasa Melayu yang mudah diingati oleh manusia',
+          'Sangat sukar untuk dipecahkan oleh komputer penggodam'
         ],
         isSafest: true
       }
@@ -109,120 +109,120 @@ export const passwordQuestions: ChallengeQuestion[] = [
     options: [
       {
         id: 'A',
-        text: 'Option A, because it is short and easy to type without making typos.',
+        text: 'Pilihan A, kerana ia pendek dan mudah ditaip tanpa berlaku kesilapan ejaan.',
         isCorrect: false
       },
       {
         id: 'B',
-        text: 'Option B, because having a capital letter, number, and exclamation mark guarantees it cannot be cracked.',
+        text: 'Pilihan B, kerana mempunyai huruf besar, nombor, dan tanda seru (!) yang menjadikannya mustahil dipecahkan.',
         isCorrect: false
       },
       {
         id: 'C',
-        text: 'Option C, because length and unpredictable combinations of words are exponentially harder for brute-force cracking tools to compute.',
+        text: 'Pilihan C, kerana kepanjangan aksara dan gabungan perkataan rawak menghasilkan rintangan matematik yang sangat tinggi terhadap serangan tekaan komputer.',
         isCorrect: true
       },
       {
         id: 'D',
-        text: 'All three options are equally safe as long as no one looks over your shoulder.',
+        text: 'Ketiga-tiga pilihan adalah sama selamat asalkan tiada orang yang menjeling skrin anda semasa menaip.',
         isCorrect: false
       }
     ],
-    questionText: 'Which option represents the safest password practice?',
-    explanation: 'Password length is far more important than arbitrary symbol replacements! A passphrase made of 4 to 5 words (like "kucing-suka-makan-ikan-kembung") creates mathematical exponential difficulty for computers while remaining effortless for humans to remember.',
+    questionText: 'Pilihan manakah yang mewakili amalan kata laluan paling selamat?',
+    explanation: 'Kepanjangan frasa laluan jauh lebih berkesan berbanding sekadar menukar huruf kepada simbol! Frasa laluan daripada gabungan 4 ke 5 perkataan biasa (seperti "kucing-suka-makan-ikan-kembung") sangat mudah diingati oleh otak manusia tetapi memerlukan ribuan tahun untuk dipecahkan oleh komputer super.',
     points: 10
   },
   {
     id: 3,
     type: 'multiple-choice',
-    title: 'Two-Factor Authentication (2FA) Shield',
-    scenarioContext: 'While setting up a new banking or social media app, the screen displays a prompt: "Enable Two-Factor Authentication (2FA) / Two-Step Verification".',
-    questionText: 'How does Two-Factor Authentication (2FA) protect your account?',
+    title: 'Perisai Pengesahan Dua Faktor (2FA)',
+    scenarioContext: 'Semasa mendaftar aplikasi perbankan atau media sosial yang baharu, skrin memaparkan cadangan: "Aktifkan Pengesahan Dua Faktor (2FA) / Two-Factor Authentication".',
+    questionText: 'Bagaimanakah Pengesahan Dua Faktor (2FA) melindungi akaun anda?',
     options: [
       {
         id: 'A',
-        text: 'It requires you to type two different passwords one after another every time you open the app.',
+        text: 'Ia mewajibkan anda menaip dua kata laluan yang berbeza berturut-turut setiap kali membuka aplikasi.',
         isCorrect: false
       },
       {
         id: 'B',
-        text: 'Even if a cybercriminal guesses or steals your password, they cannot log in without the second proof of identity (such as a prompt or code on your physical phone).',
+        text: 'Walaupun penjenayah siber berjaya meneka atau mencuri kata laluan anda, mereka tetap tidak dapat log masuk tanpa pengesahan kedua (seperti notifikasi atau kod pada telefon fizikal anda).',
         isCorrect: true
       },
       {
         id: 'C',
-        text: 'It permanently disables notifications and junk mail on your phone.',
+        text: 'Ia memadam semua emel sampah dan iklan daripada masuk ke dalam telefon anda.',
         isCorrect: false
       },
       {
         id: 'D',
-        text: 'It prevents your device from ever running out of battery during transactions.',
+        text: 'Ia menghalang bateri komputer riba atau telefon daripada habis semasa melakukan transaksi kewangan.',
         isCorrect: false
       }
     ],
-    explanation: '2FA acts like requiring both a key and a fingerprint to open your front door. Even if a criminal acquires your password in a database leak, they do not possess your physical phone or authenticator app, stopping the unauthorized login dead in its tracks.',
+    explanation: '2FA berfungsi seperti memerlukan anak kunci dan imbasan cap jari serentak untuk membuka pintu rumah. Sekiranya kata laluan anda terdedah dalam kebocoran pangkalan data, penjenayah tetap gagal menceroboh kerana mereka tidak memegang telefon fizikal anda.',
     points: 10
   },
   {
     id: 4,
     type: 'multiple-choice',
-    title: 'Managing 30 Different Passwords',
-    scenarioContext: 'A workshop participant asks: "If every single account needs a unique, 20-character passphrase, how on earth can anyone remember 30 different passwords without writing them on a paper note?"',
-    questionText: 'What is the recommended tool to solve this problem safely and easily?',
+    title: 'Kaedah Menguruskan 30 Kata Laluan Berbeza',
+    scenarioContext: 'Seorang peserta bengkel bertanya: "Jika setiap akaun memerlukan kata laluan unik yang panjang, bagaimana kita mampu mengingati puluhan kata laluan tanpa mencatatnya di atas kertas nota?"',
+    questionText: 'Apakah alat keselamatan yang disyorkan oleh pakar untuk menyelesaikan masalah ini secara selamat?',
     options: [
       {
         id: 'A',
-        text: 'Write all passwords on a sticky note and attach it to your laptop screen or monitor bezel.',
+        text: 'Tulis semua kata laluan di atas kertas pelekat (sticky note) dan tampal pada bingkai skrin komputer riba.',
         isCorrect: false
       },
       {
         id: 'B',
-        text: 'Save your passwords in an open WhatsApp message or unencrypted note on your smartphone.',
+        text: 'Simpan semua kata laluan dalam perbualan WhatsApp peribadi atau nota biasa tanpa kata laluan pada telefon.',
         isCorrect: false
       },
       {
         id: 'C',
-        text: 'Use a reputable Password Manager (such as Bitwarden, Apple Keychain, or Google Password Manager) that encrypts and auto-fills unique passwords using one master passphrase.',
+        text: 'Gunakan aplikasi Pengurus Kata Laluan (Password Manager) yang dipercayai (seperti Bitwarden, Apple Keychain, atau Google Password Manager) yang menyulitkan dan mengisi kata laluan unik secara selamat.',
         isCorrect: true
       },
       {
         id: 'D',
-        text: 'Use the "Forgot Password" button every single time you need to log in to an account.',
+        text: 'Tekan butang "Lupa Kata Laluan" (Forgot Password) setiap kali anda mahu log masuk ke akaun.',
         isCorrect: false
       }
     ],
-    explanation: 'Reputable Password Managers are designed specifically for this purpose! They encrypt and store all your complex passwords inside a secure digital vault. You only have to remember one single, strong master passphrase to unlock your vault.',
+    explanation: 'Aplikasi Pengurus Kata Laluan (Password Manager) dicipta khas untuk tujuan ini! Ia menyulitkan (encrypt) dan menyimpan semua kata laluan rumit anda dalam peti kebal digital yang selamat. Anda hanya perlu mengingati satu frasa laluan utama (master passphrase) yang kukuh untuk membukanya.',
     points: 10
   },
   {
     id: 5,
     type: 'multiple-choice',
-    title: 'The "Accidental" Verification Code Call',
-    scenarioContext: 'You receive an unexpected SMS from Google with a 6-digit verification code: "492019 is your Google verification code. Do not share it with anyone." A minute later, a friendly caller phones you saying: "Hi encik/puan! I accidentally typed your phone number for my account recovery. Could you please read that 6-digit number to me?"',
-    questionText: 'What must you do in this situation?',
+    title: 'Panggilan "Tersilap Hantar Kod Pengesahan"',
+    scenarioContext: 'Anda menerima SMS daripada Google yang mengandungi nombor pengesahan: "492019 ialah kod pengesahan Google anda. Jangan berkongsi kod ini dengan sesiapa." Seminit kemudian, seorang pemanggil yang ramah menghubungi anda dan berkata: "Helo encik/puan! Saya tersilap taip nombor telefon encik untuk akaun saya. Boleh bacakan 6 nombor yang baru masuk tadi tak?"',
+    questionText: 'Apakah yang wajib anda lakukan dalam situasi ini?',
     options: [
       {
         id: 'A',
-        text: 'Read the code to the caller because they made a polite and honest mistake.',
+        text: 'Bacakan kod tersebut kepada pemanggil kerana bersangka baik bahawa dia tersilap menaip nombor telefon.',
         isCorrect: false
       },
       {
         id: 'B',
-        text: 'NEVER share the code! Hang up immediately. The caller is attempting to hijack your account, and giving the code gives them full access.',
+        text: 'JANGAN SEKALI-KALI berkongsi kod tersebut! Letak telefon serta-merta. Pemanggil sebenarnya cuba menceroboh akaun anda, dan kod itu akan memberi mereka akses penuh.',
         isCorrect: true
       },
       {
         id: 'C',
-        text: 'Read only the first 3 digits of the code to be helpful.',
+        text: 'Bacakan 3 nombor terawal sahaja sebagai tanda prihatin.',
         isCorrect: false
       },
       {
         id: 'D',
-        text: 'Forward the SMS to the caller’s WhatsApp number.',
+        text: 'Panjangkan (forward) mesej SMS itu ke nombor WhatsApp pemanggil tersebut.',
         isCorrect: false
       }
     ],
-    explanation: 'Never share a verification code or OTP with anyone—not even someone claiming to be technical support or an innocent stranger! That 6-digit code is the only barrier stopping a scammer from taking over your Google, WhatsApp, or banking account.',
+    explanation: 'Jangan sekali-kali berkongsi kod pengesahan atau OTP dengan sesiapa pun—walaupun mereka mendakwa sebagai kakitangan bantuan teknikal atau merayu tersilap nombor! Kod 6-digit itu adalah benteng terakhir yang menghalang penceroboh daripada merampas akaun Google, WhatsApp, atau perbankan anda.',
     points: 10
   }
 ];

@@ -29,14 +29,14 @@ export default function HomePage() {
       {/* Top Editorial Metadata Line */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#171914]/15 pb-3 font-mono text-[11px] text-[#7C7E77] uppercase tracking-wider">
         <span>BENGKEL KESELAMATAN SIBER KOMUNITI</span>
-        <span>EDISI LAPTOP STESEN • MALAYSIA</span>
+        <span>EDISI STESEN KOMPUTER RIBA • MALAYSIA</span>
       </div>
 
       {/* Distinctive Editorial Hero Section */}
       <section className="space-y-8">
         <div className="space-y-4 max-w-4xl">
           <div className="inline-block bg-[#171914] text-[#D9FA62] font-mono text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-xs">
-            CyberSafe Community
+            CyberSafe Community • Komuniti Siber Selamat
           </div>
 
           <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black text-[#171914] tracking-tight leading-[1.05]">
@@ -45,7 +45,7 @@ export default function HomePage() {
           </h1>
 
           <p className="text-xl sm:text-2xl font-serif italic text-[#575953] tracking-normal">
-            &ldquo;Learn to spot online threats. Stay safe. Protect yourself.&rdquo;
+            &ldquo;Kesan ancaman dalam talian. Kekal selamat. Lindungi diri anda.&rdquo;
           </p>
 
           <p className="text-sm sm:text-base text-[#575953] leading-relaxed max-w-2xl pt-2">
@@ -59,7 +59,7 @@ export default function HomePage() {
             href="/challenge/phishing"
             className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-sm font-mono font-bold text-xs uppercase tracking-wider text-[#171914] bg-[#D9FA62] hover:bg-[#CCF050] border-2 border-[#171914] transition-colors shadow-xs"
           >
-            <span>Mula Cabaran 01: Phishing</span>
+            <span>Mula Cabaran 01: Pengesanan Phishing</span>
             <ArrowRight className="w-4 h-4" />
           </Link>
 

@@ -2,26 +2,26 @@ import { ChallengeMeta, ChallengeQuestion } from '@/types/challenge';
 
 export const phishingMeta: ChallengeMeta = {
   id: 'phishing',
-  title: 'Phishing Detection',
-  shortDescription: 'Learn to spot suspicious SMS messages, fake banking alerts, and deceptive emails before falling for scams.',
-  learningObjective: 'Identify red flags in digital messages—such as fake urgency, suspicious sender domains, and demands for sensitive codes—before clicking links or transferring money.',
-  difficulty: 'Beginner',
-  estimatedTime: '5-7 Minutes',
+  title: 'Pengesanan Phishing',
+  shortDescription: 'Pelajari cara mengesan SMS mencurigakan, amaran bank palsu, dan emel tipu helah sebelum terjerumus ke dalam perangkap scammer.',
+  learningObjective: 'Mengenal pasti tanda-tanda amaran dalam mesej digital—seperti ugutan masa singkat, domain pengirim palsu, dan cubaan meminta kod rahsia—sebelum menekan sebarang pautan atau memindahkan wang.',
+  difficulty: 'Asas',
+  estimatedTime: '5-7 Minit',
   iconName: 'ShieldAlert',
   accentColor: 'from-amber-500 to-rose-500',
-  badgeText: 'Challenge 1',
+  badgeText: 'Cabaran 01',
   instructions: [
-    'Read each scenario and inspect the sender, message text, and links carefully.',
-    'Work with your workshop team to discuss what looks suspicious or safe.',
-    'Choose the safest response or tap the warning signs when prompted.',
-    'Earn 10 points for every correct identification (50 points max)!'
+    'Baca setiap senario dan periksa nama pengirim, teks mesej, serta pautan dengan teliti.',
+    'Bincang bersama rakan sepasukan di stesen ini tentang bahagian yang mencurigakan.',
+    'Pilih tindakan paling selamat atau klik pada zon tanda bahaya apabila diminta.',
+    'Kumpul 10 mata bagi setiap jawapan yang tepat (Maksimum: 50 mata)!'
   ],
   keyTakeaways: [
-    'Legitimate couriers and banks never give 15-minute ultimatums to demand small payments via strange links.',
-    'Never share your TAC, OTP, or eWallet PIN with anyone, even if they claim to be a bank officer or friend.',
-    'Always verify unexpected messages by contacting the official helpline or opening the official app directly.',
-    'Check sender email addresses carefully—scammers often use fake domains like @tenaga-alert.xyz.',
-    'Pause and call family members directly before sending emergency money requested over WhatsApp or SMS.'
+    'Syarikat kurier dan pihak bank tidak akan sesekali memberi ugutan masa 15 minit untuk mendesak bayaran melalui pautan pelik.',
+    'Jangan sekali-kali berkongsi nombor TAC, OTP, atau PIN e-Dompet dengan sesiapa pun, walaupun mereka mengaku sebagai pegawai bank atau kenalan.',
+    'Sentiasa sahkan sebarang mesej luar biasa dengan menghubungi talian rasmi atau membuka aplikasi rasmi secara terus.',
+    'Perhatikan alamat emel pengirim dengan teliti—penipu kerap menggunakan domain palsu seperti @tenaga-alert.xyz.',
+    'Bertenang dan hubungi ahli keluarga secara terus melalui panggilan suara sebelum memindahkan wang kecemasan yang diminta melalui WhatsApp atau SMS.'
   ],
   totalQuestions: 5,
   maxScore: 50
@@ -31,200 +31,200 @@ export const phishingQuestions: ChallengeQuestion[] = [
   {
     id: 1,
     type: 'multiple-choice',
-    title: 'Suspicious Parcel Delivery SMS',
-    scenarioContext: 'You are waiting for an online shopping delivery and receive this unexpected SMS on your phone:',
+    title: 'SMS Penghantaran Bungkusan Mencurigakan',
+    scenarioContext: 'Anda sedang menunggu bungkusan belian barang dalam talian dan tiba-tiba menerima SMS ini di telefon bimbit anda:',
     messageFormat: 'sms',
-    sender: 'Parcel Delivery Notice (+6011-8291-0394)',
-    messageBody: 'Your parcel delivery has failed. Pay RM2.50 to reschedule your delivery. Complete payment within 15 minutes to avoid cancellation: http://pos-redeliver-pay.cc/track992',
-    urgencyBadge: '15-minute countdown',
-    questionText: 'What is the safest action for you and your team to take?',
+    sender: 'Notis Penghantaran Pos (+6011-8291-0394)',
+    messageBody: 'Pemberitahuan Pos: Penghantaran bungkusan anda gagal kerana alamat tidak lengkap. Sila bayar caj RM2.50 untuk penjadualan semula segera dalam tempoh 15 minit bagi mengelakkan pembatalan: http://pos-redeliver-pay.cc/track992',
+    urgencyBadge: 'Had Masa 15 Minit',
+    questionText: 'Apakah tindakan paling selamat untuk anda dan pasukan stesen lakukan?',
     options: [
       {
         id: 'A',
-        text: 'Click the link and pay RM2.50 immediately so your package is not cancelled.',
+        text: 'Tekan pautan tersebut dan bayar RM2.50 segera supaya bungkusan tidak dibatalkan.',
         isCorrect: false
       },
       {
         id: 'B',
-        text: 'Reply to the SMS with your full name, home address, and IC number.',
+        text: 'Balas SMS tersebut dengan memberikan nama penuh, alamat rumah, dan nombor kad pengenalan anda.',
         isCorrect: false
       },
       {
         id: 'C',
-        text: 'Do not click the link. Open the courier company’s official app or tracking website to verify the package status.',
+        text: 'Jangan tekan pautan. Buka aplikasi rasmi syarikat kurier atau layari laman web rasmi mereka untuk menyemak status bungkusan sebenar.',
         isCorrect: true
       },
       {
         id: 'D',
-        text: 'Forward the message to your family chat asking everyone to pay it quickly.',
+        text: 'Panjangkan (forward) mesej ini ke dalam WhatsApp keluarga untuk meminta bantuan ahli keluarga membayarnya.',
         isCorrect: false
       }
     ],
-    explanation: 'Scammers frequently send fake parcel SMS messages with tiny fees (like RM2.50) to steal credit card and online banking credentials. Legitimate couriers do not cancel deliveries within 15 minutes or direct you to strange .cc domain links. Always check tracking numbers on official portals.',
+    explanation: 'Scammer kerap menghantar SMS palsu kononnya daripada pihak kurier dengan caj kecil (seperti RM2.50) untuk mencuri maklumat kad bank anda. Syarikat kurier yang sah tidak akan membatalkan barang dalam tempoh 15 minit atau mengarahkan anda ke pautan domain pelik (.cc). Sentiasa buat semakan melalui portal rasmi.',
     points: 10
   },
   {
     id: 2,
     type: 'multiple-choice',
-    title: 'Urgent Banking Security Warning',
-    scenarioContext: 'You receive an urgent SMS that claims to be from a well-known Malaysian commercial bank:',
+    title: 'Amaran Keselamatan Bank Palsu',
+    scenarioContext: 'Anda menerima SMS cemas yang mendakwa dihantar oleh pihak bank tempatan:',
     messageFormat: 'sms',
     sender: 'MY-BANK-ALERT',
-    messageBody: 'PERINGATAN KESELAMATAN: Akaun perbankan internet anda telah digantung akibat percubaan akses tanpa kebenaran. Sila sahkan maklumat dan nombor TAC anda di: https://mybank-online-security.com/verify dalam tempoh 1 jam.',
-    urgencyBadge: 'Urgent Threat: Account Suspended',
-    questionText: 'The message warns that your account is blocked unless you verify your TAC number immediately. What should you do?',
+    messageBody: 'PERINGATAN KESELAMATAN: Akaun perbankan internet anda telah digantung akibat percubaan akses tanpa kebenaran. Sila sahkan maklumat akaun dan nombor TAC anda di: https://mybank-online-security.com/verify dalam tempoh 1 jam.',
+    urgencyBadge: 'Amaran: Akaun Digantung',
+    questionText: 'Mesej mendakwa akaun anda disekat melainkan anda mengesahkan nombor TAC segera. Apakah yang patut anda lakukan?',
     options: [
       {
         id: 'A',
-        text: 'Click the link right away and type in your username, password, and TAC to protect your money.',
+        text: 'Tekan pautan serta-merta dan masukkan nama pengguna, kata laluan, serta TAC untuk melindungi baki wang anda.',
         isCorrect: false
       },
       {
         id: 'B',
-        text: 'Do not click the link. Log in directly through the official mobile banking app, or call the official bank hotline printed on the back of your bank card.',
+        text: 'Jangan tekan pautan. Buka aplikasi perbankan rasmi secara berasingan atau hubungi talian khidmat pelanggan rasmi yang tertera di belakang kad bank anda.',
         isCorrect: true
       },
       {
         id: 'C',
-        text: 'Click the link to look around, but only enter your password if the page looks genuine.',
+        text: 'Tekan pautan untuk melihat laman web tersebut terlebih dahulu, dan hanya masukkan kata laluan jika rupanya nampak meyakinkan.',
         isCorrect: false
       },
       {
         id: 'D',
-        text: 'Reply to the SMS asking for the bank officer’s employee ID number.',
+        text: 'Balas SMS itu meminta pegawai bank menyatakan nombor ID pekerja mereka.',
         isCorrect: false
       }
     ],
-    explanation: 'Banks in Malaysia and worldwide have banned sending links in SMS messages! Genuine banks will NEVER ask you to click a link to input your password or TAC. If you suspect an issue, always call the official customer care number on your physical card.',
+    explanation: 'Pihak bank di Malaysia telah mengharamkan penghantaran sebarang pautan melalui SMS! Bank yang sah TIDAK AKAN meminta anda menekan pautan untuk memasukkan kata laluan atau kod TAC. Jika anda berasa ragu, hubungi nombor khidmat pelanggan pada kad fizikal anda.',
     points: 10
   },
   {
     id: 3,
     type: 'multiple-choice',
-    title: 'Unexpected Cash Aid & Festive Prize',
-    scenarioContext: 'You open your inbox and see an email congratulating you on winning cash assistance:',
+    title: 'Emel Menang Wang Hadiah & Bantuan Khas',
+    scenarioContext: 'Anda membuka peti masuk emel dan melihat kiriman tahniah kononnya anda terpilih menerima bantuan tunai:',
     messageFormat: 'email',
     sender: 'Bantuan Khas Kerajaan <hadiah-bonus@ewallet-claim-2025.com>',
     subject: 'Tahniah! Anda telah terpilih untuk menerima Bantuan Khas RM1,000',
     messageBody: 'Pelanggan yang dihormati,\n\nNombor telefon anda telah dicabut sebagai pemenang Bertuah Bantuan Tunai Musim Perayaan sebanyak RM1,000.\n\nUntuk menyalurkan wang terus ke akaun Touch \'n Go eWallet anda, sila muat turun borang pendaftaran di bawah dan masukkan nombor PIN keselamatan 6-digit eWallet anda.',
     attachmentName: 'Borang_Penebusan_Bantuan_Tunai.apk',
-    urgencyBadge: 'Claim within 24 Hours',
-    questionText: 'What is the main warning sign indicating this email is a scam?',
+    urgencyBadge: 'Tuntut Dalam Tempoh 24 Jam',
+    questionText: 'Apakah tanda amaran paling jelas yang membuktikan emel ini adalah cubaan menipu (scam)?',
     options: [
       {
         id: 'A',
-        text: 'The email mentions a festive holiday season.',
+        text: 'Emel tersebut menyebut tentang musim perayaan percutian.',
         isCorrect: false
       },
       {
         id: 'B',
-        text: 'You never entered a lucky draw, the sender email address is unofficial (@ewallet-claim-2025.com), it attaches a risky APK file, and it demands your secret 6-digit PIN.',
+        text: 'Anda tidak pernah menyertai sebarang cabutan bertuah, alamat emel pengirim tidak rasmi (@ewallet-claim-2025.com), disertakan fail aplikasi (.apk) yang bahaya, dan meminta nombor PIN rahsia anda.',
         isCorrect: true
       },
       {
         id: 'C',
-        text: 'The cash assistance amount is RM1,000 rather than RM2,000.',
+        text: 'Jumlah bantuan tunai adalah RM1,000 dan bukannya RM2,000.',
         isCorrect: false
       },
       {
         id: 'D',
-        text: 'The email was sent on a weekday instead of the weekend.',
+        text: 'Emel tersebut dihantar pada hari bekerja dan bukannya pada hujung minggu.',
         isCorrect: false
       }
     ],
-    explanation: 'If you never entered a lucky draw, you cannot win! Real government agencies and reputable eWallets will never ask for your confidential PIN or password, nor will they distribute untrusted .APK files which can install spyware on your Android phone.',
+    explanation: 'Jika anda tidak pernah menyertai pertandingan atau cabutan bertuah, anda tidak mungkin menang! Pihak kerajaan dan syarikat e-Dompet sah tidak akan meminta nombor PIN rahsia anda, serta tidak akan menyebarkan fail .APK yang boleh memasang perisian intip (spyware) ke dalam telefon pintar anda.',
     points: 10
   },
   {
     id: 4,
     type: 'spot-clues',
-    title: 'Interactive Feature: Spot the Warning Signs',
-    scenarioContext: 'Below is an urgent utility bill email that looks deceptive. Tap each of the 4 suspicious red flags highlighted in the email to understand why it is dangerous:',
+    title: 'Aktiviti Interaktif: Siasat Zon Petunjuk Bahaya',
+    scenarioContext: 'Di bawah adalah emel tunggakan bil elektrik yang mencurigakan. Klik pada setiap 4 zon amaran bertanda untuk menyiasat helah penipu:',
     sender: 'Jabatan Pengebilan Elektrik',
     senderEmail: 'billing-support@tenaga-online-alert.xyz',
-    receivedTime: 'Today at 07:15 AM',
-    subject: 'NOTIS AKHIR: Bekalan elektrik anda akan dipotong dalam 2 Jam!',
-    instructions: 'Click each of the marked warning zones below to inspect the scammer\'s tricks, then submit your evaluation.',
+    receivedTime: 'Hari ini, 7:15 Pagi',
+    subject: 'NOTIS AKHIR: Bekalan elektrik anda akan dipotong dalam tempoh 2 Jam!',
+    instructions: 'Klik setiap zon bertanda (1-4) di dalam emel untuk meneliti helah scammer, kemudian pilih tindakan terbaik.',
     clues: [
       {
         id: 'clue-sender',
-        label: '1. Suspicious Sender Domain',
-        explanation: 'Look at the domain "@tenaga-online-alert.xyz". Official utility companies use official corporate domains (like .com.my), never random .xyz domains created by scammers.',
+        label: '1. Domain Pengirim Yang Mencurigakan',
+        explanation: 'Perhatikan bahagian alamat "@tenaga-online-alert.xyz". Agensi utiliti rasmi sentiasa menggunakan domain korporat sah (seperti .com.my atau .my), bukan domain rawak .xyz yang dibeli murah oleh penipu.',
         isSuspicious: true
       },
       {
         id: 'clue-urgency',
-        label: '2. Extreme Threat & Artificial Urgency',
-        explanation: 'Scammers use phrases like "Cut off in 2 hours!" to panic you into acting before you have time to think rationally or consult family members.',
+        label: '2. Ugutan Cemas & Had Masa 2 Jam',
+        explanation: 'Penipu menggunakan ayat panik seperti "Potong dalam 2 jam!" supaya mangsa berasa cemas lalu bertindak melulu tanpa sempat berfikir atau berbincang dengan keluarga.',
         isSuspicious: true
       },
       {
         id: 'clue-link',
-        label: '3. Unofficial Payment Link / Button',
-        explanation: 'The payment button leads to an insecure external phishing portal that mimics the utility website to steal your banking login details.',
+        label: '3. Butang / Pautan Bayaran Tidak Rasmi',
+        explanation: 'Pautan bayaran ini menghalakan mangsa ke laman web palsu yang meniru paparan portal sebenar untuk mencuri nama pengguna dan kata laluan perbankan.',
         isSuspicious: true
       },
       {
         id: 'clue-sensitive',
-        label: '4. Asking for Banking Password & TAC',
-        explanation: 'Utility bills only require account numbers and bill amounts. They NEVER require your online banking username, password, or security code.',
+        label: '4. Meminta Kata Laluan Bank & Nombor TAC',
+        explanation: 'Urusan semakan bil elektrik hanya memerlukan nombor akaun bil. Pihak utiliti TIDAK PERNAH memerlukan kata laluan perbankan internet mahupun kod TAC anda.',
         isSuspicious: true
       }
     ],
-    questionText: 'After reviewing the warning signs above, what is the best rule to remember for utility bills?',
+    questionText: 'Selepas menyiasat petunjuk di atas, apakah amalan terbaik semasa menguruskan bil utiliti?',
     options: [
       {
         id: 'A',
-        text: 'Pay through the email link quickly so the lights don’t turn off.',
+        text: 'Buat bayaran terus melalui pautan emel dengan segera supaya elektrik di rumah tidak terputus.',
         isCorrect: false
       },
       {
         id: 'B',
-        text: 'Verify outstanding balances exclusively through the official provider app, physical kiosks, or authorized post office counters.',
+        text: 'Buat semakan tunggakan bil secara terus melalui aplikasi rasmi pembekal, kiosk bayaran fizikal, atau kaunter pejabat pos yang sah.',
         isCorrect: true
       },
       {
         id: 'C',
-        text: 'Reply to the sender attaching your latest bank statement.',
+        text: 'Balas emel pengirim dengan melampirkan penyata akaun bank terkini anda.',
         isCorrect: false
       }
     ],
-    explanation: 'Spotting the combination of a bogus sender domain, manufactured panic, and requests for private financial details protects you from utility impersonation scams.',
+    explanation: 'Kebolehan mengecam alamat domain palsu, ugutan masa yang tidak masuk akal, serta desakan meminta kata laluan bank merupakan benteng utama menghalang scam penyamaran utiliti.',
     points: 10
   },
   {
     id: 5,
     type: 'multiple-choice',
-    title: 'Emergency Distress Message from "Family"',
-    scenarioContext: 'You receive a WhatsApp message from an unknown number showing a photo of your nephew or cousin:',
+    title: 'Mesej Cemas Menyamar Sebagai "Ahli Keluarga"',
+    scenarioContext: 'Anda menerima mesej WhatsApp daripada nombor tidak dikenali yang memaparkan gambar profil anak saudara anda:',
     messageFormat: 'sms',
-    sender: 'Unknown Number (+6019-338-9210)',
+    sender: 'Nombor Tidak Dikenali (+6019-338-9210)',
     messageBody: 'Salam Makcik/Pakcik, telefon saya jatuh dalam air tadi jadi saya guna nombor kawan. Kereta saya rosak tepi jalan kat lebuhraya sekarang dan bateri kawan pun nak habis. Boleh tolong pindahkan RM350 ke akaun bengkel kawan saya: Maybank 1140-2938-1209 sekarang? Saya bayar balik malam nanti.',
-    urgencyBadge: 'Family Emergency',
-    questionText: 'An unknown number claims to be your family member stranded on the highway demanding emergency money. What should you do first?',
+    urgencyBadge: 'Kecemasan Keluarga',
+    questionText: 'Nombor tidak dikenali mendakwa saudara anda terkandas dan memerlukan wang kecemasan segera. Apakah langkah pertama anda?',
     options: [
       {
         id: 'A',
-        text: 'Transfer RM350 right away because helping family during emergencies is an urgent priority.',
+        text: 'Pindahkan wang RM350 serta-merta kerana membantu darah daging dalam kecemasan adalah keutamaan.',
         isCorrect: false
       },
       {
         id: 'B',
-        text: 'Call your family member’s usual existing phone number directly, or call another close relative to verify if the emergency is real.',
+        text: 'Hubungi nombor telefon asal saudara anda yang tersimpan dalam kenalan, atau telefon ahli keluarga terdekat yang lain untuk mengesahkan situasi sebenar.',
         isCorrect: true
       },
       {
         id: 'C',
-        text: 'Transfer RM50 first just to see if the bank account name matches.',
+        text: 'Pindahkan RM50 dahulu sekadar mencuba sama ada nama pemilik akaun bank tersebut sepadan.',
         isCorrect: false
       },
       {
         id: 'D',
-        text: 'Ask the sender to take a selfie holding today’s newspaper.',
+        text: 'Minta pengirim mengambil gambar swafoto (selfie) sambil memegang surat khabar hari ini.',
         isCorrect: false
       }
     ],
-    explanation: 'Family impersonation scams are rampant in Malaysia. Criminals harvest profile pictures from social media and fabricate urgent distress stories. ALWAYS call the relative on their known contact number or check with immediate family before making any transfers.',
+    explanation: 'Scam penyamaran identiti keluarga sangat berleluasa. Penipu mencuri gambar profil daripada media sosial dan mereka-reka kisah kecemasan. SENTIASA buat panggilan suara atau video ke nombor telefon asal saudara anda sebelum memindahkan sebarang wang.',
     points: 10
   }
 ];
