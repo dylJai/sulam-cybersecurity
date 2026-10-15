@@ -3,300 +3,300 @@ import { InvestigationCase } from '@/types/game';
 export const investigationCases: InvestigationCase[] = [
   {
     id: 1,
-    title: 'Case 01 — Parcel Delivery Redirection SMS',
-    scenarioContext: 'You are waiting for an online shopping delivery when you receive this SMS on your smartphone:',
+    title: 'Kes 01 — SMS Penjadualan Semula Bungkusan Pos',
+    scenarioContext: 'Anda sedang menanti pesanan beli-belah dalam talian apabila anda menerima SMS ini pada telefon pintar anda:',
     format: 'sms',
     sender: 'Parcel Notice (+6011-8291-0394)',
-    receivedTime: 'Today at 10:42 AM',
-    urgencyBadge: '15-Minute Countdown',
+    receivedTime: 'Hari ini pada 10:42 AM',
+    urgencyBadge: 'Had Masa 15 Minit',
     body: 'Pemberitahuan: Penghantaran bungkusan anda gagal kerana alamat tidak lengkap. Sila bayar caj RM2.50 untuk penjadualan semula segera dalam 15 minit bagi mengelakkan pembatalan: http://pos-redeliver-pay.cc/track992',
     clues: [
       {
         id: 'c1-sender',
         targetText: '+6011-8291-0394',
-        label: 'Unverified Personal Mobile Number',
-        explanation: 'Official courier dispatch systems use registered shortcodes or verified business IDs, not random prepaid personal mobile numbers.',
+        label: 'Nombor Telefon Bimbit Peribadi Tidak Dikenali',
+        explanation: 'Sistem penghantaran kurier rasmi menggunakan kod pendek (shortcode) atau nama perniagaan berdaftar, bukan nombor telefon peribadi prabayar rawak.',
         isSuspicious: true
       },
       {
         id: 'c1-fee',
         targetText: 'bayar caj RM2.50',
-        label: 'Unexpected Small Payment Request',
-        explanation: 'Scammers deliberately request tiny fees (like RM2.50) so victims lower their guard. The real trap is harvesting your credit card or banking login details on the fake payment page.',
+        label: 'Permintaan Bayaran Caj Kecil (RM2.50)',
+        explanation: 'Penipu sengaja meminta bayaran kecil seperti RM2.50 agar mangsa tidak curiga. Perangkap sebenar adalah mencuri nombor kad debit atau maklumat log masuk bank anda di laman web palsu tersebut.',
         isSuspicious: true
       },
       {
         id: 'c1-urgency',
         targetText: 'dalam 15 minit',
-        label: 'Manufactured Artificial Urgency',
-        explanation: 'Imposing a 15-minute deadline is designed to panic you into acting impulsively before you have time to consult others or think clearly.',
+        label: 'Desakan Masa Terhad (15 Minit)',
+        explanation: 'Menetapkan had masa 15 minit direka khas untuk menimbulkan rasa panik supaya mangsa bertindak terburu-buru tanpa sempat berfikir atau berbincang.',
         isSuspicious: true
       },
       {
         id: 'c1-url',
         targetText: 'http://pos-redeliver-pay.cc/track992',
-        label: 'Unsecured Misleading URL (.cc domain)',
-        explanation: 'The link uses HTTP (not HTTPS) and an unofficial .cc domain rather than the legitimate courier portal (such as pos.com.my).',
+        label: 'Pautan Palsu Tanpa Keselamatan (.cc)',
+        explanation: 'Pautan ini menggunakan sambungan HTTP (bukan HTTPS selamat) dan domain tidak rasmi .cc, bukannya portal rasmi kurier (seperti pos.com.my).',
         isSuspicious: true
       }
     ],
     actions: [
       {
         id: 'a1-safe',
-        title: 'Check the delivery status on the official courier app or tracking site',
-        description: 'Do not click the SMS link. Open the courier service app directly or enter the tracking number on their official website.',
+        title: 'Semak status bungkusan di aplikasi atau laman web rasmi kurier',
+        description: 'Jangan klik pautan dalam SMS. Buka aplikasi kurier sendiri atau masukkan nombor penjejakan di portal rasmi mereka.',
         isSafe: true,
-        consequence: 'Safe Decision! By checking the official portal independently, you verify whether a real package exists without exposing your financial information.'
+        consequence: 'Tindakan Selamat! Dengan menyemak portal rasmi sendiri, anda mengesahkan sama ada bungkusan benar-benar wujud tanpa mendedahkan maklumat kewangan anda.'
       },
       {
         id: 'a1-pay',
-        title: 'Click the link and pay RM2.50 immediately to avoid cancellation',
-        description: 'Follow the link provided in the SMS and key in your debit card details on the form.',
+        title: 'Tekan pautan dan bayar RM2.50 segera bagi mengelak pembatalan',
+        description: 'Ikuti pautan dalam SMS dan masukkan maklumat kad debit pada borang tersebut.',
         isSafe: false,
-        consequence: 'Risky Action! The link leads to a counterfeit payment portal designed to steal your debit card number, CVV code, and banking credentials.'
+        consequence: 'Tindakan Bahaya! Pautan membawa ke portal bayaran tiruan yang direka untuk mencuri nombor kad debit, kod CVV, dan maklumat perbankan anda.'
       },
       {
         id: 'a1-reply',
-        title: 'Reply to the SMS with your home address and IC number',
-        description: 'Text back the sender to provide your personal identity details.',
+        title: 'Balas SMS dengan alamat rumah dan nombor kad pengenalan anda',
+        description: 'Hantar teks kembali kepada pengirim untuk memberikan butiran pengenalan diri anda.',
         isSafe: false,
-        consequence: 'Risky Action! Replying confirms that your phone number is active and hands your personal identification data directly to scammers for identity theft.'
+        consequence: 'Tindakan Bahaya! Membalas mengesahkan bahawa nombor telefon anda aktif dan menyerahkan data peribadi anda kepada penipu untuk kecurian identiti.'
       }
     ]
   },
   {
     id: 2,
-    title: 'Case 02 — Urgent Bank Account Suspension Alert',
-    scenarioContext: 'An urgent SMS arrives claiming your bank account has been locked due to suspicious activity:',
+    title: 'Kes 02 — Amaran Palsu Penyekatan Akaun Bank',
+    scenarioContext: 'Satu SMS kecemasan tiba mendakwa akaun bank anda telah digantung akibat aktiviti mencurigakan:',
     format: 'sms',
     sender: 'MY-BANK-ALERT',
-    receivedTime: 'Today at 02:15 PM',
-    urgencyBadge: 'Urgent: Account Suspended',
+    receivedTime: 'Hari ini pada 02:15 PM',
+    urgencyBadge: 'Kecemasan: Akaun Digantung',
     body: 'PERINGATAN KESELAMATAN: Akaun perbankan internet anda telah digantung akibat percubaan akses tanpa kebenaran. Sila sahkan maklumat dan nombor TAC anda di: https://mybank-online-security.com/verify dalam tempoh 1 jam.',
     clues: [
       {
         id: 'c2-threat',
         targetText: 'telah digantung',
-        label: 'Threat of Immediate Account Suspension',
-        explanation: 'Claiming your account is suspended or blocked is a textbook psychological tactic used to trigger fear and bypass critical thinking.',
+        label: 'Ugutan Akaun Digantung Serta-Merta',
+        explanation: 'Mendakwa akaun disekat atau digantung adalah taktik psikologi klasik untuk menimbulkan rasa cemas dan ketakutan mangsa.',
         isSuspicious: true
       },
       {
         id: 'c2-url',
         targetText: 'https://mybank-online-security.com/verify',
-        label: 'Unofficial Phishing Domain',
-        explanation: 'Bank Negara Malaysia has prohibited banks from sending hyperlinks via SMS. Legitimate commercial banks never use generic domains like mybank-online-security.com.',
+        label: 'Domain Phishing Tidak Rasmi',
+        explanation: 'Bank Negara Malaysia telah melarang semua bank menghantar pautan melalui SMS. Bank komersial sah tidak menggunakan domain generik seperti mybank-online-security.com.',
         isSuspicious: true
       },
       {
         id: 'c2-tac',
         targetText: 'nombor TAC anda',
-        label: 'Demand for One-Time Authorization Code (TAC)',
-        explanation: 'Banks will NEVER ask you to click a link to submit your TAC or OTP. Giving away your TAC allows attackers to authorize fraudulent transfers.',
+        label: 'Permintaan Nombor Kod Kelulusan TAC / OTP',
+        explanation: 'Pihak bank TIDAK PERNAH meminta anda menekan pautan untuk memasukkan TAC atau OTP. Memberikan TAC membolehkan penyerang memindahkan wang simpanan anda.',
         isSuspicious: true
       }
     ],
     actions: [
       {
         id: 'a2-safe',
-        title: 'Call the official bank hotline printed on the back of your bank card',
-        description: 'Ignore the link. Dial the trusted customer service number from your physical card or open your official banking app directly.',
+        title: 'Hubungi talian rasmi bank di belakang kad bank fizikal anda',
+        description: 'Abaikan pautan SMS. Telefon nombor khidmat pelanggan yang tertera di belakang kad ATM/kredit anda atau buka aplikasi rasmi bank.',
         isSafe: true,
-        consequence: 'Safe Decision! Calling the official hotline ensures you speak with legitimate bank officers who can confirm that your account is completely safe.'
+        consequence: 'Tindakan Selamat! Menghubungi nombor rasmi memastikan anda bercakap dengan pegawai bank yang sah dan mengesahkan bahawa akaun anda sebenarnya selamat.'
       },
       {
         id: 'a2-login',
-        title: 'Open the link and enter your username, password, and TAC to unblock it',
-        description: 'Type in your banking credentials to complete the verification form.',
+        title: 'Buka pautan dan masukkan nama pengguna, kata laluan serta TAC untuk buka sekatan',
+        description: 'Taip maklumat akaun bank anda untuk melengkapkan borang pengesahan.',
         isSafe: false,
-        consequence: 'Risky Action! The fake form captures your credentials in real-time. Attackers immediately use your password and TAC to drain your savings.'
+        consequence: 'Tindakan Bahaya! Borang palsu merakam maklumat perbankan anda serta-merta. Penggodam akan menggunakan kata laluan dan TAC untuk mengosongkan wang simpanan anda.'
       },
       {
         id: 'a2-wait',
-        title: 'Ignore it and forward the SMS to your contacts to ask if their bank did the same',
-        description: 'Send the suspicious link to family and friends on WhatsApp.',
+        title: 'Panjangkan (forward) SMS ini kepada kenalan WhatsApp untuk bertanya',
+        description: 'Kongsi pautan mencurigakan ini kepada keluarga dan rakan-rakan.',
         isSafe: false,
-        consequence: 'Risky Action! Forwarding scam links spreads the danger to elderly relatives or friends who might accidentally click and fall victim.'
+        consequence: 'Tindakan Bahaya! Menyebarkan pautan penipuan membahayakan ahli keluarga atau rakan warga emas yang mungkin tertekan dan menjadi mangsa.'
       }
     ]
   },
   {
     id: 3,
-    title: 'Case 03 — Festive Season Cash Prize Notification',
-    scenarioContext: 'You receive an unexpected email congratulating you on winning a government cash assistance lucky draw:',
+    title: 'Kes 03 — Notifikasi Hadiah Wang Tunai Bantuan Kerajaan',
+    scenarioContext: 'Anda menerima emel mengejut mendakwa anda memenangi cabutan bertuah bantuan wang tunai kerajaan:',
     format: 'email',
     sender: 'Bantuan Khas Kerajaan',
     senderAddress: 'hadiah-bonus@ewallet-claim-2025.com',
     subject: 'Tahniah! Anda telah terpilih untuk menerima Bantuan Khas RM1,000',
-    receivedTime: 'Yesterday at 04:30 PM',
-    urgencyBadge: 'Claim within 24 Hours',
+    receivedTime: 'Semalam pada 04:30 PM',
+    urgencyBadge: 'Tuntut Dalam 24 Jam',
     body: 'Pelanggan yang dihormati,\n\nNombor telefon anda telah dicabut sebagai pemenang Bantuan Musim Perayaan sebanyak RM1,000.\n\nUntuk menyalurkan wang tunai terus ke akaun Touch \'n Go eWallet anda, sila muat turun borang pendaftaran di bawah dan masukkan nombor PIN keselamatan 6-digit eWallet anda.',
     attachmentName: 'Borang_Penebusan_Bantuan_Tunai.apk',
     clues: [
       {
         id: 'c3-sender',
         targetText: 'hadiah-bonus@ewallet-claim-2025.com',
-        label: 'Suspicious Free-Domain Address',
-        explanation: 'Government agencies and legitimate financial services operate from official domains (.gov.my or .com.my), not disposable domains like ewallet-claim-2025.com.',
+        label: 'Alamat Emel Domain Luar Tidak Rasmi',
+        explanation: 'Agensi kerajaan dan perkhidmatan kewangan sah beroperasi menggunakan domain rasmi (.gov.my atau .com.my), bukannya domain bebas seperti ewallet-claim-2025.com.',
         isSuspicious: true
       },
       {
         id: 'c3-apk',
         targetText: 'Borang_Penebusan_Bantuan_Tunai.apk',
-        label: 'Dangerous Android Package (.apk) Attachment',
-        explanation: 'Forms should be PDF or web pages. An APK file is an executable Android application that installs malware or keyloggers to spy on your phone.',
+        label: 'Lampiran Fail Pemasangan Android (.apk) Berbahaya',
+        explanation: 'Borang sepatutnya dalam fail PDF atau laman web. Fail .apk adalah aplikasi mudah alih Android yang memasang perisian intip (spyware) atau perakam kekunci pada telefon anda.',
         isSuspicious: true
       },
       {
         id: 'c3-pin',
         targetText: 'nombor PIN keselamatan 6-digit',
-        label: 'Request for Confidential eWallet PIN',
-        explanation: 'Your 6-digit wallet PIN is your personal digital signature. No legitimate aid program will ever require your PIN to transfer funds to you.',
+        label: 'Permintaan Nombor PIN Rahsia 6-Digit eWallet',
+        explanation: 'Nombor PIN 6-digit adalah tandatangan digital peribadi anda. Tiada program bantuan rasmi yang memerlukan PIN rahsia untuk menyalurkan wang kepada anda.',
         isSuspicious: true
       }
     ],
     actions: [
       {
         id: 'a3-safe',
-        title: 'Delete the email and do not open the APK attachment',
-        description: 'Recognize that unrequested prize claims are fraudulent. Check official government channels (such as STR / e-Kasih portals) if unsure.',
+        title: 'Padam emel dan jangan sesekali membuka fail lampiran .apk',
+        description: 'Ketahui bahawa hadiah cabutan yang tidak pernah disertai adalah penipuan. Semak saluran rasmi kerajaan (seperti portal STR / e-Kasih).',
         isSafe: true,
-        consequence: 'Safe Decision! You prevented malicious software from being installed on your device and protected your secret eWallet credentials.'
+        consequence: 'Tindakan Selamat! Anda berjaya menghalang pemasangan perisian hasad pada telefon dan melindungi PIN rahsia e-dompet anda.'
       },
       {
         id: 'a3-download',
-        title: 'Download and install the APK to claim the RM1,000 grant',
-        description: 'Allow unknown app installations on your phone and open the file.',
+        title: 'Muat turun dan pasang fail APK untuk menuntut wang RM1,000',
+        description: 'Benarkan pemasangan aplikasi sumber tidak diketahui pada telefon anda.',
         isSafe: false,
-        consequence: 'Risky Action! The APK installs spyware that intercepts your incoming SMS messages (including bank OTPs) and compromises your device.'
+        consequence: 'Tindakan Bahaya! Fail APK memasang perisian intip yang membaca SMS masuk (termasuk kod OTP bank) dan mengawal telefon anda.'
       },
       {
         id: 'a3-reply',
-        title: 'Reply to the email asking if they can bank in the money to your account instead',
-        description: 'Send your bank account details to the sender.',
+        title: 'Balas emel dan minta mereka pindahkan wang ke akaun bank anda',
+        description: 'Hantar maklumat nombor akaun bank kepada pengirim emel.',
         isSafe: false,
-        consequence: 'Risky Action! Engaging with the scammer exposes your contact details and invites targeted phishing attempts tailored to your bank.'
+        consequence: 'Tindakan Bahaya! Membalas emel mengundang sindiket untuk menjalankan serangan penipuan bersasar yang lebih berbahaya terhadap akaun bank anda.'
       }
     ]
   },
   {
     id: 4,
-    title: 'Case 04 — Utility Electricity Shutoff Warning',
-    scenarioContext: 'An email arrives with an alarming notice claiming your home electricity will be cut off today:',
+    title: 'Kes 04 — Amaran Pemotongan Bekalan Elektrik 2 Jam',
+    scenarioContext: 'Satu emel kecemasan tiba mendakwa bekalan elektrik rumah anda akan dipotong hari ini:',
     format: 'email',
     sender: 'Jabatan Pengebilan Elektrik',
     senderAddress: 'billing-support@tenaga-online-alert.xyz',
     subject: 'NOTIS AKHIR: Bekalan elektrik anda akan dipotong dalam 2 Jam!',
-    receivedTime: 'Today at 07:15 AM',
-    urgencyBadge: 'Cutoff in 2 Hours',
+    receivedTime: 'Hari ini pada 07:15 AM',
+    urgencyBadge: 'Potong Dalam 2 Jam',
     body: 'Pelanggan yang dihormati, akaun anda mempunyai tunggakan bil tertunggak sebanyak RM84.20. Tindakan pemotongan bekalan elektrik serta-merta akan dilaksanakan dalam tempoh 2 Jam melainkan pembayaran disahkan sekarang di: http://tenaga-quickpay.xyz/bill\n\nSila masukkan kata laluan perbankan dan nombor TAC untuk pengesahan bayaran segera.',
     clues: [
       {
         id: 'c4-domain',
         targetText: 'billing-support@tenaga-online-alert.xyz',
-        label: 'Unofficial Disposable Domain (.xyz)',
-        explanation: 'Utility providers use official corporate domains (e.g. tnb.com.my). They never send billing warnings from cheap .xyz domains.',
+        label: 'Domain Emel Murah Tidak Rasmi (.xyz)',
+        explanation: 'Syarikat pembekal utiliti menggunakan domain korporat rasmi (seperti tnb.com.my). Mereka tidak menghantar bil menggunakan domain murah .xyz.',
         isSuspicious: true
       },
       {
         id: 'c4-time',
         targetText: 'dalam tempoh 2 Jam',
-        label: 'Extreme 2-Hour Threat',
-        explanation: 'Regulated utility companies have strict legal notice periods and never terminate power with an unannounced 2-hour email deadline.',
+        label: 'Ugutan Melampau Pemotongan Dalam 2 Jam',
+        explanation: 'Syarikat utiliti terikat dengan peraturan dan tempoh notis yang sah. Mereka tidak memotong bekalan elektrik secara tiba-tiba dengan notis 2 jam melalui emel.',
         isSuspicious: true
       },
       {
         id: 'c4-link',
         targetText: 'http://tenaga-quickpay.xyz/bill',
-        label: 'Insecure External Payment Link',
-        explanation: 'The link leads to an unencrypted (HTTP) scam portal disguised as a billing page to steal your banking login credentials.',
+        label: 'Pautan Bayaran Luar Tanpa Keselamatan (HTTP)',
+        explanation: 'Pautan ini membawa ke portal penipuan tidak disulitkan (HTTP) yang menyamar sebagai halaman pembayaran bil untuk mencuri maklumat log masuk bank anda.',
         isSuspicious: true
       },
       {
         id: 'c4-creds',
         targetText: 'kata laluan perbankan dan nombor TAC',
-        label: 'Demand for Online Banking Password & TAC',
-        explanation: 'Paying a utility bill only requires your bill account number. A utility company will never ask for your private banking password or TAC.',
+        label: 'Permintaan Kata Laluan Perbankan & Nombor TAC',
+        explanation: 'Membayar bil utiliti hanya memerlukan nombor akaun bil. Syarikat utiliti tidak pernah meminta kata laluan bank peribadi atau nombor TAC anda.',
         isSuspicious: true
       }
     ],
     actions: [
       {
         id: 'a4-safe',
-        title: 'Check your bill through the official utility app or visit a physical kiosk/post office',
-        description: 'Verify your account balance independently using trusted, official billing channels.',
+        title: 'Semak bil melalui aplikasi rasmi utiliti atau bayar di kaunter fizikal / pejabat pos',
+        description: 'Sahkan baki bil sebenar anda secara bebas menggunakan saluran pengebilan yang dipercayai.',
         isSafe: true,
-        consequence: 'Safe Decision! Independent verification reveals whether you actually owe anything, preventing you from falling into the fake bill scam.'
+        consequence: 'Tindakan Selamat! Semakan bebas mengesahkan sama ada bil anda benar-benar tertunggak atau palsu, mengelakkan anda daripada ditipu.'
       },
       {
         id: 'a4-pay',
-        title: 'Click the link and pay RM84.20 quickly so the power stays on',
-        description: 'Follow the link and provide your banking details immediately.',
+        title: 'Tekan pautan dan bayar RM84.20 segera agar bekalan elektrik tidak dipotong',
+        description: 'Ikuti pautan dan masukkan maklumat perbankan anda dengan segera.',
         isSafe: false,
-        consequence: 'Risky Action! Your online banking username, password, and TAC are harvested, allowing the scammer to drain your bank balance.'
+        consequence: 'Tindakan Bahaya! Nama pengguna, kata laluan dan nombor TAC anda dirampas oleh penggodam untuk mengosongkan baki akaun bank anda.'
       },
       {
         id: 'a4-attach',
-        title: 'Reply to the sender attaching your latest monthly bank statement',
-        description: 'Provide proof of prior bill payments to the sender address.',
+        title: 'Balas emel dengan melampirkan penyata bank bulanan anda',
+        description: 'Berikan bukti pembayaran terdahulu kepada alamat pengirim.',
         isSafe: false,
-        consequence: 'Risky Action! Sending bank statements gives identity thieves your full name, home address, account numbers, and transaction history.'
+        consequence: 'Tindakan Bahaya! Menghantar penyata bank memberikan penjenayah siber nama penuh, alamat rumah, nombor akaun, dan corak kewangan anda.'
       }
     ]
   },
   {
     id: 5,
-    title: 'Case 05 — Emergency Highway Distress Message from "Family"',
-    scenarioContext: 'You receive an urgent WhatsApp message from an unknown number with a relative’s profile photo:',
+    title: 'Kes 05 — Mesej Kecemasan Lebuhraya daripada "Ahli Keluarga"',
+    scenarioContext: 'Anda menerima mesej kecemasan daripada nombor tidak dikenali menggunakan gambar profil saudara anda:',
     format: 'sms',
-    sender: 'Unknown Number (+6019-338-9210)',
-    receivedTime: 'Today at 05:45 PM',
-    urgencyBadge: 'Family Emergency',
+    sender: 'Nombor Tidak Dikenali (+6019-338-9210)',
+    receivedTime: 'Hari ini pada 05:45 PM',
+    urgencyBadge: 'Kecemasan Keluarga',
     body: 'Salam Makcik/Pakcik, telefon saya jatuh dalam air tadi jadi saya guna telefon kawan. Kereta saya rosak tepi jalan kat lebuhraya sekarang dan bateri kawan pun nak habis. Boleh tolong pindahkan RM350 ke akaun bengkel kawan saya: Maybank 1140-2938-1209 sekarang? Saya bayar balik malam nanti.',
     clues: [
       {
         id: 'c5-number',
         targetText: '+6019-338-9210',
-        label: 'Unknown Phone Number Claiming Borrowed Phone',
-        explanation: 'Scammers frequently claim "my phone broke / fell into water" to explain why they are contacting you from an unfamiliar number.',
+        label: 'Nombor Asing Mengaku Telefon Dipinjam',
+        explanation: 'Penipu sering memberi alasan "telefon jatuh air / rosak" untuk menjelaskan mengapa mereka menghubungi anda dari nombor telefon yang berbeza.',
         isSuspicious: true
       },
       {
         id: 'c5-account',
-        targetText: 'akaun bengkel kawan saya: Maybank 1140-2938-1209',
-        label: 'Request to Transfer to an Unrelated Third-Party Account',
-        explanation: 'Scammers use "mule accounts" belonging to strangers to receive stolen funds before vanishing, making the money untraceable.',
+        targetText: 'Maybank 1140-2938-1209',
+        label: 'Permintaan Pindahan Wang ke Akaun Pihak Ketiga',
+        explanation: 'Sindiket menggunakan akaun keldai (mule account) milik orang lain untuk melarikan wang mangsa dengan cepat tanpa dapat dikesan.',
         isSuspicious: true
       },
       {
         id: 'c5-panic',
         targetText: 'bateri kawan pun nak habis',
-        label: 'Pressure to Act Before Calling',
-        explanation: 'Claiming the phone battery is dying is a deliberate trick to discourage you from calling them to hear their real voice.',
+        label: 'Desakan Bateri Hendak Habis',
+        explanation: 'Alasan bateri telefon hendak habis adalah helah agar anda tidak sempat menelefon mereka untuk mendengar suara sebenar saudara anda.',
         isSuspicious: true
       }
     ],
     actions: [
       {
         id: 'a5-safe',
-        title: 'Call your relative directly on their known regular phone number or ask other family members',
-        description: 'Pause and verify through trusted channels before sending any money.',
+        title: 'Telefon saudara anda secara terus di nombor biasa atau hubungi ahli keluarga lain',
+        description: 'Bertenang dan buat pengesahan melalui saluran yang dipercayai sebelum menghantar sebarang wang.',
         isSafe: true,
-        consequence: 'Safe Decision! Calling the relative on their known number or contacting their parents reveals they are safe at home and their profile photo was cloned.'
+        consequence: 'Tindakan Selamat! Menelefon saudara di nombor biasanya atau menghubungi ibu bapanya membuktikan mereka selamat di rumah dan gambar profil mereka telah diklon oleh penipu.'
       },
       {
         id: 'a5-transfer',
-        title: 'Transfer RM350 immediately to help family in an emergency',
-        description: 'Send the funds to the third-party bank account right away.',
+        title: 'Pindahkan RM350 serta-merta kerana bimbang kecemasan keluarga',
+        description: 'Hantar wang ke akaun pihak ketiga tersebut dengan segera.',
         isSafe: false,
-        consequence: 'Risky Action! The money is instantly withdrawn by a scam syndicate through a mule account, and your relative never receives any help.'
+        consequence: 'Tindakan Bahaya! Wang anda dikeluarkan serta-merta oleh sindiket melalui akaun keldai, dan saudara anda tidak menerima sebarang bantuan.'
       },
       {
         id: 'a5-partial',
-        title: 'Transfer RM50 first just to check if the recipient name matches',
-        description: 'Send a partial amount to test the account.',
+        title: 'Pindahkan RM50 dahulu sebagai ujian untuk melihat nama pemilik akaun',
+        description: 'Hantar sejumlah wang kecil untuk memeriksa akaun penerima.',
         isSafe: false,
-        consequence: 'Risky Action! Even small test transfers lose money to scammers and signal that your phone number is susceptible to manipulation.'
+        consequence: 'Tindakan Bahaya! Memindahkan wang ujian tetap mendatangkan kerugian dan memberi isyarat kepada penipu bahawa nombor anda mudah dimanipulasi.'
       }
     ]
   }
