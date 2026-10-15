@@ -24,6 +24,13 @@ export const Header: React.FC = () => {
   const handleReset = () => {
     resetStationRecords();
     setShowResetConfirm(false);
+    if (typeof window !== 'undefined') {
+      if (window.location.pathname === '/') {
+        window.location.reload();
+      } else {
+        window.location.href = '/';
+      }
+    }
   };
 
   return (

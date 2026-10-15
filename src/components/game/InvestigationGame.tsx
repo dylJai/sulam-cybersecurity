@@ -430,18 +430,28 @@ export const InvestigationGame: React.FC = () => {
             </span>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              type="button"
+              onClick={handleStartMission}
+              title="Mulakan Semula Misi Siasatan Dari Kes 1"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-[#FAF0E6] border border-[#8A241C]/30 text-[#8A241C] hover:text-[#8A241C] rounded-xs cursor-pointer font-mono font-bold text-xs transition-colors min-h-[36px] shadow-xs"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Set Semula</span>
+            </button>
+
             <button
               type="button"
               onClick={() => setShowBadges(!showBadges)}
-              className="flex items-center gap-1.5 px-3 py-1 bg-[#F5F4EE] hover:bg-[#ECEAE2] border border-[#171914]/20 rounded-xs cursor-pointer font-mono font-bold text-xs text-[#171914]"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#F5F4EE] hover:bg-[#ECEAE2] border border-[#171914]/20 rounded-xs cursor-pointer font-mono font-bold text-xs text-[#171914] min-h-[36px]"
             >
               <Award className="w-3.5 h-3.5 text-[#171914]" />
               <span>Lencana ({badges.filter(b => b.isUnlocked).length}/{badges.length})</span>
             </button>
 
-            <div className="font-bold text-[#171914] bg-white px-3 py-1 border border-[#171914]/20 rounded-xs">
-              MATA: <span className="bg-[#D9FA62] px-2 py-0.5 border border-[#171914]/20">{totalScore} / 50</span>
+            <div className="font-bold text-[#171914] bg-white px-3 py-1.5 border border-[#171914]/20 rounded-xs min-h-[36px] flex items-center">
+              MATA: <span className="bg-[#D9FA62] px-2 py-0.5 border border-[#171914]/20 ml-1">{totalScore} / 50</span>
             </div>
           </div>
         </div>

@@ -12,9 +12,10 @@ const WORD_BANK = [
 
 interface PassphraseBuilderLabProps {
   onPassphraseCompleted: (assembledPassphrase: string) => void;
+  onReset?: () => void;
 }
 
-export const PassphraseBuilderLab: React.FC<PassphraseBuilderLabProps> = ({ onPassphraseCompleted }) => {
+export const PassphraseBuilderLab: React.FC<PassphraseBuilderLabProps> = ({ onPassphraseCompleted, onReset }) => {
   const [selectedWords, setSelectedWords] = useState<string[]>([]);
 
   const handleAddWord = (word: string) => {
@@ -28,6 +29,7 @@ export const PassphraseBuilderLab: React.FC<PassphraseBuilderLabProps> = ({ onPa
 
   const handleReset = () => {
     setSelectedWords([]);
+    onReset?.();
   };
 
   const assembledString = selectedWords.join('-');

@@ -281,6 +281,62 @@ export const AccountWorkshopGame: React.FC = () => {
 
   const progressPercent = stage === 2 ? 25 : stage === 3 ? 50 : stage === 4 ? 75 : 100;
 
+  const renderTopBar = (currentStageNum: number) => (
+    <div className="bg-white border-2 border-[#171914] rounded-sm p-4 shadow-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#171914]/15 font-mono text-xs">
+        <div className="flex flex-wrap items-center gap-3">
+          <Link href="/" className="text-[#7C7E77] hover:text-[#171914] font-bold transition-colors">
+            ← [MENU UTAMA]
+          </Link>
+          <span className="text-[#171914]/20">|</span>
+          <span className="font-bold text-[#171914] bg-[#D9FA62] px-2.5 py-0.5 rounded-xs border border-[#171914]/20">
+            {stageTitles[currentStageNum].title}
+          </span>
+          <span className="font-bold text-[#171914] text-xs sm:text-sm">
+            {stageTitles[currentStageNum].subtitle}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2 sm:gap-3">
+          <button
+            type="button"
+            onClick={handleStart}
+            title="Mulakan Semula Bengkel Dari Awal"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-[#FAF0E6] border border-[#8A241C]/30 text-[#8A241C] hover:text-[#8A241C] rounded-xs cursor-pointer font-mono font-bold text-xs transition-colors min-h-[36px] shadow-xs"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>Set Semula</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowBadges(!showBadges)}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#F5F4EE] hover:bg-[#ECEAE2] border border-[#171914]/20 rounded-xs cursor-pointer font-mono font-bold text-xs text-[#171914] min-h-[36px]"
+          >
+            <Award className="w-3.5 h-3.5 text-[#171914]" />
+            <span>Lencana ({badges.filter(b => b.isUnlocked).length}/{badges.length})</span>
+          </button>
+
+          <div className="font-bold text-[#171914] bg-white px-3 py-1.5 border border-[#171914]/20 rounded-xs min-h-[36px] flex items-center">
+            MATA: <span className="bg-[#D9FA62] px-2 py-0.5 border border-[#171914]/20 ml-1">{totalScore} / 50</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Progress track */}
+      <div className="pt-3 flex items-center gap-3 font-mono text-xs text-[#7C7E77]">
+        <span>Kemajuan Misi:</span>
+        <div className="flex-1 h-2 bg-[#ECEAE2] rounded-xs overflow-hidden border border-[#171914]/10">
+          <div
+            className="h-full bg-[#171914] transition-all duration-300"
+            style={{ width: `${progressPercent}%` }}
+          />
+        </div>
+        <span className="font-bold text-[#171914]">{progressPercent}%</span>
+      </div>
+    </div>
+  );
+
   /* =========================================================================
      STAGE 2: INSPECT THE ACCOUNTS (FULL SPLIT VIEW)
      ========================================================================= */
@@ -290,50 +346,7 @@ export const AccountWorkshopGame: React.FC = () => {
 
     return (
       <div className="w-full space-y-4">
-        {/* Top Full-Width Navigation & Status Bar */}
-        <div className="bg-white border-2 border-[#171914] rounded-sm p-4 shadow-xs">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#171914]/15 font-mono text-xs">
-            <div className="flex flex-wrap items-center gap-3">
-              <Link href="/" className="text-[#7C7E77] hover:text-[#171914] font-bold transition-colors">
-                ← [MENU UTAMA]
-              </Link>
-              <span className="text-[#171914]/20">|</span>
-              <span className="font-bold text-[#171914] bg-[#D9FA62] px-2.5 py-0.5 rounded-xs border border-[#171914]/20">
-                {stageTitles[2].title}
-              </span>
-              <span className="font-bold text-[#171914] text-xs sm:text-sm">
-                {stageTitles[2].subtitle}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setShowBadges(!showBadges)}
-                className="flex items-center gap-1.5 px-3 py-1 bg-[#F5F4EE] hover:bg-[#ECEAE2] border border-[#171914]/20 rounded-xs cursor-pointer font-mono font-bold text-xs text-[#171914]"
-              >
-                <Award className="w-3.5 h-3.5 text-[#171914]" />
-                <span>Lencana ({badges.filter(b => b.isUnlocked).length}/{badges.length})</span>
-              </button>
-
-              <div className="font-bold text-[#171914] bg-white px-3 py-1 border border-[#171914]/20 rounded-xs">
-                MATA: <span className="bg-[#D9FA62] px-2 py-0.5 border border-[#171914]/20">{totalScore} / 50</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Progress track */}
-          <div className="pt-3 flex items-center gap-3 font-mono text-xs text-[#7C7E77]">
-            <span>Kemajuan Misi:</span>
-            <div className="flex-1 h-2 bg-[#ECEAE2] rounded-xs overflow-hidden border border-[#171914]/10">
-              <div
-                className="h-full bg-[#171914] transition-all duration-300"
-                style={{ width: `${progressPercent}%` }}
-              />
-            </div>
-            <span className="font-bold text-[#171914]">{progressPercent}%</span>
-          </div>
-        </div>
+        {renderTopBar(2)}
 
         {showBadges && <BadgesDrawer badges={badges} />}
 
@@ -494,54 +507,19 @@ export const AccountWorkshopGame: React.FC = () => {
   if (stage === 3) {
     return (
       <div className="w-full space-y-4">
-        {/* Top Bar */}
-        <div className="bg-white border-2 border-[#171914] rounded-sm p-4 shadow-xs">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#171914]/15 font-mono text-xs">
-            <div className="flex flex-wrap items-center gap-3">
-              <Link href="/" className="text-[#7C7E77] hover:text-[#171914] font-bold transition-colors">
-                ← [MENU UTAMA]
-              </Link>
-              <span className="text-[#171914]/20">|</span>
-              <span className="font-bold text-[#171914] bg-[#D9FA62] px-2.5 py-0.5 rounded-xs border border-[#171914]/20">
-                {stageTitles[3].title}
-              </span>
-              <span className="font-bold text-[#171914] text-xs sm:text-sm">
-                {stageTitles[3].subtitle}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setShowBadges(!showBadges)}
-                className="flex items-center gap-1.5 px-3 py-1 bg-[#F5F4EE] hover:bg-[#ECEAE2] border border-[#171914]/20 rounded-xs cursor-pointer font-mono font-bold text-xs text-[#171914]"
-              >
-                <Award className="w-3.5 h-3.5 text-[#171914]" />
-                <span>Lencana ({badges.filter(b => b.isUnlocked).length}/{badges.length})</span>
-              </button>
-
-              <div className="font-bold text-[#171914] bg-white px-3 py-1 border border-[#171914]/20 rounded-xs">
-                MATA: <span className="bg-[#D9FA62] px-2 py-0.5 border border-[#171914]/20">{totalScore} / 50</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="pt-3 flex items-center gap-3 font-mono text-xs text-[#7C7E77]">
-            <span>Kemajuan Misi:</span>
-            <div className="flex-1 h-2 bg-[#ECEAE2] rounded-xs overflow-hidden border border-[#171914]/10">
-              <div
-                className="h-full bg-[#171914] transition-all duration-300"
-                style={{ width: `${progressPercent}%` }}
-              />
-            </div>
-            <span className="font-bold text-[#171914]">{progressPercent}%</span>
-          </div>
-        </div>
+        {renderTopBar(3)}
 
         {showBadges && <BadgesDrawer badges={badges} />}
 
         {/* Passphrase Builder Lab with internal split layout */}
-        <PassphraseBuilderLab onPassphraseCompleted={handlePassphraseBuilt} />
+        <PassphraseBuilderLab
+          onPassphraseCompleted={handlePassphraseBuilt}
+          onReset={() => {
+            setCustomPassphrase(null);
+            setLabSubmitted(false);
+            setStageScores(prev => ({ ...prev, 3: 0 }));
+          }}
+        />
 
         {/* Transition to next stage when completed */}
         {labSubmitted && (
@@ -578,49 +556,7 @@ export const AccountWorkshopGame: React.FC = () => {
   if (stage === 4) {
     return (
       <div className="w-full space-y-4">
-        {/* Top Bar */}
-        <div className="bg-white border-2 border-[#171914] rounded-sm p-4 shadow-xs">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#171914]/15 font-mono text-xs">
-            <div className="flex flex-wrap items-center gap-3">
-              <Link href="/" className="text-[#7C7E77] hover:text-[#171914] font-bold transition-colors">
-                ← [MENU UTAMA]
-              </Link>
-              <span className="text-[#171914]/20">|</span>
-              <span className="font-bold text-[#171914] bg-[#D9FA62] px-2.5 py-0.5 rounded-xs border border-[#171914]/20">
-                {stageTitles[4].title}
-              </span>
-              <span className="font-bold text-[#171914] text-xs sm:text-sm">
-                {stageTitles[4].subtitle}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setShowBadges(!showBadges)}
-                className="flex items-center gap-1.5 px-3 py-1 bg-[#F5F4EE] hover:bg-[#ECEAE2] border border-[#171914]/20 rounded-xs cursor-pointer font-mono font-bold text-xs text-[#171914]"
-              >
-                <Award className="w-3.5 h-3.5 text-[#171914]" />
-                <span>Lencana ({badges.filter(b => b.isUnlocked).length}/{badges.length})</span>
-              </button>
-
-              <div className="font-bold text-[#171914] bg-white px-3 py-1 border border-[#171914]/20 rounded-xs">
-                MATA: <span className="bg-[#D9FA62] px-2 py-0.5 border border-[#171914]/20">{totalScore} / 50</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="pt-3 flex items-center gap-3 font-mono text-xs text-[#7C7E77]">
-            <span>Kemajuan Misi:</span>
-            <div className="flex-1 h-2 bg-[#ECEAE2] rounded-xs overflow-hidden border border-[#171914]/10">
-              <div
-                className="h-full bg-[#171914] transition-all duration-300"
-                style={{ width: `${progressPercent}%` }}
-              />
-            </div>
-            <span className="font-bold text-[#171914]">{progressPercent}%</span>
-          </div>
-        </div>
+        {renderTopBar(4)}
 
         {showBadges && <BadgesDrawer badges={badges} />}
 
@@ -848,49 +784,7 @@ export const AccountWorkshopGame: React.FC = () => {
 
     return (
       <div className="w-full space-y-4">
-        {/* Top Bar */}
-        <div className="bg-white border-2 border-[#171914] rounded-sm p-4 shadow-xs">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#171914]/15 font-mono text-xs">
-            <div className="flex flex-wrap items-center gap-3">
-              <Link href="/" className="text-[#7C7E77] hover:text-[#171914] font-bold transition-colors">
-                ← [MENU UTAMA]
-              </Link>
-              <span className="text-[#171914]/20">|</span>
-              <span className="font-bold text-[#171914] bg-[#D9FA62] px-2.5 py-0.5 rounded-xs border border-[#171914]/20">
-                {stageTitles[5].title}
-              </span>
-              <span className="font-bold text-[#171914] text-xs sm:text-sm">
-                {stageTitles[5].subtitle}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setShowBadges(!showBadges)}
-                className="flex items-center gap-1.5 px-3 py-1 bg-[#F5F4EE] hover:bg-[#ECEAE2] border border-[#171914]/20 rounded-xs cursor-pointer font-mono font-bold text-xs text-[#171914]"
-              >
-                <Award className="w-3.5 h-3.5 text-[#171914]" />
-                <span>Lencana ({badges.filter(b => b.isUnlocked).length}/{badges.length})</span>
-              </button>
-
-              <div className="font-bold text-[#171914] bg-white px-3 py-1 border border-[#171914]/20 rounded-xs">
-                MATA: <span className="bg-[#D9FA62] px-2 py-0.5 border border-[#171914]/20">{totalScore} / 50</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="pt-3 flex items-center gap-3 font-mono text-xs text-[#7C7E77]">
-            <span>Kemajuan Misi:</span>
-            <div className="flex-1 h-2 bg-[#ECEAE2] rounded-xs overflow-hidden border border-[#171914]/10">
-              <div
-                className="h-full bg-[#171914] transition-all duration-300"
-                style={{ width: `${progressPercent}%` }}
-              />
-            </div>
-            <span className="font-bold text-[#171914]">{progressPercent}%</span>
-          </div>
-        </div>
+        {renderTopBar(5)}
 
         {showBadges && <BadgesDrawer badges={badges} />}
 
