@@ -89,14 +89,14 @@ export default function HomePage() {
         <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2">
           <div>
             <span className="font-mono text-xs uppercase tracking-wider text-[#7C7E77] block">
-              BAHAGIAN 01 / MODUL PEMBELAJARAN
+              BAHAGIAN 01 / MISI AMALI INTERAKTIF
             </span>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-[#171914] tracking-tight">
-              Cabaran Interaktif Stesen
+              Misi Keselamatan Siber Stesen
             </h2>
           </div>
           <span className="font-mono text-xs text-[#7C7E77]">
-            2 MODUL • 10 SOALAN KESELURUHAN
+            2 PERMAINAN INTERAKTIF • 100 MATA MAKSIMUM
           </span>
         </div>
 
@@ -116,35 +116,35 @@ export default function HomePage() {
       <section className="border-t border-[#171914]/15 pt-10 space-y-6">
         <div>
           <span className="font-mono text-xs uppercase tracking-wider text-[#7C7E77] block">
-            BAHAGIAN 02 / PANDUAN KERJA
+            BAHAGIAN 02 / PANDUAN PENYIASATAN
           </span>
           <h3 className="text-xl font-bold text-[#171914] tracking-tight">
-            Bagaimana Bengkel Stesen Berfungsi?
+            Bagaimana Misi Interaktif Ini Berfungsi?
           </h3>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x border-y border-[#171914]/15">
           <div className="py-6 md:py-0 md:pr-6 space-y-2">
             <span className="font-mono text-2xl font-bold text-[#171914]">01.</span>
-            <h4 className="font-bold text-sm text-[#171914]">Bincang Dalam Pasukan</h4>
+            <h4 className="font-bold text-sm text-[#171914]">Siasat Petunjuk Tersembunyi</h4>
             <p className="text-xs text-[#575953] leading-relaxed">
-              Setiap senario memaparkan mesej SMS atau emel palsu yang realistik. Kongsikan pandangan bersama rakan sepasukan di skrin stesen ini.
+              Klik pada bahagian mesej yang meragukan—seperti pautan aneh, fail .apk, atau desakan masa 15 minit.
             </p>
           </div>
 
           <div className="py-6 md:py-0 md:px-6 space-y-2">
             <span className="font-mono text-2xl font-bold text-[#171914]">02.</span>
-            <h4 className="font-bold text-sm text-[#171914]">Siasat Petunjuk Bahaya</h4>
+            <h4 className="font-bold text-sm text-[#171914]">Buat Keputusan Bertindak</h4>
             <p className="text-xs text-[#575953] leading-relaxed">
-              Uji ketelitian anda dengan meneliti domain pengirim yang mencurigakan, ugutan masa terdesak, dan cubaan mencuri nombor TAC.
+              Pilih tindakan selamat untuk menyelamatkan baki wang anda dan saksikan akibat serta-merta bagi setiap langkah.
             </p>
           </div>
 
           <div className="py-6 md:py-0 md:pl-6 space-y-2">
             <span className="font-mono text-2xl font-bold text-[#171914]">03.</span>
-            <h4 className="font-bold text-sm text-[#171914]">Kumpul Mata Komuniti</h4>
+            <h4 className="font-bold text-sm text-[#171914]">Kukuhkan Perisai Akaun</h4>
             <p className="text-xs text-[#575953] leading-relaxed">
-              Dapatkan penerangan mendalam bagi setiap soalan dan kumpulkan markah stesen anda sehingga 100 mata penuh.
+              Bina frasa laluan unik, sekat pencerobohan berjangkit, dan aktifkan 2FA untuk mencapai skor perlindungan 100%.
             </p>
           </div>
         </div>
