@@ -12,6 +12,13 @@ export const investigationCases: InvestigationCase[] = [
     body: 'Pemberitahuan: Penghantaran bungkusan anda gagal kerana alamat tidak lengkap. Sila bayar caj RM2.50 untuk penjadualan semula segera dalam 15 minit bagi mengelakkan pembatalan: http://pos-redeliver-pay.cc/track992',
     clues: [
       {
+        id: 'c1-notice',
+        targetText: 'Pemberitahuan: Penghantaran bungkusan anda',
+        label: 'Ayat Permulaan Makluman Biasa',
+        explanation: 'Ayat ini hanyalah teks pengenalan biasa dalam komunikasi penghantaran dan bukan petunjuk penipuan.',
+        isSuspicious: false
+      },
+      {
         id: 'c1-sender',
         targetText: '+6011-8291-0394',
         label: 'Nombor Telefon Bimbit Peribadi Tidak Dikenali',
@@ -22,21 +29,21 @@ export const investigationCases: InvestigationCase[] = [
         id: 'c1-fee',
         targetText: 'bayar caj RM2.50',
         label: 'Permintaan Bayaran Caj Kecil (RM2.50)',
-        explanation: 'Penipu sengaja meminta bayaran kecil seperti RM2.50 agar mangsa tidak curiga. Perangkap sebenar adalah mencuri nombor kad debit atau maklumat log masuk bank anda di laman web palsu tersebut.',
+        explanation: 'Penipu sengaja meminta bayaran kecil seperti RM2.50 agar mangsa tidak curiga. Perangkap sebenar adalah mencuri nombor kad debit atau maklumat perbankan anda.',
         isSuspicious: true
       },
       {
         id: 'c1-urgency',
         targetText: 'dalam 15 minit',
         label: 'Desakan Masa Terhad (15 Minit)',
-        explanation: 'Menetapkan had masa 15 minit direka khas untuk menimbulkan rasa panik supaya mangsa bertindak terburu-buru tanpa sempat berfikir atau berbincang.',
+        explanation: 'Menetapkan had masa 15 minit direka khas untuk menimbulkan rasa panik supaya mangsa bertindak terburu-buru tanpa berfikir panjang.',
         isSuspicious: true
       },
       {
         id: 'c1-url',
         targetText: 'http://pos-redeliver-pay.cc/track992',
         label: 'Pautan Palsu Tanpa Keselamatan (.cc)',
-        explanation: 'Pautan ini menggunakan sambungan HTTP (bukan HTTPS selamat) dan domain tidak rasmi .cc, bukannya portal rasmi kurier (seperti pos.com.my).',
+        explanation: 'Pautan ini menggunakan sambungan HTTP tidak selamat dan domain tidak rasmi .cc, bukannya portal rasmi kurier (seperti pos.com.my).',
         isSuspicious: true
       }
     ],
@@ -75,6 +82,13 @@ export const investigationCases: InvestigationCase[] = [
     body: 'PERINGATAN KESELAMATAN: Akaun perbankan internet anda telah digantung akibat percubaan akses tanpa kebenaran. Sila sahkan maklumat dan nombor TAC anda di: https://mybank-online-security.com/verify dalam tempoh 1 jam.',
     clues: [
       {
+        id: 'c2-prefix',
+        targetText: 'PERINGATAN KESELAMATAN:',
+        label: 'Tajuk Amaran Makluman Biasa',
+        explanation: 'Frasa peringatan keselamatan sering digunakan dalam mesej biasa dan bukanlah tanda jenayah siber dengan sendirinya.',
+        isSuspicious: false
+      },
+      {
         id: 'c2-threat',
         targetText: 'telah digantung',
         label: 'Ugutan Akaun Digantung Serta-Merta',
@@ -93,6 +107,13 @@ export const investigationCases: InvestigationCase[] = [
         targetText: 'nombor TAC anda',
         label: 'Permintaan Nombor Kod Kelulusan TAC / OTP',
         explanation: 'Pihak bank TIDAK PERNAH meminta anda menekan pautan untuk memasukkan TAC atau OTP. Memberikan TAC membolehkan penyerang memindahkan wang simpanan anda.',
+        isSuspicious: true
+      },
+      {
+        id: 'c2-deadline',
+        targetText: 'dalam tempoh 1 jam',
+        label: 'Desakan Masa 1 Jam',
+        explanation: 'Memberi had masa singkat bertujuan menekan mangsa supaya mengambil tindakan segera tanpa sempat membuat pengesahan dengan pihak bank.',
         isSuspicious: true
       }
     ],
@@ -134,10 +155,24 @@ export const investigationCases: InvestigationCase[] = [
     attachmentName: 'Borang_Penebusan_Bantuan_Tunai.apk',
     clues: [
       {
+        id: 'c3-greeting',
+        targetText: 'Pelanggan yang dihormati',
+        label: 'Kata Sapaan Pelanggan Biasa',
+        explanation: 'Kata sapaan umum seperti ini adalah biasa dalam emel dan bukan bukti berlakunya jenayah siber.',
+        isSuspicious: false
+      },
+      {
         id: 'c3-sender',
         targetText: 'hadiah-bonus@ewallet-claim-2025.com',
         label: 'Alamat Emel Domain Luar Tidak Rasmi',
         explanation: 'Agensi kerajaan dan perkhidmatan kewangan sah beroperasi menggunakan domain rasmi (.gov.my atau .com.my), bukannya domain bebas seperti ewallet-claim-2025.com.',
+        isSuspicious: true
+      },
+      {
+        id: 'c3-prize',
+        targetText: 'Bantuan Musim Perayaan sebanyak RM1,000',
+        label: 'Tawaran Wang Cabutan Bertuah Tanpa Permohonan',
+        explanation: 'Bantuan kerajaan yang sah disalurkan terus melalui pangkalan data rasmi, bukan melalui cabutan nombor telefon rawak yang menjanjikan wang tunai segera.',
         isSuspicious: true
       },
       {
@@ -191,6 +226,13 @@ export const investigationCases: InvestigationCase[] = [
     urgencyBadge: 'Potong Dalam 2 Jam',
     body: 'Pelanggan yang dihormati, akaun anda mempunyai tunggakan bil tertunggak sebanyak RM84.20. Tindakan pemotongan bekalan elektrik serta-merta akan dilaksanakan dalam tempoh 2 Jam melainkan pembayaran disahkan sekarang di: http://tenaga-quickpay.xyz/bill\n\nSila masukkan kata laluan perbankan dan nombor TAC untuk pengesahan bayaran segera.',
     clues: [
+      {
+        id: 'c4-amount',
+        targetText: 'tunggakan bil tertunggak sebanyak RM84.20',
+        label: 'Maklumat Jumlah Baki Bil',
+        explanation: 'Penyataan jumlah bil adalah maklumat biasa bil utiliti dan bukannya tanda jenayah siber.',
+        isSuspicious: false
+      },
       {
         id: 'c4-domain',
         targetText: 'billing-support@tenaga-online-alert.xyz',
@@ -255,6 +297,13 @@ export const investigationCases: InvestigationCase[] = [
     body: 'Salam Makcik/Pakcik, telefon saya jatuh dalam air tadi jadi saya guna telefon kawan. Kereta saya rosak tepi jalan kat lebuhraya sekarang dan bateri kawan pun nak habis. Boleh tolong pindahkan RM350 ke akaun bengkel kawan saya: Maybank 1140-2938-1209 sekarang? Saya bayar balik malam nanti.',
     clues: [
       {
+        id: 'c5-greeting',
+        targetText: 'Salam Makcik/Pakcik',
+        label: 'Kata Sapaan Mesra Biasa',
+        explanation: 'Ucapan salam mesra adalah sapaan harian biasa masyarakat kita dan bukannya tanda jenayah siber.',
+        isSuspicious: false
+      },
+      {
         id: 'c5-number',
         targetText: '+6019-338-9210',
         label: 'Nombor Asing Mengaku Telefon Dipinjam',
@@ -274,6 +323,13 @@ export const investigationCases: InvestigationCase[] = [
         label: 'Desakan Bateri Hendak Habis',
         explanation: 'Alasan bateri telefon hendak habis adalah helah agar anda tidak sempat menelefon mereka untuk mendengar suara sebenar saudara anda.',
         isSuspicious: true
+      },
+      {
+        id: 'c5-repay',
+        targetText: 'Saya bayar balik malam nanti',
+        label: 'Janji Pembayaran Balik Biasa',
+        explanation: 'Janji untuk memulangkan wang adalah ayat perbualan biasa dan bukanlah bukti teknikal ancaman siber.',
+        isSuspicious: false
       }
     ],
     actions: [

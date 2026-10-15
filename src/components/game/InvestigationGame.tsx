@@ -42,6 +42,7 @@ export const InvestigationGame: React.FC = () => {
   const [isFindingsSubmitted, setIsFindingsSubmitted] = useState<boolean>(false);
   const [selectedActionId, setSelectedActionId] = useState<string | null>(null);
   const [isActionSubmitted, setIsActionSubmitted] = useState<boolean>(false);
+  const [caseClueScore, setCaseClueScore] = useState<number>(0);
 
   // Link Scanner Modal state
   const [activeScanData, setActiveScanData] = useState<LinkScanData | null>(null);
@@ -104,6 +105,7 @@ export const InvestigationGame: React.FC = () => {
     setIsFindingsSubmitted(false);
     setSelectedActionId(null);
     setIsActionSubmitted(false);
+    setCaseClueScore(0);
   };
 
   const handleToggleClue = (clueId: string) => {
@@ -137,15 +139,32 @@ export const InvestigationGame: React.FC = () => {
     if (isFindingsSubmitted) return;
     setIsFindingsSubmitted(true);
 
-    const validCluesFound = selectedClueIds.filter(id =>
-      currentCase.clues.some(c => c.id === id && c.isSuspicious)
+    const totalCluesInCase = currentCase.clues.length;
+    const suspiciousClues = currentCase.clues.filter(c => c.isSuspicious);
+    const benignClues = currentCase.clues.filter(c => !c.isSuspicious);
+
+    // Number of real threats spotted
+    const correctSuspiciousFound = selectedClueIds.filter(id =>
+      suspiciousClues.some(c => c.id === id)
     ).length;
 
-    // Up to 5 points for clue investigation
-    const cluePoints = Math.min(5, Math.round((validCluesFound / currentCase.clues.length) * 5));
+    // Number of harmless text mistakenly marked
+    const falseAlarmsMarked = selectedClueIds.filter(id =>
+      benignClues.some(c => c.id === id)
+    ).length;
 
-    setTotalCluesFound(prev => prev + validCluesFound);
-    setTotalPossibleClues(prev => prev + currentCase.clues.length);
+    // Number of harmless text correctly ignored
+    const correctBenignIgnored = benignClues.length - falseAlarmsMarked;
+
+    // Total correct decisions
+    const totalCorrectDecisions = correctSuspiciousFound + correctBenignIgnored;
+
+    // Up to 5 points for clue investigation
+    const cluePoints = Math.max(0, Math.min(5, Math.round((totalCorrectDecisions / totalCluesInCase) * 5)));
+
+    setCaseClueScore(cluePoints);
+    setTotalCluesFound(prev => prev + correctSuspiciousFound);
+    setTotalPossibleClues(prev => prev + suspiciousClues.length);
     setTotalScore(prev => prev + cluePoints);
   };
 
@@ -630,10 +649,11 @@ export const InvestigationGame: React.FC = () => {
                 <div className="space-y-4">
                   <div>
                     <h3 className="text-base sm:text-lg font-black text-[#171914] tracking-tight">
-                      Langkah 1: Tandakan Petunjuk Bahaya
+                      Langkah 1: Tandakan HANYA Petunjuk Bahaya
                     </h3>
                     <p className="text-xs sm:text-sm text-[#575953] mt-1 leading-relaxed">
-                      Berdasarkan mesej di sebelah kiri, klik dan tandakan bahagian yang meragukan (anda boleh pilih lebih daripada satu):
+                      Berdasarkan mesej di sebelah kiri, tandakan <strong>bahagian yang mencurigakan sahaja</strong>. <br className="hidden sm:inline" />
+                      <span className="text-[#8A241C] font-semibold">Awas: Sesetengah pilihan di bawah adalah maklumat biasa yang TIDAK PERLU ditandakan!</span>
                     </p>
                   </div>
 
@@ -646,24 +666,21 @@ export const InvestigationGame: React.FC = () => {
                           key={clue.id}
                           type="button"
                           onClick={() => handleToggleClue(clue.id)}
-                          className={`w-full p-4 rounded-sm border-2 text-left transition-all cursor-pointer flex items-center justify-between gap-3 min-h-[52px] ${
+                          className={`w-full p-4 rounded-sm border-2 text-left transition-all cursor-pointer flex items-center justify-between gap-3 min-h-[54px] ${
                             isMarked
                               ? 'bg-[#171914] text-[#D9FA62] border-[#171914] font-bold shadow-xs'
                               : 'bg-white text-[#171914] border-[#171914]/20 hover:border-[#171914] hover:bg-[#FAF9F5]'
                           }`}
                         >
                           <div className="min-w-0 pr-2">
-                            <span className="font-mono text-xs sm:text-sm block truncate">
+                            <span className="font-mono text-xs sm:text-sm block">
                               &ldquo;{clue.targetText}&rdquo;
-                            </span>
-                            <span className="text-[11px] font-sans opacity-80 block truncate">
-                              {clue.label}
                             </span>
                           </div>
                           <span className={`shrink-0 font-mono text-xs font-bold px-2.5 py-1 rounded-xs border ${
                             isMarked ? 'bg-[#D9FA62] text-[#171914] border-[#D9FA62]' : 'bg-[#ECEAE2] text-[#575953] border-[#171914]/15'
                           }`}>
-                            {isMarked ? '✓ DIPILIH' : '+ TANDAKAN'}
+                            {isMarked ? '✓ DITANDAKAN' : '+ TANDAKAN'}
                           </span>
                         </button>
                       );
@@ -675,15 +692,71 @@ export const InvestigationGame: React.FC = () => {
                    STEP 2: ACTION DECISION & IMMEDIATE CONSEQUENCES
                    ------------------------------------------------------------- */
                 <div className="space-y-4">
-                  {/* Clues Found Summary Pill */}
-                  <div className="p-3 bg-[#E7F3EB] border border-[#1E4D2B]/30 rounded-xs flex items-center justify-between text-xs font-mono text-[#123E23]">
-                    <span className="font-bold flex items-center gap-1.5">
-                      <CheckCircle2 className="w-4 h-4 text-[#1E4D2B]" />
-                      <span>{validCluesFoundInCurrentCase} / {currentCase.clues.length} Petunjuk Berjaya Dikesan</span>
-                    </span>
-                    <span className="bg-white/80 px-2 py-0.5 rounded-xs font-bold">
-                      +{Math.min(5, Math.round((validCluesFoundInCurrentCase / currentCase.clues.length) * 5))} Mata
-                    </span>
+                  {/* Detailed Clues Review Breakdown Box */}
+                  <div className="p-4 bg-[#FAF9F5] border-2 border-[#171914]/15 rounded-sm space-y-3">
+                    <div className="flex items-center justify-between font-mono text-xs pb-2 border-b border-[#171914]/10">
+                      <span className="font-bold text-[#171914] flex items-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4 text-[#1E4D2B]" />
+                        <span>Hasil Semakan Petunjuk Pasukan:</span>
+                      </span>
+                      <span className="font-bold bg-[#D9FA62] px-2.5 py-0.5 rounded-xs text-[#171914] border border-[#171914]/20">
+                        +{caseClueScore} / 5 Mata
+                      </span>
+                    </div>
+
+                    <div className="space-y-2 text-xs">
+                      {currentCase.clues.map((clue) => {
+                        const isTicked = selectedClueIds.includes(clue.id);
+                        const isSuspicious = clue.isSuspicious;
+
+                        if (isTicked && isSuspicious) {
+                          return (
+                            <div key={clue.id} className="p-2.5 bg-[#E7F3EB] border border-[#1E4D2B]/30 rounded-xs text-[#123E23]">
+                              <div className="font-bold flex items-center gap-1.5">
+                                <span>✓ Tepat Dikesan:</span>
+                                <code className="bg-white/80 px-1 rounded">&ldquo;{clue.targetText}&rdquo;</code>
+                              </div>
+                              <p className="text-[11px] text-[#575953] mt-1 leading-relaxed">{clue.explanation}</p>
+                            </div>
+                          );
+                        }
+
+                        if (isTicked && !isSuspicious) {
+                          return (
+                            <div key={clue.id} className="p-2.5 bg-[#FAF0E6] border border-[#8A241C]/30 rounded-xs text-[#78271C]">
+                              <div className="font-bold flex items-center gap-1.5">
+                                <span>✕ Tersilap Tanda:</span>
+                                <code className="bg-white/80 px-1 rounded">&ldquo;{clue.targetText}&rdquo;</code>
+                              </div>
+                              <p className="text-[11px] text-[#575953] mt-1 leading-relaxed">{clue.explanation}</p>
+                            </div>
+                          );
+                        }
+
+                        if (!isTicked && isSuspicious) {
+                          return (
+                            <div key={clue.id} className="p-2.5 bg-[#FAF0E6] border border-[#8A241C]/20 rounded-xs text-[#8A241C]">
+                              <div className="font-bold flex items-center gap-1.5">
+                                <span>⚠ Terlepas Pandang:</span>
+                                <code className="bg-white/80 px-1 rounded">&ldquo;{clue.targetText}&rdquo;</code>
+                              </div>
+                              <p className="text-[11px] text-[#575953] mt-1 leading-relaxed">{clue.explanation}</p>
+                            </div>
+                          );
+                        }
+
+                        // Unticked and not suspicious -> Great discernment!
+                        return (
+                          <div key={clue.id} className="p-2 bg-white border border-[#171914]/10 rounded-xs text-[#575953]">
+                            <div className="font-bold text-[#1E4D2B] flex items-center gap-1.5">
+                              <span>✓ Tepat Dibiarkan:</span>
+                              <code className="text-[#171914] bg-[#FAF9F5] px-1 rounded">&ldquo;{clue.targetText}&rdquo;</code>
+                              <span className="text-[10px] text-[#7C7E77] font-normal">(Maklumat biasa, bukan ancaman)</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
 
                   <div>
