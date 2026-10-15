@@ -4,10 +4,21 @@ import React, { useState } from 'react';
 import { investigationCases } from '@/data/investigation-cases';
 import { InvestigateMessageView } from '@/components/game/InvestigateMessageView';
 import { ActionDecisionView } from '@/components/game/ActionDecisionView';
+import { LinkScannerModal } from '@/components/game/LinkScannerModal';
+import { BadgesDrawer, BadgeItem } from '@/components/game/BadgesDrawer';
 import { saveChallengeResult } from '@/lib/storage';
-import { ArrowRight, RotateCcw, Home, Check, Search, ShieldCheck, Clock } from 'lucide-react';
+import { ArrowRight, RotateCcw, Home, Check, Search, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
-import { motion, AnimatePresence } from 'framer-motion';
+
+interface LinkScanData {
+  url: string;
+  protocol: 'http' | 'https';
+  domain: string;
+  country: string;
+  riskScore: number;
+  verdict: string;
+  redFlags: string[];
+}
 
 export const InvestigationGame: React.FC = () => {
   const [stage, setStage] = useState<'briefing' | 'investigating' | 'results'>('briefing');
@@ -19,13 +30,49 @@ export const InvestigationGame: React.FC = () => {
   const [selectedActionId, setSelectedActionId] = useState<string | null>(null);
   const [isActionSubmitted, setIsActionSubmitted] = useState<boolean>(false);
 
+  // Link Scanner Modal state
+  const [activeScanData, setActiveScanData] = useState<LinkScanData | null>(null);
+
   // Cumulative game performance
   const [totalCluesFound, setTotalCluesFound] = useState<number>(0);
   const [totalPossibleClues, setTotalPossibleClues] = useState<number>(0);
   const [correctActionDecisions, setCorrectActionDecisions] = useState<number>(0);
   const [totalScore, setTotalScore] = useState<number>(0);
+  const [scannerUsed, setScannerUsed] = useState<boolean>(false);
 
   const currentCase = investigationCases[currentCaseIndex];
+
+  // Dynamic Badges
+  const badges: BadgeItem[] = [
+    {
+      id: 'b-eagle',
+      name: 'Mata Helang',
+      icon: '🦅',
+      description: 'Mengesan lebih 8 petunjuk penipuan',
+      isUnlocked: totalCluesFound >= 8
+    },
+    {
+      id: 'b-xray',
+      name: 'Pakar X-Ray',
+      icon: '🔬',
+      description: 'Menggunakan pengimbas pautan diagnostik',
+      isUnlocked: scannerUsed
+    },
+    {
+      id: 'b-shield',
+      name: 'Penyekat Penipuan',
+      icon: '🛑',
+      description: 'Membuat 4 atau lebih keputusan selamat',
+      isUnlocked: correctActionDecisions >= 4
+    },
+    {
+      id: 'b-hero',
+      name: 'Wira Penyiasat',
+      icon: '🛡️',
+      description: 'Menyelesaikan semua 5 kes siasatan',
+      isUnlocked: stage === 'results'
+    }
+  ];
 
   const handleStartMission = () => {
     setStage('investigating');
@@ -35,6 +82,7 @@ export const InvestigationGame: React.FC = () => {
     setTotalPossibleClues(0);
     setCorrectActionDecisions(0);
     setTotalScore(0);
+    setScannerUsed(false);
   };
 
   const resetCaseState = () => {
@@ -48,6 +96,26 @@ export const InvestigationGame: React.FC = () => {
     setSelectedClueIds(prev =>
       prev.includes(clueId) ? prev.filter(id => id !== clueId) : [...prev, clueId]
     );
+  };
+
+  const handleOpenScanner = (url: string) => {
+    setScannerUsed(true);
+    const isPos = url.includes('pos');
+    const isTenaga = url.includes('tenaga');
+
+    setActiveScanData({
+      url,
+      protocol: url.startsWith('https') ? 'https' : 'http',
+      domain: isPos ? 'pos-redeliver-pay.cc' : isTenaga ? 'tenaga-quickpay.xyz' : 'ewallet-claim-2025.com',
+      country: isPos ? 'Kepulauan Cocos (.cc)' : isTenaga ? 'Pelayan Luar Pesisir (.xyz)' : 'Pelayan Tidak Diketahui',
+      riskScore: 98,
+      verdict: 'Laman web palsu yang direka khas untuk mencuri kad debit & maklumat perbankan internet mangsa.',
+      redFlags: [
+        'Domain tidak sepadan dengan agensi rasmi Malaysia',
+        'Penyulitan SSL tidak sah atau menggunakan sambungan HTTP tidak selamat',
+        'Laman web baru didaftarkan kurang daripada 14 hari yang lalu'
+      ]
+    });
   };
 
   const handleSubmitFindings = () => {
@@ -87,7 +155,6 @@ export const InvestigationGame: React.FC = () => {
       setCurrentCaseIndex(prev => prev + 1);
       resetCaseState();
     } else {
-      // Completed all cases
       const finalScore = Math.min(50, totalScore);
       saveChallengeResult('phishing', finalScore, 50);
       setStage('results');
@@ -122,37 +189,23 @@ export const InvestigationGame: React.FC = () => {
               Penyiasatan Mesej Phishing
             </h1>
             <p className="text-sm text-[#575953] mt-2 leading-relaxed">
-              &ldquo;Mesej mencurigakan mula membanjiri peti masuk anda. Tugas pasukan anda adalah menyiasat teks mesej, mencari tanda bahaya tersembunyi, dan memutuskan tindakan paling selamat.&rdquo;
+              &ldquo;Mesej mencurigakan mula membanjiri peti masuk anda. Tugas pasukan anda adalah menyiasat teks mesej, mencari tanda bahaya tersembunyi, menggunakan Pengimbas Pautan X-Ray, dan memutuskan tindakan paling selamat.&rdquo;
             </p>
           </div>
 
-          {/* Mission Objective */}
-          <div className="p-4 bg-[#F5F4EE] border border-[#171914]/12 rounded-sm space-y-1">
+          {/* Interactive Tools Highlight */}
+          <div className="p-4 bg-[#F5F4EE] border border-[#171914]/12 rounded-sm space-y-2">
             <span className="font-mono text-xs font-bold uppercase tracking-wider text-[#171914] block">
-              Objektif Siasatan Stesen:
+              Alat Siasatan Baharu Stesen:
             </span>
-            <p className="text-xs sm:text-sm text-[#575953] leading-relaxed">
-              Anda akan mengendalikan <strong>5 senario mesej realistik</strong> (SMS kurier, amaran bank palsu, emel bantuan wang, bil elektrik, dan WhatsApp menyamar saudara). Klik bahagian mesej yang meragukan, semak hasil siasatan, dan buat keputusan perlindungan yang bijak bersama pasukan.
-            </p>
-          </div>
-
-          {/* Gameplay Instructions */}
-          <div className="space-y-2.5 font-mono text-xs text-[#575953]">
-            <span className="font-bold uppercase tracking-wider text-[#171914] block">
-              3 Langkah Siasatan Setiap Kes:
-            </span>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="p-3 bg-[#FAF9F5] border border-[#171914]/10 rounded-xs">
-                <strong className="text-[#171914] block mb-1">01. Periksa & Tandakan</strong>
-                Klik perkataan atau pautan yang anda syak sebagai helah penipu.
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-[#575953]">
+              <div className="p-2.5 bg-white border border-[#171914]/10 rounded-xs">
+                <strong className="text-[#171914] block">🔬 Pengimbas Pautan X-Ray</strong>
+                Klik butang imbas untuk mendedahkan sijil keselamatan dan rekod pendaftaran domain palsu.
               </div>
-              <div className="p-3 bg-[#FAF9F5] border border-[#171914]/10 rounded-xs">
-                <strong className="text-[#171914] block mb-1">02. Semak Penemuan</strong>
-                Lihat penerangan pakar bagi petunjuk yang ditemui dan yang terlepas.
-              </div>
-              <div className="p-3 bg-[#FAF9F5] border border-[#171914]/10 rounded-xs">
-                <strong className="text-[#171914] block mb-1">03. Ambil Tindakan</strong>
-                Pilih respons selamat untuk melindungi diri dan raih mata maksimum.
+              <div className="p-2.5 bg-white border border-[#171914]/10 rounded-xs">
+                <strong className="text-[#171914] block">🦅 Lencana Siasatan Stesen</strong>
+                Buka pencapaian detektif seperti Mata Helang & Penyekat Penipuan sepanjang misi.
               </div>
             </div>
           </div>
@@ -173,10 +226,11 @@ export const InvestigationGame: React.FC = () => {
 
   /* --- Stage 6: Mission Results --- */
   if (stage === 'results') {
-    const accuracy = Math.round((totalScore / 50) * 100);
-
     return (
       <div className="max-w-3xl mx-auto space-y-6 py-4">
+        {/* Badges Drawer */}
+        <BadgesDrawer badges={badges} />
+
         <div className="rounded-sm border-2 border-[#171914] bg-white p-6 sm:p-8 shadow-xs space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#171914]/15 font-mono text-xs">
             <span className="font-bold uppercase tracking-wider text-[#171914] bg-[#D9FA62] px-2.5 py-0.5 rounded-xs border border-[#171914]/20">
@@ -192,7 +246,7 @@ export const InvestigationGame: React.FC = () => {
               Siasatan Berjaya Dilengkapkan!
             </h2>
             <p className="text-xs sm:text-sm text-[#575953] mt-2 leading-relaxed">
-              Pasukan anda telah selesai menyiasat kesemua 5 senario mesej mencurigakan dan membuat keputusan kritikal bagi setiap kes.
+              Pasukan anda telah selesai menyiasat kesemua 5 senario mesej mencurigakan, menggunakan alat diagnostik X-Ray, dan membuat keputusan kritikal bagi setiap kes.
             </p>
           </div>
 
@@ -246,12 +300,6 @@ export const InvestigationGame: React.FC = () => {
                 </span>
                 <span>Jangan pasang fail aplikasi (.apk) daripada emel hadiah wang atau tuntutan yang mencurigakan.</span>
               </li>
-              <li className="flex items-start gap-2.5">
-                <span className="w-4 h-4 rounded-xs bg-[#171914] text-[#D9FA62] flex items-center justify-center shrink-0 mt-0.5">
-                  <Check className="w-3 h-3" />
-                </span>
-                <span>Buat panggilan terus ke nombor asal kenalan sebelum memindahkan wang kecemasan yang diminta atas talian.</span>
-              </li>
             </ul>
           </div>
         </div>
@@ -289,6 +337,9 @@ export const InvestigationGame: React.FC = () => {
   /* --- Stage 2 - 5: Interactive Investigation & Action --- */
   return (
     <div className="max-w-3xl mx-auto space-y-6 py-4">
+      {/* Top Badges Tracker Bar */}
+      <BadgesDrawer badges={badges} />
+
       {/* Top Mission Status Bar */}
       <div className="w-full bg-white border border-[#171914]/15 rounded-sm p-4 shadow-xs">
         <div className="flex items-center justify-between gap-4 mb-2 font-mono text-xs">
@@ -311,10 +362,9 @@ export const InvestigationGame: React.FC = () => {
 
         {/* Progress track */}
         <div className="h-2 w-full bg-[#ECEAE2] rounded-xs overflow-hidden border border-[#171914]/10">
-          <motion.div
-            className="h-full bg-[#171914]"
-            animate={{ width: `${((currentCaseIndex + 1) / investigationCases.length) * 100}%` }}
-            transition={{ duration: 0.3 }}
+          <div
+            className="h-full bg-[#171914] transition-all duration-300"
+            style={{ width: `${((currentCaseIndex + 1) / investigationCases.length) * 100}%` }}
           />
         </div>
       </div>
@@ -339,9 +389,10 @@ export const InvestigationGame: React.FC = () => {
         onToggleClue={handleToggleClue}
         isFindingsSubmitted={isFindingsSubmitted}
         onSubmitFindings={handleSubmitFindings}
+        onOpenScanner={handleOpenScanner}
       />
 
-      {/* Action Decision Phase (Stage 4) - only shown after findings are checked */}
+      {/* Action Decision Phase (Stage 4) */}
       {isFindingsSubmitted && (
         <ActionDecisionView
           actions={currentCase.actions}
@@ -353,6 +404,12 @@ export const InvestigationGame: React.FC = () => {
           isLastCase={currentCaseIndex + 1 === investigationCases.length}
         />
       )}
+
+      {/* Link Scanner Modal */}
+      <LinkScannerModal
+        scanData={activeScanData}
+        onClose={() => setActiveScanData(null)}
+      />
     </div>
   );
 };
