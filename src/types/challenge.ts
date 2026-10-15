@@ -1,4 +1,11 @@
-export type ChallengeId = 'phishing' | 'passwords';
+export type ChallengeId =
+  | 'phishing'
+  | 'passwords'
+  | 'call-scam'
+  | 'apk-malware'
+  | 'public-wifi'
+  | 'investment-scam'
+  | 'social-privacy';
 
 export type QuestionType = 'multiple-choice' | 'spot-clues' | 'password-compare';
 
@@ -71,7 +78,7 @@ export interface ChallengeMeta {
   learningObjective: string;
   difficulty: 'Asas' | 'Pertengahan' | 'Beginner' | 'Intermediate';
   estimatedTime: string;
-  iconName: 'ShieldAlert' | 'KeyRound';
+  iconName: 'ShieldAlert' | 'KeyRound' | 'PhoneCall' | 'Download' | 'Wifi' | 'TrendingUp' | 'UserCheck' | 'Shield';
   accentColor: string;
   badgeText: string;
   instructions: string[];

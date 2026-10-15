@@ -9,7 +9,7 @@ import Link from 'next/link';
 
 export default function HomePage() {
   const [records, setRecords] = useState<StationRecords>({});
-  const [stats, setStats] = useState({ totalScore: 0, maxPossibleScore: 100, completedCount: 0 });
+  const [stats, setStats] = useState({ totalScore: 0, maxPossibleScore: 350, completedCount: 0 });
 
   const refreshData = () => {
     const data = getStationRecords();
@@ -74,17 +74,17 @@ export default function HomePage() {
           <div className="sm:ml-auto flex items-center gap-3 font-mono text-xs bg-white border border-[#171914]/15 px-3 py-2 rounded-sm">
             <span className="text-[#7C7E77] uppercase text-[10px]">Kemajuan Stesen:</span>
             <span className="font-bold text-[#171914]">
-              {stats.completedCount} / 2 Selesai
+              {stats.completedCount} / {allChallengesMeta.length} Selesai
             </span>
             <span className="text-[#D8D5CA]">|</span>
             <span className="font-bold text-[#171914]">
-              {stats.totalScore} / 100 Mata
+              {stats.totalScore} / {stats.maxPossibleScore} Mata
             </span>
           </div>
         </div>
       </section>
 
-      {/* Two Challenges as Numbered Editorial Entries */}
+      {/* Numbered Editorial Challenge Cards */}
       <section id="cabaran-stesen" className="space-y-6 pt-6 border-t-2 border-[#171914]">
         <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2">
           <div>
@@ -92,15 +92,15 @@ export default function HomePage() {
               BAHAGIAN 01 / MISI AMALI INTERAKTIF
             </span>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-[#171914] tracking-tight">
-              Misi Keselamatan Siber Stesen
+              Misi Keselamatan Siber Stesen Komuniti
             </h2>
           </div>
           <span className="font-mono text-xs text-[#7C7E77]">
-            2 PERMAINAN INTERAKTIF • 100 MATA MAKSIMUM
+            {allChallengesMeta.length} PERMAINAN INTERAKTIF • {stats.maxPossibleScore} MATA MAKSIMUM
           </span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {allChallengesMeta.map((meta, idx) => (
             <ChallengeCard
               key={meta.id}

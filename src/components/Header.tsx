@@ -6,7 +6,7 @@ import { RotateCcw } from 'lucide-react';
 import { getStationRecords, getOverallStats, resetStationRecords } from '@/lib/storage';
 
 export const Header: React.FC = () => {
-  const [stats, setStats] = useState({ totalScore: 0, maxPossibleScore: 100, completedCount: 0 });
+  const [stats, setStats] = useState({ totalScore: 0, maxPossibleScore: 350, completedCount: 0 });
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   const refreshStats = () => {

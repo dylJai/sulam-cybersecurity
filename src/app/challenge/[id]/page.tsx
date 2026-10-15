@@ -3,6 +3,11 @@ import { notFound } from 'next/navigation';
 import { getChallenge, allChallengesMeta } from '@/data/challenges';
 import { InvestigationGame } from '@/components/game/InvestigationGame';
 import { AccountWorkshopGame } from '@/components/game/AccountWorkshopGame';
+import { CallScamGame } from '@/components/game/CallScamGame';
+import { ApkMalwareGame } from '@/components/game/ApkMalwareGame';
+import { PublicWifiGame } from '@/components/game/PublicWifiGame';
+import { InvestmentScamGame } from '@/components/game/InvestmentScamGame';
+import { SocialPrivacyGame } from '@/components/game/SocialPrivacyGame';
 import { ChallengeEngine } from '@/components/ChallengeEngine';
 import { Metadata } from 'next';
 
@@ -41,6 +46,16 @@ export default async function ChallengePage({ params }: ChallengePageProps) {
         <InvestigationGame />
       ) : id === 'passwords' ? (
         <AccountWorkshopGame />
+      ) : id === 'call-scam' ? (
+        <CallScamGame />
+      ) : id === 'apk-malware' ? (
+        <ApkMalwareGame />
+      ) : id === 'public-wifi' ? (
+        <PublicWifiGame />
+      ) : id === 'investment-scam' ? (
+        <InvestmentScamGame />
+      ) : id === 'social-privacy' ? (
+        <SocialPrivacyGame />
       ) : (
         <ChallengeEngine
           meta={challenge.meta}
