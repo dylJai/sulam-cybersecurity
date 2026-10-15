@@ -220,7 +220,7 @@ export const AccountWorkshopGame: React.FC = () => {
           <div className="pt-2">
             <button
               onClick={handleStart}
-              className="w-full py-3.5 px-6 rounded-sm font-mono font-bold text-xs uppercase tracking-wider text-[#171914] bg-[#D9FA62] hover:bg-[#CCF050] border-2 border-[#171914] transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+              className="w-full py-4 px-8 min-h-[52px] rounded-sm font-mono font-bold text-xs sm:text-sm uppercase tracking-wider text-[#171914] bg-[#D9FA62] hover:bg-[#CCF050] border-2 border-[#171914] transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-xs"
             >
               <span>Mulakan Bengkel Pertahanan Akaun</span>
               <ArrowRight className="w-4 h-4" />
@@ -278,33 +278,33 @@ export const AccountWorkshopGame: React.FC = () => {
                   key={acc.id}
                   type="button"
                   onClick={() => handleInspectAccount(acc.id)}
-                  className={`p-4 rounded-sm border text-left transition-colors cursor-pointer flex flex-col justify-between ${
+                  className={`p-4 sm:p-5 min-h-[110px] rounded-sm border-2 text-left transition-colors cursor-pointer flex flex-col justify-between ${
                     isActive
-                      ? 'border-2 border-[#171914] bg-[#F5F4EE] shadow-xs'
+                      ? 'border-[#171914] bg-[#F5F4EE] shadow-xs'
                       : 'border-[#171914]/15 bg-white hover:border-[#171914]/40'
                   }`}
                 >
-                  <div className="space-y-2">
+                  <div className="space-y-2.5">
                     <div className="flex items-center justify-between font-mono text-xs">
                       {acc.serviceType === 'email' && <Mail className="w-4 h-4 text-[#171914]" />}
                       {acc.serviceType === 'social' && <Share2 className="w-4 h-4 text-[#171914]" />}
                       {acc.serviceType === 'shopping' && <ShoppingCart className="w-4 h-4 text-[#171914]" />}
 
-                      <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-xs border ${
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-xs border min-h-[26px] flex items-center ${
                         isChecked ? 'bg-[#E7F3EB] text-[#123E23] border-[#1E4D2B]/30' : 'bg-[#ECEAE2] text-[#82847C]'
                       }`}>
-                        {isChecked ? 'DIAUDIT ✓' : 'KLIK UNTUK AUDIT'}
+                        {isChecked ? 'DIAUDIT ✓' : 'KLIK AUDIT'}
                       </span>
                     </div>
 
                     <div>
-                      <span className="font-bold text-sm text-[#171914] block">{acc.name}</span>
+                      <span className="font-bold text-sm sm:text-base text-[#171914] block">{acc.name}</span>
                       <span className="font-mono text-xs text-[#7C7E77] block">{acc.identifier}</span>
                     </div>
 
-                    <div className="font-mono text-xs bg-white p-1.5 border border-[#171914]/10 rounded-xs">
-                      <span className="text-[10px] text-[#7C7E77] block">Kata Laluan Semasa:</span>
-                      <span className="font-bold text-[#8A241C]">&ldquo;{acc.currentPassword}&rdquo;</span>
+                    <div className="font-mono text-xs bg-white p-2 border border-[#171914]/10 rounded-xs">
+                      <span className="text-[11px] text-[#7C7E77] block">Kata Laluan Semasa:</span>
+                      <span className="font-bold text-[#8A241C] text-xs sm:text-sm">&ldquo;{acc.currentPassword}&rdquo;</span>
                     </div>
                   </div>
                 </button>
@@ -323,8 +323,8 @@ export const AccountWorkshopGame: React.FC = () => {
             </p>
           </div>
 
-          <div className="pt-2 flex items-center justify-between">
-            <span className="font-mono text-xs text-[#7C7E77]">
+          <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <span className="font-mono text-xs sm:text-sm text-[#7C7E77]">
               {allAudited
                 ? 'Semua 3 akaun telah diaudit! Pasukan anda sedia melangkah ke Makmal Bina Frasa Laluan.'
                 : `Sila klik dan audit kesemua 3 akaun (${inspectedAccountIds.length} / 3 selesai).`}
@@ -334,13 +334,14 @@ export const AccountWorkshopGame: React.FC = () => {
               type="button"
               disabled={!allAudited}
               onClick={handleCompleteAudit}
-              className={`px-6 py-3 rounded-sm font-mono font-bold text-xs uppercase tracking-wider transition-colors ${
+              className={`w-full sm:w-auto px-7 py-3.5 min-h-[48px] rounded-sm font-mono font-bold text-xs sm:text-sm uppercase tracking-wider transition-colors flex items-center justify-center gap-2 ${
                 allAudited
                   ? 'bg-[#D9FA62] text-[#171914] hover:bg-[#CCF050] border-2 border-[#171914] cursor-pointer shadow-xs'
                   : 'bg-[#ECEAE2] text-[#82847C] cursor-not-allowed border border-[#171914]/10'
               }`}
             >
-              Selesai Audit & Ke Makmal Kata Laluan (+10 Mata) →
+              <span>Selesai Audit & Ke Makmal Kata Laluan (+10 Mata)</span>
+              <ArrowRight className="w-4 h-4" />
             </button>
           </div>
         </div>
@@ -370,17 +371,17 @@ export const AccountWorkshopGame: React.FC = () => {
 
         {/* Transition to next stage when completed */}
         {labSubmitted && (
-          <div className="p-4 bg-[#E7F3EB] border border-[#1E4D2B]/30 rounded-sm flex items-center justify-between">
-            <span className="text-xs font-mono text-[#123E23]">
+          <div className="p-4 sm:p-5 bg-[#E7F3EB] border-2 border-[#1E4D2B]/30 rounded-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <span className="text-xs sm:text-sm font-mono text-[#123E23]">
               ✓ Frasa laluan berjaya dibina: <strong>&ldquo;{customPassphrase}&rdquo;</strong> (+10 Mata)
             </span>
             <button
               type="button"
               onClick={handleProceedToDomino}
-              className="px-5 py-2 rounded-sm font-mono font-bold text-xs uppercase tracking-wider text-[#171914] bg-[#D9FA62] hover:bg-[#CCF050] border border-[#171914] cursor-pointer flex items-center gap-1.5"
+              className="w-full sm:w-auto px-7 py-3.5 min-h-[48px] rounded-sm font-mono font-bold text-xs sm:text-sm uppercase tracking-wider text-[#171914] bg-[#D9FA62] hover:bg-[#CCF050] border-2 border-[#171914] cursor-pointer flex items-center justify-center gap-2 shadow-xs"
             >
               <span>Uji Kesan Domino</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              <ArrowRight className="w-4 h-4" />
             </button>
           </div>
         )}
@@ -521,7 +522,7 @@ export const AccountWorkshopGame: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleTestDominoBreach}
-                  className="px-6 py-3 rounded-sm font-mono font-bold text-xs uppercase tracking-wider text-[#F5F4EE] bg-[#8A241C] hover:bg-[#6E1C15] transition-colors cursor-pointer"
+                  className="w-full sm:w-auto px-7 py-3.5 min-h-[50px] rounded-sm font-mono font-bold text-xs sm:text-sm uppercase tracking-wider text-[#F5F4EE] bg-[#8A241C] hover:bg-[#6E1C15] border-2 border-[#6E1C15] transition-colors cursor-pointer shadow-xs"
                 >
                   Uji Kebocoran PasarOnline (Lihat Kesan Domino)
                 </button>
@@ -531,7 +532,7 @@ export const AccountWorkshopGame: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleApplyUniquePassphrases}
-                  className="px-6 py-3 rounded-sm font-mono font-bold text-xs uppercase tracking-wider text-[#171914] bg-[#D9FA62] hover:bg-[#CCF050] border-2 border-[#171914] transition-colors cursor-pointer shadow-xs"
+                  className="w-full sm:w-auto px-7 py-3.5 min-h-[50px] rounded-sm font-mono font-bold text-xs sm:text-sm uppercase tracking-wider text-[#171914] bg-[#D9FA62] hover:bg-[#CCF050] border-2 border-[#171914] transition-colors cursor-pointer shadow-xs"
                 >
                   Selesaikan Masalah: Berikan Kata Laluan Unik Setiap Akaun →
                 </button>
@@ -541,7 +542,7 @@ export const AccountWorkshopGame: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleRetestBreach}
-                  className="px-6 py-3 rounded-sm font-mono font-bold text-xs uppercase tracking-wider text-[#171914] bg-[#D9FA62] hover:bg-[#CCF050] border-2 border-[#171914] transition-colors cursor-pointer shadow-xs"
+                  className="w-full sm:w-auto px-7 py-3.5 min-h-[50px] rounded-sm font-mono font-bold text-xs sm:text-sm uppercase tracking-wider text-[#171914] bg-[#D9FA62] hover:bg-[#CCF050] border-2 border-[#171914] transition-colors cursor-pointer shadow-xs"
                 >
                   Uji Semula Kebocoran (Sahkan Sekatan Pencerobohan)
                 </button>
@@ -551,10 +552,10 @@ export const AccountWorkshopGame: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleProceedToChecklist}
-                  className="px-6 py-3 rounded-sm font-mono font-bold text-xs uppercase tracking-wider text-[#171914] bg-[#D9FA62] hover:bg-[#CCF050] border-2 border-[#171914] transition-colors flex items-center gap-2 cursor-pointer shadow-xs"
+                  className="w-full sm:w-auto px-7 py-3.5 min-h-[50px] rounded-sm font-mono font-bold text-xs sm:text-sm uppercase tracking-wider text-[#171914] bg-[#D9FA62] hover:bg-[#CCF050] border-2 border-[#171914] transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-xs"
                 >
                   <span>Teruskan ke Fasa 04: Simulator 2FA & Perisai (+15 Mata)</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
+                  <ArrowRight className="w-4 h-4" />
                 </button>
               )}
             </div>
@@ -603,7 +604,7 @@ export const AccountWorkshopGame: React.FC = () => {
             </div>
           </div>
 
-          <div className="space-y-2.5">
+          <div className="space-y-3">
             {securityChecklist.map(item => {
               const isChecked = checkedMeasures.includes(item.id);
 
@@ -612,30 +613,30 @@ export const AccountWorkshopGame: React.FC = () => {
                   key={item.id}
                   type="button"
                   onClick={() => handleToggleMeasure(item.id)}
-                  className={`w-full p-3.5 rounded-sm border text-left transition-colors cursor-pointer flex items-start gap-3 ${
+                  className={`w-full p-4 sm:p-5 rounded-sm border-2 text-left transition-colors cursor-pointer flex items-start gap-4 min-h-[68px] ${
                     isChecked
-                      ? 'bg-[#E7F3EB] border-2 border-[#1E4D2B] text-[#123E23]'
-                      : 'bg-white border-[#171914]/15 hover:border-[#171914]/40 text-[#171914]'
+                      ? 'bg-[#E7F3EB] border-[#1E4D2B] text-[#123E23]'
+                      : 'bg-white border-[#171914]/20 hover:border-[#171914] text-[#171914]'
                   }`}
                 >
                   <div className="shrink-0 mt-0.5">
                     {isChecked ? (
-                      <CheckSquare className="w-4 h-4 text-[#1E4D2B]" />
+                      <CheckSquare className="w-5 h-5 sm:w-6 sm:h-6 text-[#1E4D2B]" />
                     ) : (
-                      <Square className="w-4 h-4 text-[#82847C]" />
+                      <Square className="w-5 h-5 sm:w-6 sm:h-6 text-[#82847C]" />
                     )}
                   </div>
                   <div>
-                    <span className="font-bold text-xs block">{item.title}</span>
-                    <span className="text-xs text-[#575953] leading-relaxed block">{item.shortDescription}</span>
+                    <span className="font-bold text-sm sm:text-base block">{item.title}</span>
+                    <span className="text-xs sm:text-sm text-[#575953] leading-relaxed block mt-1">{item.shortDescription}</span>
                   </div>
                 </button>
               );
             })}
           </div>
 
-          <div className="pt-2 flex items-center justify-between">
-            <span className="font-mono text-xs text-[#7C7E77]">
+          <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <span className="font-mono text-xs sm:text-sm text-[#7C7E77]">
               {phone2FASimulated && checkedMeasures.length >= 3
                 ? 'Tahniah! Ujian 2FA dan pertahanan akaun berjaya disempurnakan.'
                 : 'Sila lengkapkan ujian simulator telefon 2FA di atas.'}
@@ -645,13 +646,14 @@ export const AccountWorkshopGame: React.FC = () => {
               type="button"
               disabled={!phone2FASimulated}
               onClick={handleCompleteWorkshop}
-              className={`px-6 py-3 rounded-sm font-mono font-bold text-xs uppercase tracking-wider transition-colors ${
+              className={`w-full sm:w-auto px-7 py-3.5 min-h-[50px] rounded-sm font-mono font-bold text-xs sm:text-sm uppercase tracking-wider transition-colors flex items-center justify-center gap-2 ${
                 phone2FASimulated
                   ? 'bg-[#D9FA62] text-[#171914] hover:bg-[#CCF050] border-2 border-[#171914] cursor-pointer shadow-xs'
                   : 'bg-[#ECEAE2] text-[#82847C] cursor-not-allowed border border-[#171914]/10'
               }`}
             >
-              Lengkapkan Bengkel & Lihat Keputusan (+15 Mata) →
+              <span>Lengkapkan Bengkel & Lihat Keputusan (+15 Mata)</span>
+              <ArrowRight className="w-4 h-4" />
             </button>
           </div>
         </div>
@@ -714,26 +716,26 @@ export const AccountWorkshopGame: React.FC = () => {
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 pt-2">
         <button
           onClick={handleStart}
-          className="flex items-center justify-center gap-2 px-5 py-3 rounded-sm font-mono font-bold text-xs uppercase tracking-wider text-[#171914] bg-white hover:bg-[#ECEAE2] border border-[#171914]/20 transition-colors cursor-pointer"
+          className="flex items-center justify-center gap-2 px-6 py-3.5 min-h-[48px] rounded-sm font-mono font-bold text-xs sm:text-sm uppercase tracking-wider text-[#171914] bg-white hover:bg-[#ECEAE2] border-2 border-[#171914]/20 transition-colors cursor-pointer"
         >
-          <RotateCcw className="w-3.5 h-3.5" />
+          <RotateCcw className="w-4 h-4" />
           <span>Ulang Bengkel Ini</span>
         </button>
 
         <Link
           href="/"
-          className="flex items-center justify-center gap-2 px-5 py-3 rounded-sm font-mono font-bold text-xs uppercase tracking-wider text-[#171914] bg-white hover:bg-[#ECEAE2] border border-[#171914]/20 transition-colors cursor-pointer"
+          className="flex items-center justify-center gap-2 px-6 py-3.5 min-h-[48px] rounded-sm font-mono font-bold text-xs sm:text-sm uppercase tracking-wider text-[#171914] bg-white hover:bg-[#ECEAE2] border-2 border-[#171914]/20 transition-colors cursor-pointer"
         >
-          <Home className="w-3.5 h-3.5" />
+          <Home className="w-4 h-4" />
           <span>Menu Utama</span>
         </Link>
 
         <Link
           href="/challenge/phishing"
-          className="flex items-center justify-center gap-2 px-6 py-3 rounded-sm font-mono font-bold text-xs uppercase tracking-wider text-[#171914] bg-[#D9FA62] hover:bg-[#CCF050] border-2 border-[#171914] transition-colors shadow-xs"
+          className="flex items-center justify-center gap-2 px-7 py-3.5 min-h-[48px] rounded-sm font-mono font-bold text-xs sm:text-sm uppercase tracking-wider text-[#171914] bg-[#D9FA62] hover:bg-[#CCF050] border-2 border-[#171914] transition-colors shadow-xs"
         >
           <span>Misi 01: Siasatan Phishing</span>
-          <ArrowRight className="w-3.5 h-3.5" />
+          <ArrowRight className="w-4 h-4" />
         </Link>
       </div>
     </div>

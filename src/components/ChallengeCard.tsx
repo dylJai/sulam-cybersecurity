@@ -69,14 +69,14 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({ meta, numberIndex,
       <div className="mt-8 pt-4 border-t border-[#171914]/15">
         <Link
           href={`/challenge/${meta.id}`}
-          className={`w-full py-3 px-4 rounded-sm font-mono font-bold text-xs uppercase tracking-wider flex items-center justify-between transition-colors cursor-pointer border ${
+          className={`w-full py-3.5 px-5 min-h-[48px] rounded-sm font-mono font-bold text-xs sm:text-sm uppercase tracking-wider flex items-center justify-between transition-colors cursor-pointer border-2 ${
             isCompleted
               ? 'bg-[#ECEAE2] hover:bg-[#E4E1D6] text-[#171914] border-[#171914]/20'
-              : 'bg-[#171914] hover:bg-[#2A2D25] text-[#D9FA62] border-[#171914]'
+              : 'bg-[#171914] hover:bg-[#2A2D25] text-[#D9FA62] border-[#171914] shadow-xs'
           }`}
         >
           <span>{isCompleted ? 'Ulang Kaji Cabaran Ini' : 'Mulakan Cabaran Ini'}</span>
-          <ArrowRight className="w-3.5 h-3.5" />
+          <ArrowRight className="w-4 h-4" />
         </Link>
       </div>
     </div>

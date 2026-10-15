@@ -57,7 +57,7 @@ export default function HomePage() {
         <div className="pt-2 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-8 border-t border-[#171914]/15 pt-6">
           <Link
             href="/challenge/phishing"
-            className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-sm font-mono font-bold text-xs uppercase tracking-wider text-[#171914] bg-[#D9FA62] hover:bg-[#CCF050] border-2 border-[#171914] transition-colors shadow-xs"
+            className="inline-flex items-center justify-center gap-2 px-7 py-4 min-h-[52px] rounded-sm font-mono font-bold text-xs sm:text-sm uppercase tracking-wider text-[#171914] bg-[#D9FA62] hover:bg-[#CCF050] border-2 border-[#171914] transition-colors shadow-xs"
           >
             <span>Mula Cabaran 01: Pengesanan Phishing</span>
             <ArrowRight className="w-4 h-4" />
@@ -65,10 +65,10 @@ export default function HomePage() {
 
           <a
             href="#cabaran-stesen"
-            className="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-wider text-[#575953] hover:text-[#171914] transition-colors"
+            className="inline-flex items-center gap-2 font-mono text-xs sm:text-sm uppercase tracking-wider text-[#575953] hover:text-[#171914] transition-colors py-2 min-h-[44px]"
           >
             <span>Pilih Modul di Bawah</span>
-            <ArrowDown className="w-3.5 h-3.5" />
+            <ArrowDown className="w-4 h-4" />
           </a>
 
           <div className="sm:ml-auto flex items-center gap-3 font-mono text-xs bg-white border border-[#171914]/15 px-3 py-2 rounded-sm">

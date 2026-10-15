@@ -64,16 +64,16 @@ export const ActionDecisionView: React.FC<ActionDecisionViewProps> = ({
               type="button"
               disabled={isActionSubmitted}
               onClick={() => onSelectAction(act.id)}
-              className={`w-full p-4 rounded-sm border text-left transition-colors cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-2 ${btnStyles}`}
+              className={`w-full p-4 sm:p-5 rounded-sm border-2 text-left transition-colors cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-3 min-h-[58px] ${btnStyles}`}
             >
-              <div className="space-y-0.5">
-                <span className="font-bold text-sm block">{act.title}</span>
-                <span className="text-xs text-[#575953] leading-relaxed block">{act.description}</span>
+              <div className="space-y-1">
+                <span className="font-bold text-sm sm:text-base block">{act.title}</span>
+                <span className="text-xs sm:text-sm text-[#575953] leading-relaxed block">{act.description}</span>
               </div>
               <div className="shrink-0 font-mono text-xs">
                 {isSelected && !isActionSubmitted && (
-                  <span className="bg-[#171914] text-[#D9FA62] px-2 py-0.5 rounded-xs font-bold">
-                    PILIHAN ANDA
+                  <span className="bg-[#171914] text-[#D9FA62] px-3 py-1 rounded-xs font-bold block text-center">
+                    PILIHAN ANDA ✓
                   </span>
                 )}
               </div>
@@ -112,8 +112,8 @@ export const ActionDecisionView: React.FC<ActionDecisionViewProps> = ({
       )}
 
       {/* Footer Buttons */}
-      <div className="pt-2 flex items-center justify-between">
-        <span className="font-mono text-xs text-[#7C7E77]">
+      <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <span className="font-mono text-xs sm:text-sm text-[#7C7E77]">
           {!isActionSubmitted
             ? 'Bincang bersama pasukan dan sahkan keputusan anda.'
             : 'Fahami akibat keputusan sebelum beralih ke senario seterusnya.'}
@@ -124,9 +124,9 @@ export const ActionDecisionView: React.FC<ActionDecisionViewProps> = ({
             type="button"
             disabled={!selectedActionId}
             onClick={onSubmitAction}
-            className={`px-6 py-2.5 rounded-sm font-mono font-bold text-xs uppercase tracking-wider transition-colors ${
+            className={`w-full sm:w-auto px-8 py-3.5 min-h-[48px] rounded-sm font-mono font-bold text-xs sm:text-sm uppercase tracking-wider transition-colors flex items-center justify-center ${
               selectedActionId
-                ? 'bg-[#171914] text-[#D9FA62] hover:bg-[#2A2D25] border border-[#171914] cursor-pointer'
+                ? 'bg-[#171914] text-[#D9FA62] hover:bg-[#2A2D25] border-2 border-[#171914] cursor-pointer shadow-xs'
                 : 'bg-[#ECEAE2] text-[#82847C] cursor-not-allowed border border-[#171914]/10'
             }`}
           >
@@ -136,10 +136,10 @@ export const ActionDecisionView: React.FC<ActionDecisionViewProps> = ({
           <button
             type="button"
             onClick={onNextCase}
-            className="px-6 py-2.5 rounded-sm font-mono font-bold text-xs uppercase tracking-wider text-[#171914] bg-[#D9FA62] hover:bg-[#CCF050] border-2 border-[#171914] transition-colors flex items-center gap-2 cursor-pointer shadow-xs"
+            className="w-full sm:w-auto px-8 py-3.5 min-h-[48px] rounded-sm font-mono font-bold text-xs sm:text-sm uppercase tracking-wider text-[#171914] bg-[#D9FA62] hover:bg-[#CCF050] border-2 border-[#171914] transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-xs"
           >
             <span>{isLastCase ? 'Lihat Laporan Misi' : 'Siasatan Seterusnya'}</span>
-            <ArrowRight className="w-3.5 h-3.5" />
+            <ArrowRight className="w-4 h-4" />
           </button>
         )}
       </div>

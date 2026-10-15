@@ -49,10 +49,10 @@ export const Header: React.FC = () => {
           </Link>
 
           {/* Right Action Bar */}
-          <div className="flex items-center gap-3 sm:gap-6">
+          <div className="flex items-center gap-3 sm:gap-4">
             {/* Station Score Indicator */}
-            <div className="flex items-center gap-2 px-3 py-1 bg-white border border-[#171914]/15 rounded-sm shadow-xs font-mono text-xs">
-              <span className="text-[#7C7E77] uppercase text-[10px] tracking-wider font-medium">Mata Stesen:</span>
+            <div className="flex items-center gap-2 px-3.5 py-2 bg-white border border-[#171914]/20 rounded-sm shadow-xs font-mono text-xs sm:text-sm min-h-[40px]">
+              <span className="text-[#7C7E77] uppercase text-[11px] tracking-wider font-medium">Mata Stesen:</span>
               <span className="font-bold text-[#171914]">
                 {stats.totalScore}
                 <span className="text-[#82847C] font-normal"> / {stats.maxPossibleScore}</span>
@@ -63,9 +63,9 @@ export const Header: React.FC = () => {
             <button
               onClick={() => setShowResetConfirm(true)}
               title="Set Semula Stesen untuk Pasukan Baru"
-              className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-[#575953] hover:text-[#171914] bg-transparent hover:bg-[#ECEAE2] border border-[#171914]/15 rounded-sm transition-colors cursor-pointer"
+              className="flex items-center gap-2 px-3.5 py-2 text-xs sm:text-sm font-semibold text-[#575953] hover:text-[#171914] bg-white hover:bg-[#ECEAE2] border border-[#171914]/20 rounded-sm transition-colors cursor-pointer min-h-[40px] shadow-xs"
             >
-              <RotateCcw className="w-3 h-3" />
+              <RotateCcw className="w-4 h-4" />
               <span className="hidden sm:inline">Set Semula</span>
             </button>
           </div>
@@ -75,34 +75,34 @@ export const Header: React.FC = () => {
       {/* Reset Confirmation Dialog */}
       {showResetConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#171914]/40 backdrop-blur-xs">
-          <div className="bg-white border-2 border-[#171914] rounded-sm max-w-md w-full p-6 shadow-xl text-[#171914]">
+          <div className="bg-white border-2 border-[#171914] rounded-sm max-w-md w-full p-6 sm:p-7 shadow-xl text-[#171914]">
             <div className="flex items-center justify-between pb-3 mb-4 border-b border-[#171914]/10">
               <span className="font-mono text-xs uppercase font-bold tracking-wider text-[#7C7E77]">
                 Tindakan Stesen
               </span>
               <button
                 onClick={() => setShowResetConfirm(false)}
-                className="text-xs font-mono text-[#7C7E77] hover:text-[#171914] cursor-pointer"
+                className="text-xs sm:text-sm font-mono text-[#7C7E77] hover:text-[#171914] cursor-pointer p-1"
               >
                 [BATAL]
               </button>
             </div>
-            <h3 className="text-lg font-bold tracking-tight mb-2">
+            <h3 className="text-lg sm:text-xl font-bold tracking-tight mb-2">
               Set Semula Stesen untuk Pasukan Baru?
             </h3>
-            <p className="text-sm text-[#575953] mb-6 leading-relaxed">
+            <p className="text-xs sm:text-sm text-[#575953] mb-6 leading-relaxed">
               Tindakan ini akan mengosongkan mata dan sejarah jawapan stesen ini supaya pasukan peserta seterusnya dapat memulakan cabaran dari awal.
             </p>
             <div className="flex items-center justify-end gap-3">
               <button
                 onClick={() => setShowResetConfirm(false)}
-                className="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-[#171914] bg-[#ECEAE2] hover:bg-[#E4E1D6] rounded-sm transition-colors cursor-pointer"
+                className="px-5 py-3 text-xs sm:text-sm font-semibold uppercase tracking-wider text-[#171914] bg-[#ECEAE2] hover:bg-[#E4E1D6] rounded-sm transition-colors cursor-pointer min-h-[44px]"
               >
                 Kembali
               </button>
               <button
                 onClick={handleReset}
-                className="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-[#171914] bg-[#D9FA62] hover:bg-[#CCF050] border border-[#171914] rounded-sm transition-colors cursor-pointer"
+                className="px-6 py-3 text-xs sm:text-sm font-bold uppercase tracking-wider text-[#171914] bg-[#D9FA62] hover:bg-[#CCF050] border-2 border-[#171914] rounded-sm transition-colors cursor-pointer shadow-xs min-h-[44px]"
               >
                 Sahkan Set Semula
               </button>

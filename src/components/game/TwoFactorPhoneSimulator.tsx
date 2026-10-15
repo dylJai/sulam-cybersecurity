@@ -76,22 +76,22 @@ export const TwoFactorPhoneSimulator: React.FC<TwoFactorPhoneSimulatorProps> = (
             </div>
           </div>
 
-          {/* Interactive Decision Buttons */}
+          {/* Interactive Decision Buttons - Large & Accessible for Elderly Users */}
           {decision === 'pending' && (
-            <div className="grid grid-cols-2 gap-2 pt-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3">
               <button
                 type="button"
                 onClick={handleDeny}
-                className="py-2.5 px-3 rounded font-mono font-bold text-xs uppercase bg-rose-600 hover:bg-rose-500 text-white transition-colors cursor-pointer text-center"
+                className="py-4 px-4 rounded-sm font-mono font-extrabold text-sm uppercase bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white transition-colors cursor-pointer text-center min-h-[52px] shadow-sm flex items-center justify-center gap-2 border-2 border-rose-400"
               >
-                ✕ TOLAK & SEKAT
+                <span>✕ TOLAK & SEKAT</span>
               </button>
               <button
                 type="button"
                 onClick={handleApprove}
-                className="py-2.5 px-3 rounded font-mono font-bold text-xs uppercase bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors cursor-pointer text-center"
+                className="py-4 px-4 rounded-sm font-mono font-bold text-sm uppercase bg-slate-800 hover:bg-slate-700 active:bg-slate-900 text-slate-200 transition-colors cursor-pointer text-center min-h-[52px] border-2 border-slate-600 flex items-center justify-center gap-2"
               >
-                YA, INI SAYA
+                <span>YA, INI SAYA</span>
               </button>
             </div>
           )}
@@ -122,9 +122,9 @@ export const TwoFactorPhoneSimulator: React.FC<TwoFactorPhoneSimulatorProps> = (
               <button
                 type="button"
                 onClick={handleRetry}
-                className="w-full py-1.5 bg-rose-800 hover:bg-rose-700 text-white rounded text-[11px] font-bold cursor-pointer"
+                className="w-full py-3 min-h-[44px] bg-rose-700 hover:bg-rose-600 text-white rounded font-mono text-xs sm:text-sm font-bold uppercase tracking-wider cursor-pointer transition-colors shadow-sm mt-1"
               >
-                Cuba Semula
+                Cuba Semula (Tolak Pencerobohan)
               </button>
             </div>
           )}

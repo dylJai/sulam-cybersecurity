@@ -40,9 +40,10 @@ export const LinkScannerModal: React.FC<LinkScannerModalProps> = ({ scanData, on
           </div>
           <button
             onClick={onClose}
-            className="text-[#7C7E77] hover:text-[#171914] cursor-pointer p-1"
+            aria-label="Tutup tetingkap pengimbas"
+            className="text-[#7C7E77] hover:text-[#171914] cursor-pointer p-2 rounded-xs border border-transparent hover:border-[#171914]/20 transition-colors"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
@@ -119,7 +120,7 @@ export const LinkScannerModal: React.FC<LinkScannerModalProps> = ({ scanData, on
         <div className="pt-2 flex justify-end">
           <button
             onClick={onClose}
-            className="px-5 py-2.5 rounded-sm font-mono font-bold text-xs uppercase tracking-wider text-[#171914] bg-[#D9FA62] hover:bg-[#CCF050] border border-[#171914] transition-colors cursor-pointer"
+            className="w-full sm:w-auto px-7 py-3 min-h-[46px] rounded-sm font-mono font-bold text-xs sm:text-sm uppercase tracking-wider text-[#171914] bg-[#D9FA62] hover:bg-[#CCF050] border-2 border-[#171914] transition-colors cursor-pointer shadow-xs flex items-center justify-center"
           >
             Tutup Pengimbas & Kembali
           </button>
