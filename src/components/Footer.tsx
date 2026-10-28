@@ -1,17 +1,22 @@
+'use client';
+
 import React from 'react';
 import { PhoneCall } from 'lucide-react';
+import { useLanguage } from '@/context/LanguageContext';
 
 export const Footer: React.FC = () => {
+  const { t } = useLanguage();
+
   return (
     <footer className="mt-auto border-t border-[#171914]/12 bg-[#ECEAE2] text-[#575953] py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         {/* Info */}
         <div className="space-y-1">
           <p className="text-xs font-bold text-[#171914] uppercase tracking-wider font-mono">
-            CyberSafe Community — Inisiatif Keselamatan Siber Komuniti
+            {t('footer.initiative')}
           </p>
           <p className="text-xs text-[#7C7E77]">
-            Modul pembelajaran interaktif stesen komputer riba untuk bengkel komuniti & sekolah.
+            {t('footer.subtext')}
           </p>
         </div>
 
@@ -22,18 +27,18 @@ export const Footer: React.FC = () => {
           </div>
           <div className="text-xs">
             <div className="text-[#171914] font-medium flex items-center gap-2">
-              <span>Talian Scam Kebangsaan (NSRC):</span>
+              <span>{t('footer.hotlineTitle')}</span>
               <strong className="font-mono text-sm font-bold bg-[#D9FA62] px-1.5 py-0.2 rounded-xs text-[#171914]">997</strong>
             </div>
             <p className="text-[11px] text-[#7C7E77] mt-0.5">
-              Hubungi segera jika anda terpedaya atau terhantar wang kepada penipu.
+              {t('footer.hotlineDesc')}
             </p>
           </div>
         </div>
 
         {/* Technical imprint */}
         <div className="font-mono text-[11px] text-[#82847C]">
-          KEMASKINI: 2026 / MALAYSIA
+          {t('footer.year')}
         </div>
       </div>
     </footer>

@@ -3,7 +3,6 @@ import { phishingMeta, phishingQuestions } from './phishing-challenge';
 import { passwordMeta, passwordQuestions } from './password-challenge';
 import { callScamMeta } from './call-scam-data';
 import { apkMalwareMeta } from './apk-malware-data';
-import { publicWifiMeta } from './public-wifi-data';
 import { investmentScamMeta } from './investment-scam-data';
 import { socialPrivacyMeta } from './social-privacy-data';
 
@@ -29,10 +28,6 @@ export const challengesRegistry: Record<ChallengeId, ChallengePackage> = {
     meta: apkMalwareMeta,
     questions: []
   },
-  'public-wifi': {
-    meta: publicWifiMeta,
-    questions: []
-  },
   'investment-scam': {
     meta: investmentScamMeta,
     questions: []
@@ -48,7 +43,6 @@ export const allChallengesMeta: ChallengeMeta[] = [
   passwordMeta,
   callScamMeta,
   apkMalwareMeta,
-  publicWifiMeta,
   investmentScamMeta,
   socialPrivacyMeta
 ];

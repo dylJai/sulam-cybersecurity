@@ -64,7 +64,7 @@ export function getOverallStats(records: StationRecords): {
 } {
   const values = Object.values(records) as ChallengeRecord[];
   const totalScore = values.reduce((sum, r) => sum + (r?.score || 0), 0);
-  const maxPossibleScore = 350; // 7 cabaran x 50 mata
+  const maxPossibleScore = 300; // 6 cabaran x 50 mata
   const completedCount = values.filter(Boolean).length;
   return { totalScore, maxPossibleScore, completedCount };
 }

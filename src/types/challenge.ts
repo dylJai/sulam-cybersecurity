@@ -3,7 +3,6 @@ export type ChallengeId =
   | 'passwords'
   | 'call-scam'
   | 'apk-malware'
-  | 'public-wifi'
   | 'investment-scam'
   | 'social-privacy';
 
@@ -78,7 +77,7 @@ export interface ChallengeMeta {
   learningObjective: string;
   difficulty: 'Asas' | 'Pertengahan' | 'Beginner' | 'Intermediate';
   estimatedTime: string;
-  iconName: 'ShieldAlert' | 'KeyRound' | 'PhoneCall' | 'Download' | 'Wifi' | 'TrendingUp' | 'UserCheck' | 'Shield';
+  iconName: 'ShieldAlert' | 'KeyRound' | 'PhoneCall' | 'Download' | 'TrendingUp' | 'UserCheck' | 'Shield';
   accentColor: string;
   badgeText: string;
   instructions: string[];

@@ -1,6 +1,39 @@
 import { FictionalAccount, LabPasswordOption, SecurityChecklistItem } from '@/types/game';
 
-export const initialAccounts: FictionalAccount[] = [
+export const initialAccountsBm: FictionalAccount[] = [
+  {
+    id: 'acc-email',
+    name: 'Emel Utama Peribadi',
+    serviceType: 'email',
+    identifier: 'ali.kampung@email.com',
+    currentPassword: 'Kampung123!',
+    hasMFA: false,
+    isBreached: false,
+    statusNotes: 'Digunakan untuk set semula kata laluan, notis bank, dan urusan peribadi penting.'
+  },
+  {
+    id: 'acc-social',
+    name: 'Akaun Media Sosial',
+    serviceType: 'social',
+    identifier: '@pak_ali_desa',
+    currentPassword: 'Kampung123!',
+    hasMFA: false,
+    isBreached: false,
+    statusNotes: 'Mengandungi senarai kenalan, gambar keluarga, dan mesej peribadi.'
+  },
+  {
+    id: 'acc-shopping',
+    name: 'Portal Beli-Belah Dalam Talian',
+    serviceType: 'shopping',
+    identifier: 'PasarOnline.my',
+    currentPassword: 'Kampung123!',
+    hasMFA: false,
+    isBreached: false,
+    statusNotes: 'Menyimpan alamat rumah dan maklumat kad debit/kredit yang dipautkan.'
+  }
+];
+
+export const initialAccountsEn: FictionalAccount[] = [
   {
     id: 'acc-email',
     name: 'Primary Personal Email',
@@ -33,7 +66,52 @@ export const initialAccounts: FictionalAccount[] = [
   }
 ];
 
-export const passwordLabOptions: LabPasswordOption[] = [
+export const passwordLabOptionsBm: LabPasswordOption[] = [
+  {
+    id: 'pw-short',
+    label: 'Pilihan A: Pendek & Mudah Diteka',
+    passwordText: 'password123',
+    entropy: 'very-weak',
+    crackTimeEstimate: 'Kurang 1 milisaat',
+    characteristics: [
+      'Perkataan kamus yang sangat biasa',
+      'Nombor berturutan yang mudah diteka (123)',
+      'Antara 10 kata laluan paling kerap bocor di dunia'
+    ],
+    isSafest: false,
+    explanation: 'Kata laluan pendek dan biasa ditebak dalam sekelip mata oleh komputer penggodam menggunakan senarai kamus automatik.'
+  },
+  {
+    id: 'pw-personal',
+    label: 'Pilihan B: Maklumat Peribadi + Simbol',
+    passwordText: 'Kamal1985!',
+    entropy: 'weak',
+    crackTimeEstimate: 'Kurang 5 saat',
+    characteristics: [
+      'Menggunakan nama dan tahun kelahiran',
+      'Mudah dicari daripada profil Facebook atau kad pengenalan',
+      'Menambah tanda seru (!) tidak mencukupi untuk menghalang bot penggodam'
+    ],
+    isSafest: false,
+    explanation: 'Penjenayah siber menggunakan maklumat yang anda kongsikan di media sosial (nama anak, tarikh lahir) untuk menjana kata laluan tekaan.'
+  },
+  {
+    id: 'pw-passphrase',
+    label: 'Pilihan C: Frasa Laluan Panjang 4 Perkataan',
+    passwordText: 'kucing-suka-makan-ikan-kembung',
+    entropy: 'strong',
+    crackTimeEstimate: 'Ribuan Tahun',
+    characteristics: [
+      'Sepanjang 31 aksara (Panjang adalah Kunci Utama!)',
+      '5 perkataan biasa yang digabungkan bersama',
+      'Sangat mudah diingati manusia, tetapi mustahil diteka oleh komputer penjenayah'
+    ],
+    isSafest: true,
+    explanation: 'Panjang kata laluan menggandakan kesukaran matematik tekaan komputer secara eksponen, manakala fikiran anda mudah membayangkan ceritanya.'
+  }
+];
+
+export const passwordLabOptionsEn: LabPasswordOption[] = [
   {
     id: 'pw-short',
     label: 'Option A: Short & Predictable',
@@ -65,12 +143,12 @@ export const passwordLabOptions: LabPasswordOption[] = [
   {
     id: 'pw-passphrase',
     label: 'Option C: Memorable Multi-Word Passphrase',
-    passwordText: 'kucing-suka-makan-ikan-kembung',
+    passwordText: 'bicycle-yellow-morning-mountain',
     entropy: 'strong',
     crackTimeEstimate: 'Thousands of years',
     characteristics: [
       '31 characters long (Length is King!)',
-      '5 random, memorable words chained together',
+      '4 random, memorable words chained together',
       'Effortless for human memory, mathematically impossible for bots to guess'
     ],
     isSafest: true,
@@ -84,7 +162,50 @@ export const upgradedPassphrases: Record<string, string> = {
   'acc-shopping': 'basikal-tua-warna-biru'
 };
 
-export const securityChecklist: SecurityChecklistItem[] = [
+export const securityChecklistBm: SecurityChecklistItem[] = [
+  {
+    id: 'sec-unique',
+    title: 'Gunakan Kata Laluan Berbeza Bagi Setiap Akaun',
+    impactScore: 20,
+    shortDescription: 'Pastikan kebocoran pada satu laman beli-belah tidak menjejaskan emel atau akaun bank anda.',
+    howItProtects: 'Menghalang helah "Pencuri Cuba Password Sama" (Credential Stuffing). Jika satu laman bocor, akaun lain tetap selamat.',
+    isEssential: true
+  },
+  {
+    id: 'sec-2fa',
+    title: 'Aktifkan Pengesahan Dua Faktor (2FA / MFA)',
+    impactScore: 25,
+    shortDescription: 'Wajibkan pengesahan kedua pada telefon pintar anda sebelum boleh log masuk.',
+    howItProtects: 'Bertindak seperti kunci mangga kedua. Walaupun penjenayah tahu kata laluan anda, mereka tetap disekat tanpa telefon fizikal anda.',
+    isEssential: true
+  },
+  {
+    id: 'sec-manager',
+    title: 'Gunakan Pengurus Kata Laluan (Password Manager)',
+    impactScore: 20,
+    shortDescription: 'Biar peti besi digital menjana dan mengingati 30+ kata laluan sukar untuk anda.',
+    howItProtects: 'Menghilangkan tabiat mengulang kata laluan yang sama. Anda hanya perlu mengingati satu frasa laluan utama.',
+    isEssential: true
+  },
+  {
+    id: 'sec-recovery',
+    title: 'Kemaskini Maklumat Pemulihan Akaun',
+    impactScore: 15,
+    shortDescription: 'Pastikan nombor telefon dan emel sandaran adalah yang terkini sekiranya berlaku kecemasan.',
+    howItProtects: 'Membolehkan anda mengambil semula kawalan akaun dengan pantas jika terdapat cubaan pencerobohan.',
+    isEssential: true
+  },
+  {
+    id: 'sec-otp-rule',
+    title: 'Jangan Sesekali Kongsi Kod SMS 6-Digit (OTP / TAC)',
+    impactScore: 20,
+    shortDescription: 'Anggap kod 6-digit seperti kunci rumah peribadi yang tidak boleh dibaca kepada orang lain.',
+    howItProtects: 'Menyekat sindiket yang mendakwa mereka "tersalah hantar kod 6-digit ke nombor anda".',
+    isEssential: true
+  }
+];
+
+export const securityChecklistEn: SecurityChecklistItem[] = [
   {
     id: 'sec-unique',
     title: 'Assign a Unique Password to Every Account',
@@ -126,3 +247,17 @@ export const securityChecklist: SecurityChecklistItem[] = [
     isEssential: true
   }
 ];
+
+// Default exports for backward compatibility
+export const initialAccounts = initialAccountsBm;
+export const passwordLabOptions = passwordLabOptionsBm;
+export const securityChecklist = securityChecklistBm;
+
+export const getAccountWorkshopData = (language: 'bm' | 'en' = 'bm') => {
+  return {
+    initialAccounts: language === 'en' ? initialAccountsEn : initialAccountsBm,
+    passwordLabOptions: language === 'en' ? passwordLabOptionsEn : passwordLabOptionsBm,
+    securityChecklist: language === 'en' ? securityChecklistEn : securityChecklistBm,
+    upgradedPassphrases
+  };
+};

@@ -357,3 +357,365 @@ export const investigationCases: InvestigationCase[] = [
     ]
   }
 ];
+
+export const investigationCasesEn: InvestigationCase[] = [
+  {
+    id: 1,
+    title: 'Case 01 — Postal Parcel Redelivery SMS Scam',
+    scenarioContext: 'You are waiting for an online shopping delivery when you receive this SMS on your smartphone:',
+    format: 'sms',
+    sender: 'Parcel Notice (+6011-8291-0394)',
+    receivedTime: 'Today at 10:42 AM',
+    urgencyBadge: '15-Minute Limit',
+    body: 'Notification: Your parcel delivery failed due to incomplete address. Please pay a RM2.50 fee for immediate redelivery within 15 minutes to avoid cancellation: http://pos-redeliver-pay.cc/track992',
+    clues: [
+      {
+        id: 'c1-notice',
+        targetText: 'Notification: Your parcel delivery',
+        label: 'Standard Opening Notification Phrase',
+        explanation: 'This phrase is standard introductory delivery wording and not a cyber threat indicator.',
+        isSuspicious: false
+      },
+      {
+        id: 'c1-sender',
+        targetText: '+6011-8291-0394',
+        label: 'Unverified Personal Mobile Phone Number',
+        explanation: 'Official courier dispatchers use official shortcodes or registered corporate IDs, never an unverified prepaid mobile number.',
+        isSuspicious: true
+      },
+      {
+        id: 'c1-fee',
+        targetText: 'pay a RM2.50 fee',
+        label: 'Low-Amount Fee Lure (RM2.50)',
+        explanation: 'Scammers deliberately request tiny fees like RM2.50 so victims let their guard down. The real trap is stealing your debit card details and banking password.',
+        isSuspicious: true
+      },
+      {
+        id: 'c1-urgency',
+        targetText: 'within 15 minutes',
+        label: 'Artificial Urgency Pressure (15 Mins)',
+        explanation: 'Setting a 15-minute deadline creates panic so victims act impulsively without verifying.',
+        isSuspicious: true
+      },
+      {
+        id: 'c1-url',
+        targetText: 'http://pos-redeliver-pay.cc/track992',
+        label: 'Unencrypted Fake Phishing Domain (.cc)',
+        explanation: 'This URL uses an unencrypted HTTP link and an unofficial .cc domain rather than the legitimate courier domain (e.g. pos.com.my).',
+        isSuspicious: true
+      }
+    ],
+    actions: [
+      {
+        id: 'a1-safe',
+        title: 'Check parcel status directly in the official courier app or website',
+        description: 'Do not click the SMS link. Open the official courier app or type your tracking number on their authentic portal.',
+        isSafe: true,
+        consequence: 'Safe Action! By independently checking the official portal, you verify if the parcel really exists without exposing financial data.'
+      },
+      {
+        id: 'a1-pay',
+        title: 'Click the link and pay RM2.50 immediately to avoid cancellation',
+        description: 'Follow the link and type your debit card number and CVV on the web form.',
+        isSafe: false,
+        consequence: 'Dangerous Action! The link leads to a cloned payment portal designed to steal your debit card number, CVV code, and online banking credentials.'
+      },
+      {
+        id: 'a1-reply',
+        title: 'Reply to the SMS with your home address and IC number',
+        description: 'Text back to provide your identification details to the sender.',
+        isSafe: false,
+        consequence: 'Dangerous Action! Replying confirms that your mobile number is active and hands over personal identity data for potential identity theft.'
+      }
+    ]
+  },
+  {
+    id: 2,
+    title: 'Case 02 — Fake Bank Account Suspension Warning',
+    scenarioContext: 'An urgent SMS arrives claiming your bank account has been suspended due to unauthorized login attempts:',
+    format: 'sms',
+    sender: 'MY-BANK-ALERT',
+    receivedTime: 'Today at 02:15 PM',
+    urgencyBadge: 'Urgent: Account Frozen',
+    body: 'SECURITY ALERT: Your online banking account has been suspended due to unauthorized access attempts. Please verify your identity and TAC code at: https://mybank-online-security.com/verify within 1 hour.',
+    clues: [
+      {
+        id: 'c2-prefix',
+        targetText: 'SECURITY ALERT:',
+        label: 'Standard Warning Headline',
+        explanation: 'Standard security warning text is common across banking correspondence and is not inherently malicious.',
+        isSuspicious: false
+      },
+      {
+        id: 'c2-threat',
+        targetText: 'has been suspended',
+        label: 'Sudden Account Freeze Threat',
+        explanation: 'Claiming an account is blocked or suspended is a classic scare tactic designed to trigger immediate panic.',
+        isSuspicious: true
+      },
+      {
+        id: 'c2-url',
+        targetText: 'https://mybank-online-security.com/verify',
+        label: 'Unofficial Bank Phishing Domain',
+        explanation: 'Bank Negara Malaysia has banned all banks from sending clickable links via SMS. Real banks never use generic domains like mybank-online-security.com.',
+        isSuspicious: true
+      },
+      {
+        id: 'c2-tac',
+        targetText: 'TAC code',
+        label: 'Solicitation of Confidential TAC / OTP',
+        explanation: 'Banks NEVER ask you to click a link to input a TAC or OTP. Giving away your TAC allows attackers to empty your account.',
+        isSuspicious: true
+      },
+      {
+        id: 'c2-deadline',
+        targetText: 'within 1 hour',
+        label: '1-Hour Coercive Deadline',
+        explanation: 'A short deadline pressures victims into rushing without calling their bank to double-check.',
+        isSuspicious: true
+      }
+    ],
+    actions: [
+      {
+        id: 'a2-safe',
+        title: 'Call the official hotline printed on the back of your physical bank card',
+        description: 'Ignore the SMS link. Call customer care at the back of your ATM card or log in through your bank mobile app.',
+        isSafe: true,
+        consequence: 'Safe Action! Calling the official phone number connects you with real bank officers and confirms that your account was never in danger.'
+      },
+      {
+        id: 'a2-login',
+        title: 'Open link and enter username, password, and TAC to unblock account',
+        description: 'Type your bank account credentials to finish the verification form.',
+        isSafe: false,
+        consequence: 'Dangerous Action! The fake form captures your credentials in real time. Hackers use your password and TAC to drain your savings.'
+      },
+      {
+        id: 'a2-wait',
+        title: 'Forward this SMS to your family WhatsApp group to ask them',
+        description: 'Share the suspicious link with relatives and friends.',
+        isSafe: false,
+        consequence: 'Dangerous Action! Forwarding phishing links puts elderly relatives at risk who may click out of curiosity and fall victim.'
+      }
+    ]
+  },
+  {
+    id: 3,
+    title: 'Case 03 — Fake Government Cash Aid Lucky Draw',
+    scenarioContext: 'You receive an unexpected email claiming you won a government festive cash aid grant:',
+    format: 'email',
+    sender: 'National Special Aid',
+    senderAddress: 'hadiah-bonus@ewallet-claim-2025.com',
+    subject: 'Congratulations! You have been selected for RM1,000 Special Aid',
+    receivedTime: 'Yesterday at 04:30 PM',
+    urgencyBadge: 'Claim within 24 Hours',
+    body: 'Dear Valued Citizen,\n\nYour phone number was drawn as a winner of the RM1,000 Festive Season Cash Grant.\n\nTo transfer funds directly to your Touch \'n Go eWallet, please download the redemption form below and enter your 6-digit eWallet security PIN.',
+    attachmentName: 'Cash_Aid_Redemption_Form.apk',
+    clues: [
+      {
+        id: 'c3-greeting',
+        targetText: 'Dear Valued Citizen',
+        label: 'Generic Polite Salutation',
+        explanation: 'Polite salutations are standard email formatting and not evidence of cybercrime.',
+        isSuspicious: false
+      },
+      {
+        id: 'c3-sender',
+        targetText: 'hadiah-bonus@ewallet-claim-2025.com',
+        label: 'Unofficial Foreign Domain (.com)',
+        explanation: 'Malaysian government agencies operate exclusively on official government domains (.gov.my), never free commercial domains like ewallet-claim-2025.com.',
+        isSuspicious: true
+      },
+      {
+        id: 'c3-prize',
+        targetText: 'RM1,000 Festive Season Cash Grant',
+        label: 'Unsolicited Cash Award Lottery Lure',
+        explanation: 'Real government cash assistance programs are disbursed via official databases (e.g. STR / e-Kasih), never through random lotteries.',
+        isSuspicious: true
+      },
+      {
+        id: 'c3-apk',
+        targetText: 'Cash_Aid_Redemption_Form.apk',
+        label: 'Dangerous Android Installation (.apk) File',
+        explanation: 'Legitimate forms are provided as PDF documents or web portals. An .apk file installs spyware or keyloggers on your Android smartphone.',
+        isSuspicious: true
+      },
+      {
+        id: 'c3-pin',
+        targetText: '6-digit eWallet security PIN',
+        label: 'Demand for Confidential 6-Digit PIN',
+        explanation: 'Your 6-digit PIN is your confidential digital signature. No authentic aid disbursement requires your PIN to credit money into your wallet.',
+        isSuspicious: true
+      }
+    ],
+    actions: [
+      {
+        id: 'a3-safe',
+        title: 'Delete the email and never open the attached .apk file',
+        description: 'Understand that unexpected lotteries are always scams. Verify through official STR or government portals.',
+        isSafe: true,
+        consequence: 'Safe Action! You prevented malicious spyware from installing on your phone and protected your confidential eWallet PIN.'
+      },
+      {
+        id: 'a3-download',
+        title: 'Download and install the APK file to claim the RM1,000 cash',
+        description: 'Enable installation from unknown sources in Android settings.',
+        isSafe: false,
+        consequence: 'Dangerous Action! The APK installs malware that intercepts incoming SMS (including banking OTPs) and hijacks your device.'
+      },
+      {
+        id: 'a3-reply',
+        title: 'Reply to the email asking them to transfer money to your bank account',
+        description: 'Send your bank account details to the email sender.',
+        isSafe: false,
+        consequence: 'Dangerous Action! Replying triggers targeted phishing and social engineering attacks against your specific bank account.'
+      }
+    ]
+  },
+  {
+    id: 4,
+    title: 'Case 04 — Threat of Electricity Disconnection in 2 Hours',
+    scenarioContext: 'An urgent email arrives claiming your home electricity will be disconnected today:',
+    format: 'email',
+    sender: 'Electricity Billing Support',
+    senderAddress: 'billing-support@tenaga-online-alert.xyz',
+    subject: 'FINAL NOTICE: Your power supply will be cut in 2 Hours!',
+    receivedTime: 'Today at 07:15 AM',
+    urgencyBadge: 'Cut in 2 Hours',
+    body: 'Dear customer, your utility account has an overdue balance of RM84.20. Immediate power disconnection will occur within 2 Hours unless payment is verified now at: http://tenaga-quickpay.xyz/bill\n\nPlease enter your online banking credentials and TAC code for instant clearance.',
+    clues: [
+      {
+        id: 'c4-amount',
+        targetText: 'overdue balance of RM84.20',
+        label: 'Standard Account Balance Info',
+        explanation: 'Stating a billing amount is standard utility correspondence and not a threat indicator by itself.',
+        isSuspicious: false
+      },
+      {
+        id: 'c4-domain',
+        targetText: 'billing-support@tenaga-online-alert.xyz',
+        label: 'Cheap Disposable Email Domain (.xyz)',
+        explanation: 'Real national utility providers use official corporate domains (such as tnb.com.my), never cheap throwaway .xyz domains.',
+        isSuspicious: true
+      },
+      {
+        id: 'c4-time',
+        targetText: 'within 2 Hours',
+        label: 'Extreme 2-Hour Disconnection Threat',
+        explanation: 'Utility providers follow statutory notice periods and never cut electricity without written registered warnings and due process.',
+        isSuspicious: true
+      },
+      {
+        id: 'c4-link',
+        targetText: 'http://tenaga-quickpay.xyz/bill',
+        label: 'Unencrypted HTTP External Payment Link',
+        explanation: 'This link leads to an unencrypted phishing portal designed to clone the payment gateway and harvest banking logins.',
+        isSuspicious: true
+      },
+      {
+        id: 'c4-creds',
+        targetText: 'online banking credentials and TAC code',
+        label: 'Request for Banking Passwords & TAC',
+        explanation: 'Paying a utility bill requires only an account number. Utility companies never ask for your online banking password or TAC.',
+        isSuspicious: true
+      }
+    ],
+    actions: [
+      {
+        id: 'a4-safe',
+        title: 'Check bill via the official utility app or pay at a physical post office',
+        description: 'Independently verify your billing status through trusted, authenticated channels.',
+        isSafe: true,
+        consequence: 'Safe Action! Independent verification confirms whether you have overdue bills or if this was an extortion scam.'
+      },
+      {
+        id: 'a4-pay',
+        title: 'Click the link and pay RM84.20 immediately so electricity is not cut',
+        description: 'Follow the link and type your online banking login immediately.',
+        isSafe: false,
+        consequence: 'Dangerous Action! Your username, password, and TAC code are captured by hackers to transfer out all your money.'
+      },
+      {
+        id: 'a4-attach',
+        title: 'Reply to the email attaching your monthly bank statement',
+        description: 'Provide past payment receipts to the unknown email address.',
+        isSafe: false,
+        consequence: 'Dangerous Action! Sending bank statements gives cybercriminals your full legal name, home address, account numbers, and cashflow details.'
+      }
+    ]
+  },
+  {
+    id: 5,
+    title: 'Case 05 — Highway Roadside Emergency from "Family Member"',
+    scenarioContext: 'You receive an urgent SMS from an unknown number displaying your relative\'s profile photo:',
+    format: 'sms',
+    sender: 'Unknown Number (+6019-338-9210)',
+    receivedTime: 'Today at 05:45 PM',
+    urgencyBadge: 'Family Emergency',
+    body: 'Hi Auntie/Uncle, my phone fell into water so I am using a friend\'s phone. My car broke down on the highway roadside and my friend\'s battery is dying. Could you please transfer RM350 to my friend\'s workshop account: Maybank 1140-2938-1209 right now? I will repay you tonight.',
+    clues: [
+      {
+        id: 'c5-greeting',
+        targetText: 'Hi Auntie/Uncle',
+        label: 'Warm Everyday Greeting',
+        explanation: 'Warm everyday greetings are standard community dialogue and not a cyber threat by themselves.',
+        isSuspicious: false
+      },
+      {
+        id: 'c5-number',
+        targetText: '+6019-338-9210',
+        label: 'Unknown Number Claiming Borrowed Phone',
+        explanation: 'Impostors frequently claim "my phone fell into water or broke" to explain why they are texting from an unfamiliar number.',
+        isSuspicious: true
+      },
+      {
+        id: 'c5-account',
+        targetText: 'Maybank 1140-2938-1209',
+        label: 'Money Transfer Request to 3rd-Party Account',
+        explanation: 'Syndicates use third-party mule accounts to siphon money instantly before it can be traced or reversed.',
+        isSuspicious: true
+      },
+      {
+        id: 'c5-panic',
+        targetText: 'friend\'s battery is dying',
+        label: 'Battery Dying Pressure Tactic',
+        explanation: 'Claiming the battery is about to die prevents you from calling them to hear your real relative\'s voice.',
+        isSuspicious: true
+      },
+      {
+        id: 'c5-repay',
+        targetText: 'I will repay you tonight',
+        label: 'Standard Repayment Promise',
+        explanation: 'Promises to repay are standard conversational courtesy and not technical threat indicators.',
+        isSuspicious: false
+      }
+    ],
+    actions: [
+      {
+        id: 'a5-safe',
+        title: 'Call your relative directly on their usual number or call other family members',
+        description: 'Stay calm and confirm through a trusted channel before transferring any funds.',
+        isSafe: true,
+        consequence: 'Safe Action! Calling your relative\'s usual number or contacting their parents proves they are safe at home and their profile photo was impersonated.'
+      },
+      {
+        id: 'a5-transfer',
+        title: 'Transfer RM350 immediately out of concern for family emergency',
+        description: 'Send funds to the third-party bank account right away.',
+        isSafe: false,
+        consequence: 'Dangerous Action! Your money is immediately withdrawn by scammers through a mule account, and your relative receives nothing.'
+      },
+      {
+        id: 'a5-partial',
+        title: 'Transfer RM50 first as a test to see the account owner\'s name',
+        description: 'Send a small amount to verify the account recipient.',
+        isSafe: false,
+        consequence: 'Dangerous Action! Transferring any money incurs an immediate financial loss and signals to scammers that you are susceptible to manipulation.'
+      }
+    ]
+  }
+];
+
+export const getInvestigationCases = (language: 'bm' | 'en' = 'bm'): InvestigationCase[] => {
+  return language === 'en' ? investigationCasesEn : investigationCases;
+};

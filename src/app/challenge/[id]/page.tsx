@@ -5,7 +5,6 @@ import { InvestigationGame } from '@/components/game/InvestigationGame';
 import { AccountWorkshopGame } from '@/components/game/AccountWorkshopGame';
 import { CallScamGame } from '@/components/game/CallScamGame';
 import { ApkMalwareGame } from '@/components/game/ApkMalwareGame';
-import { PublicWifiGame } from '@/components/game/PublicWifiGame';
 import { InvestmentScamGame } from '@/components/game/InvestmentScamGame';
 import { SocialPrivacyGame } from '@/components/game/SocialPrivacyGame';
 import { ChallengeEngine } from '@/components/ChallengeEngine';
@@ -50,8 +49,6 @@ export default async function ChallengePage({ params }: ChallengePageProps) {
         <CallScamGame />
       ) : id === 'apk-malware' ? (
         <ApkMalwareGame />
-      ) : id === 'public-wifi' ? (
-        <PublicWifiGame />
       ) : id === 'investment-scam' ? (
         <InvestmentScamGame />
       ) : id === 'social-privacy' ? (

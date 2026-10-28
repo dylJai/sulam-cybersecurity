@@ -2,14 +2,14 @@ import { ChallengeMeta, ChallengeQuestion } from '@/types/challenge';
 
 export const passwordMeta: ChallengeMeta = {
   id: 'passwords',
-  title: 'Pelindung Kata Laluan',
+  title: 'Misi 02: Pertahanan Kata Laluan & Kunci Akaun',
   shortDescription: 'Kuasai cara membina frasa laluan kukuh yang sukar dipecahkan, hentikan pengambilalihan akaun, dan fahami 2FA serta pengurus kata laluan.',
   learningObjective: 'Memahami bagaimana penggodam memecahkan kata laluan yang lemah, mengapa panjang frasa laluan mengatasi kerumitan simbol, dan bagaimana Pengesahan Dua Faktor (2FA) melindungi akaun peribadi anda.',
   difficulty: 'Asas',
   estimatedTime: '5-7 Minit',
   iconName: 'KeyRound',
   accentColor: 'from-emerald-500 to-cyan-500',
-  badgeText: 'Cabaran 02',
+  badgeText: 'Misi 02',
   instructions: [
     'Bincangkan tabiat kata laluan, amaran keselamatan, dan kesilapan lazim bersama pasukan.',
     'Uji dan bandingkan ketahanan kata laluan yang berbeza secara interaktif.',
@@ -56,7 +56,7 @@ export const passwordQuestions: ChallengeQuestion[] = [
         isCorrect: false
       }
     ],
-    explanation: 'Serangan ini dinamakan "Credential Stuffing". Penggodam menggunakan perisian automatik untuk menguji gabungan emel dan kata laluan yang bocor pada ratusan laman web lain. Jika anda mengulang kata laluan yang sama, kebocoran pada laman kecil yang kurang selamat boleh mendedahkan akaun bank dan emel utama anda.',
+    explanation: 'Serangan ini dinamakan "Credential Stuffing (Pencuri Cuba Password Sama Di Merata Tempat)". Penggodam menggunakan perisian automatik untuk menguji gabungan emel dan kata laluan yang bocor pada ratusan laman web lain. Jika anda mengulang kata laluan yang sama, kebocoran pada laman kecil yang kurang selamat boleh mendedahkan akaun bank dan emel utama anda.',
     points: 10
   },
   {
@@ -226,3 +226,4 @@ export const passwordQuestions: ChallengeQuestion[] = [
     points: 10
   }
 ];
+

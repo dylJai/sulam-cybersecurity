@@ -2,14 +2,14 @@ import { ChallengeMeta, ChallengeQuestion } from '@/types/challenge';
 
 export const phishingMeta: ChallengeMeta = {
   id: 'phishing',
-  title: 'Pengesanan Phishing',
+  title: 'Misi 01: Pancingan Tipu & Jerat Mesej Palsu',
   shortDescription: 'Pelajari cara mengesan SMS mencurigakan, amaran bank palsu, dan emel tipu helah sebelum terjerumus ke dalam perangkap scammer.',
   learningObjective: 'Mengenal pasti tanda-tanda amaran dalam mesej digital—seperti ugutan masa singkat, domain pengirim palsu, dan cubaan meminta kod rahsia—sebelum menekan sebarang pautan atau memindahkan wang.',
   difficulty: 'Asas',
   estimatedTime: '5-7 Minit',
   iconName: 'ShieldAlert',
   accentColor: 'from-amber-500 to-rose-500',
-  badgeText: 'Cabaran 01',
+  badgeText: 'Misi 01',
   instructions: [
     'Baca setiap senario dan periksa nama pengirim, teks mesej, serta pautan dengan teliti.',
     'Bincang bersama rakan sepasukan di stesen ini tentang bahagian yang mencurigakan.',
@@ -228,3 +228,4 @@ export const phishingQuestions: ChallengeQuestion[] = [
     points: 10
   }
 ];
+

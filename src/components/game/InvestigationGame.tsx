@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
-import { investigationCases } from '@/data/investigation-cases';
-import { LinkScannerModal } from '@/components/game/LinkScannerModal';
+import { getInvestigationCases } from '@/data/investigation-cases';
+import { LinkScannerModal, LinkScanData } from '@/components/game/LinkScannerModal';
 import { BadgesDrawer, BadgeItem } from '@/components/game/BadgesDrawer';
 import { saveChallengeResult } from '@/lib/storage';
+import { useLanguage } from '@/context/LanguageContext';
 import {
   ArrowRight,
   RotateCcw,
@@ -16,24 +17,13 @@ import {
   Globe,
   Paperclip,
   CheckCircle2,
-  XCircle,
-  HelpCircle,
   Award
 } from 'lucide-react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 
-interface LinkScanData {
-  url: string;
-  protocol: 'http' | 'https';
-  domain: string;
-  country: string;
-  riskScore: number;
-  verdict: string;
-  redFlags: string[];
-}
-
 export const InvestigationGame: React.FC = () => {
+  const { language, t } = useLanguage();
   const [stage, setStage] = useState<'briefing' | 'investigating' | 'results'>('briefing');
   const [currentCaseIndex, setCurrentCaseIndex] = useState<number>(0);
 
@@ -55,36 +45,38 @@ export const InvestigationGame: React.FC = () => {
   const [totalScore, setTotalScore] = useState<number>(0);
   const [scannerUsed, setScannerUsed] = useState<boolean>(false);
 
-  const currentCase = investigationCases[currentCaseIndex];
+  const cases = getInvestigationCases(language);
+  const currentCase = cases[currentCaseIndex] || cases[0];
+  const isEn = language === 'en';
 
   // Dynamic Badges
   const badges: BadgeItem[] = [
     {
       id: 'b-eagle',
-      name: 'Mata Helang',
+      name: isEn ? 'Eagle Eye' : 'Mata Helang',
       icon: '🦅',
-      description: 'Mengesan lebih 8 petunjuk penipuan',
+      description: isEn ? 'Spotted more than 8 phishing indicators' : 'Mengesan lebih 8 petunjuk penipuan',
       isUnlocked: totalCluesFound >= 8
     },
     {
       id: 'b-xray',
-      name: 'Pakar X-Ray',
+      name: isEn ? 'X-Ray Specialist' : 'Pakar X-Ray',
       icon: '🔬',
-      description: 'Menggunakan pengimbas pautan diagnostik',
+      description: isEn ? 'Used diagnostic link scanner' : 'Menggunakan pengimbas pautan diagnostik',
       isUnlocked: scannerUsed
     },
     {
       id: 'b-shield',
-      name: 'Penyekat Penipuan',
+      name: isEn ? 'Phish Blocker' : 'Penyekat Penipuan',
       icon: '🛑',
-      description: 'Membuat 4 atau lebih keputusan selamat',
+      description: isEn ? 'Made 4 or more safe decisions' : 'Membuat 4 atau lebih keputusan selamat',
       isUnlocked: correctActionDecisions >= 4
     },
     {
       id: 'b-hero',
-      name: 'Wira Penyiasat',
+      name: isEn ? 'Investigation Hero' : 'Wira Penyiasat',
       icon: '🛡️',
-      description: 'Menyelesaikan semua 5 kes siasatan',
+      description: isEn ? 'Completed all 5 phishing cases' : 'Menyelesaikan semua 5 kes siasatan',
       isUnlocked: stage === 'results'
     }
   ];
@@ -124,14 +116,22 @@ export const InvestigationGame: React.FC = () => {
       url,
       protocol: url.startsWith('https') ? 'https' : 'http',
       domain: isPos ? 'pos-redeliver-pay.cc' : isTenaga ? 'tenaga-quickpay.xyz' : 'ewallet-claim-2025.com',
-      country: isPos ? 'Kepulauan Cocos (.cc)' : isTenaga ? 'Pelayan Luar Pesisir (.xyz)' : 'Pelayan Tidak Diketahui',
+      country: isPos ? (isEn ? 'Cocos Islands (.cc)' : 'Kepulauan Cocos (.cc)') : isTenaga ? (isEn ? 'Offshore Server (.xyz)' : 'Pelayan Luar Pesisir (.xyz)') : (isEn ? 'Unknown Server' : 'Pelayan Tidak Diketahui'),
       riskScore: 98,
-      verdict: 'Laman web palsu yang direka khas untuk mencuri kad debit & maklumat perbankan internet mangsa.',
-      redFlags: [
-        'Domain tidak sepadan dengan agensi atau syarikat rasmi di Malaysia',
-        'Penyulitan SSL tidak sah atau menggunakan sambungan HTTP tidak selamat',
-        'Laman web baru didaftarkan kurang daripada 14 hari yang lalu'
-      ]
+      verdict: isEn
+        ? 'Fraudulent cloned website specifically designed to harvest victim debit card and online banking credentials.'
+        : 'Laman web palsu yang direka khas untuk mencuri kad debit & maklumat perbankan internet mangsa.',
+      redFlags: isEn
+        ? [
+            'Domain does not match legitimate agencies or registered companies in Malaysia',
+            'Invalid or missing SSL security certificate (insecure plain HTTP connection)',
+            'Domain was registered less than 14 days ago by anonymous registrant'
+          ]
+        : [
+            'Domain tidak sepadan dengan agensi atau syarikat rasmi di Malaysia',
+            'Penyulitan SSL tidak sah atau menggunakan sambungan HTTP tidak selamat',
+            'Laman web baru didaftarkan kurang daripada 14 hari yang lalu'
+          ]
     });
   };
 
@@ -185,7 +185,7 @@ export const InvestigationGame: React.FC = () => {
   };
 
   const handleNextCase = () => {
-    if (currentCaseIndex + 1 < investigationCases.length) {
+    if (currentCaseIndex + 1 < cases.length) {
       setCurrentCaseIndex(prev => prev + 1);
       resetCaseState();
     } else {
@@ -211,7 +211,7 @@ export const InvestigationGame: React.FC = () => {
             href="/"
             className="inline-flex items-center gap-2 font-mono text-xs sm:text-sm text-[#7C7E77] hover:text-[#171914] transition-colors"
           >
-            ← [KEMBALI KE MENU UTAMA]
+            {t('nav.backToMenu')}
           </Link>
         </div>
 
@@ -221,29 +221,40 @@ export const InvestigationGame: React.FC = () => {
             <div className="lg:col-span-7 space-y-5">
               <div className="flex items-center gap-2 font-mono text-xs">
                 <span className="font-bold text-[#171914] bg-[#D9FA62] px-2.5 py-1 rounded-xs border border-[#171914]/20">
-                  MISI 01
+                  {isEn ? 'MISSION 01' : 'MISI 01'}
                 </span>
                 <span className="text-[#7C7E77] uppercase font-bold">
-                  MASA: 5-7 MINIT • MAKSIMUM: 50 MATA
+                  {isEn ? 'TIME: 5-7 MINS • MAX: 50 POINTS' : 'MASA: 5-7 MINIT • MAKSIMUM: 50 MATA'}
                 </span>
               </div>
 
               <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#171914] tracking-tight">
-                Penyiasatan Mesej Phishing
+                {t('m1.title')}
               </h1>
 
               <p className="text-base sm:text-lg text-[#575953] leading-relaxed">
-                Mesej mencurigakan mula membanjiri peti masuk telefon dan emel komuniti kita. Tugas pasukan anda adalah menyiasat bukti pada mesej, mengesan tanda bahaya, dan memutuskan tindakan paling selamat.
+                {isEn
+                  ? 'Suspicious messages are flooding the SMS inboxes and emails of our community. Your team’s duty is to investigate the evidence, detect red flags, and make the safest response decisions.'
+                  : 'Mesej mencurigakan mula membanjiri peti masuk telefon dan emel komuniti kita. Tugas pasukan anda adalah menyiasat bukti pada mesej, mengesan tanda bahaya, dan memutuskan tindakan paling selamat.'}
               </p>
 
               <div className="p-4 bg-[#F5F4EE] border border-[#171914]/15 rounded-sm space-y-2 text-xs sm:text-sm">
                 <span className="font-mono font-bold uppercase text-[#171914] block">
-                  Panduan Menjalankan Misi:
+                  {isEn ? 'How to Run This Mission:' : 'Panduan Menjalankan Misi:'}
                 </span>
                 <div className="space-y-1.5 text-[#575953]">
-                  <div><strong>1. Lihat Sebelah Kiri:</strong> Mesej atau SMS yang disiasat akan sentiasa dipaparkan.</div>
-                  <div><strong>2. Jawab di Sebelah Kanan:</strong> Tandakan petunjuk meragukan dan pilih tindakan selamat.</div>
-                  <div><strong>3. Bekerjasama dalam Pasukan:</strong> Bincang bersama sebelum menekan butang sahkan!</div>
+                  <div>
+                    <strong>{isEn ? '1. Look at Left Column:' : '1. Lihat Sebelah Kiri:'}</strong>{' '}
+                    {isEn ? 'The simulated message or SMS under investigation is always displayed.' : 'Mesej atau SMS yang disiasat akan sentiasa dipaparkan.'}
+                  </div>
+                  <div>
+                    <strong>{isEn ? '2. Answer on Right Column:' : '2. Jawab di Sebelah Kanan:'}</strong>{' '}
+                    {isEn ? 'Mark suspicious clues and select the safest protective action.' : 'Tandakan petunjuk meragukan dan pilih tindakan selamat.'}
+                  </div>
+                  <div>
+                    <strong>{isEn ? '3. Collaborate in Groups:' : '3. Bekerjasama dalam Pasukan:'}</strong>{' '}
+                    {isEn ? 'Discuss with your team before clicking the confirm button!' : 'Bincang bersama sebelum menekan butang sahkan!'}
+                  </div>
                 </div>
               </div>
             </div>
@@ -251,24 +262,32 @@ export const InvestigationGame: React.FC = () => {
             {/* Right side: Tools & Start CTA */}
             <div className="lg:col-span-5 bg-[#FAF9F5] border-2 border-[#171914]/20 rounded-sm p-6 space-y-5">
               <span className="font-mono text-xs font-bold uppercase tracking-wider text-[#171914] block pb-2 border-b border-[#171914]/15">
-                Alat Siasatan Stesen:
+                {isEn ? 'Station Investigation Tools:' : 'Alat Siasatan Stesen:'}
               </span>
 
               <div className="space-y-3 text-xs sm:text-sm text-[#575953]">
                 <div className="p-3 bg-white border border-[#171914]/15 rounded-xs space-y-1">
                   <div className="flex items-center gap-2 font-bold text-[#171914]">
                     <Globe className="w-4 h-4 text-[#171914]" />
-                    <span>Pengimbas Pautan X-Ray</span>
+                    <span>{isEn ? 'Diagnostic X-Ray Link Scanner' : 'Pengimbas Pautan X-Ray'}</span>
                   </div>
-                  <p>Boleh digunakan untuk memeriksa sijil keselamatan dan rekod pendaftaran laman web palsu.</p>
+                  <p>
+                    {isEn
+                      ? 'Inspect SSL certificates, threat ratings, and suspicious registration records of fake domains.'
+                      : 'Boleh digunakan untuk memeriksa sijil keselamatan dan rekod pendaftaran laman web palsu.'}
+                  </p>
                 </div>
 
                 <div className="p-3 bg-white border border-[#171914]/15 rounded-xs space-y-1">
                   <div className="flex items-center gap-2 font-bold text-[#171914]">
                     <Award className="w-4 h-4 text-[#171914]" />
-                    <span>Lencana Siasatan Pasukan</span>
+                    <span>{isEn ? 'Team Investigation Badges' : 'Lencana Siasatan Pasukan'}</span>
                   </div>
-                  <p>Kumpul 4 lencana khas termasuk Mata Helang & Penyekat Penipuan sepanjang siasatan.</p>
+                  <p>
+                    {isEn
+                      ? 'Unlock 4 special badges including Eagle Eye & Phish Blocker throughout your inquiry.'
+                      : 'Kumpul 4 lencana khas termasuk Mata Helang & Penyekat Penipuan sepanjang siasatan.'}
+                  </p>
                 </div>
               </div>
 
@@ -277,7 +296,7 @@ export const InvestigationGame: React.FC = () => {
                   onClick={handleStartMission}
                   className="w-full py-4 px-6 min-h-[54px] rounded-sm font-mono font-bold text-sm uppercase tracking-wider text-[#171914] bg-[#D9FA62] hover:bg-[#CCF050] border-2 border-[#171914] transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-xs"
                 >
-                  <span>Mulakan Misi Siasatan Pasukan</span>
+                  <span>{isEn ? 'Start Team Mission' : 'Mulakan Misi Siasatan Pasukan'}</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
@@ -302,38 +321,48 @@ export const InvestigationGame: React.FC = () => {
             <div className="lg:col-span-6 space-y-6">
               <div className="flex items-center justify-between pb-3 border-b border-[#171914]/15 font-mono text-xs">
                 <span className="font-bold uppercase tracking-wider text-[#171914] bg-[#D9FA62] px-2.5 py-1 rounded-xs border border-[#171914]/20">
-                  LAPORAN SIASATAN SELESAI
+                  {isEn ? 'INVESTIGATION REPORT COMPLETE' : 'LAPORAN SIASATAN SELESAI'}
                 </span>
                 <span className="text-[#7C7E77]">MISI 01 / PHISHING</span>
               </div>
 
               <div>
                 <h2 className="text-3xl sm:text-4xl font-black text-[#171914] tracking-tight">
-                  Siasatan Berjaya Dilengkapkan!
+                  {isEn ? 'Investigation Successfully Completed!' : 'Siasatan Berjaya Dilengkapkan!'}
                 </h2>
                 <p className="text-sm sm:text-base text-[#575953] mt-2 leading-relaxed">
-                  Pasukan anda telah selesai menyiasat kesemua 5 senario mesej mencurigakan, menggunakan alat diagnostik X-Ray, dan berjaya melindungi maklumat peribadi.
+                  {isEn
+                    ? 'Your team completed investigating all 5 suspicious message scenarios, used the X-Ray scanner, and protected sensitive data.'
+                    : 'Pasukan anda telah selesai menyiasat kesemua 5 senario mesej mencurigakan, menggunakan alat diagnostik X-Ray, dan berjaya melindungi maklumat peribadi.'}
                 </p>
               </div>
 
               {/* Stats Grid */}
               <div className="grid grid-cols-2 gap-3 border-y border-[#171914]/15 py-4">
                 <div className="p-3 bg-[#FAF9F5] border border-[#171914]/10 rounded-xs">
-                  <span className="font-mono text-[10px] uppercase text-[#7C7E77] block font-bold">Kes Disiasat</span>
+                  <span className="font-mono text-[10px] uppercase text-[#7C7E77] block font-bold">
+                    {t('results.scenariosTested')}
+                  </span>
                   <span className="font-mono text-2xl font-black text-[#171914] mt-1 block">5 / 5</span>
                 </div>
                 <div className="p-3 bg-[#FAF9F5] border border-[#171914]/10 rounded-xs">
-                  <span className="font-mono text-[10px] uppercase text-[#7C7E77] block font-bold">Petunjuk Ditemui</span>
+                  <span className="font-mono text-[10px] uppercase text-[#7C7E77] block font-bold">
+                    {t('results.cluesFound')}
+                  </span>
                   <span className="font-mono text-2xl font-black text-[#171914] mt-1 block">
                     {totalCluesFound} <span className="text-xs font-normal text-[#82847C]">/ {totalPossibleClues}</span>
                   </span>
                 </div>
                 <div className="p-3 bg-[#FAF9F5] border border-[#171914]/10 rounded-xs">
-                  <span className="font-mono text-[10px] uppercase text-[#7C7E77] block font-bold">Keputusan Selamat</span>
+                  <span className="font-mono text-[10px] uppercase text-[#7C7E77] block font-bold">
+                    {t('results.safeDecisions')}
+                  </span>
                   <span className="font-mono text-2xl font-black text-[#171914] mt-1 block">{correctActionDecisions} / 5</span>
                 </div>
                 <div className="p-3 bg-[#E7F3EB] border border-[#1E4D2B]/20 rounded-xs">
-                  <span className="font-mono text-[10px] uppercase text-[#123E23] block font-bold">Jumlah Mata</span>
+                  <span className="font-mono text-[10px] uppercase text-[#123E23] block font-bold">
+                    {t('results.totalScore')}
+                  </span>
                   <span className="font-mono text-2xl font-black text-[#123E23] mt-1 block">
                     {totalScore} <span className="text-xs font-normal text-[#123E23]/70">/ 50</span>
                   </span>
@@ -344,7 +373,7 @@ export const InvestigationGame: React.FC = () => {
             {/* Right: Key Lessons & Navigation Actions */}
             <div className="lg:col-span-6 bg-[#FAF9F5] border-2 border-[#171914]/20 rounded-sm p-6 space-y-6">
               <span className="font-mono text-xs font-bold uppercase tracking-wider text-[#171914] block pb-2 border-b border-[#171914]/15">
-                Prinsip Pertahanan Komuniti:
+                {isEn ? 'Community Defense Principles:' : 'Prinsip Pertahanan Komuniti:'}
               </span>
 
               <ul className="space-y-3 text-xs sm:text-sm text-[#575953]">
@@ -352,19 +381,31 @@ export const InvestigationGame: React.FC = () => {
                   <span className="w-5 h-5 rounded-xs bg-[#171914] text-[#D9FA62] flex items-center justify-center shrink-0 mt-0.5">
                     <Check className="w-3.5 h-3.5" />
                   </span>
-                  <span>Jangan tekan pautan bayaran caj kecil atau penukaran jadual melalui SMS rawak.</span>
+                  <span>
+                    {isEn
+                      ? 'Never click links asking for small fee payments or parcel delivery rescheduling via random SMS.'
+                      : 'Jangan tekan pautan bayaran caj kecil atau penukaran jadual melalui SMS rawak.'}
+                  </span>
                 </li>
                 <li className="flex items-start gap-2.5">
                   <span className="w-5 h-5 rounded-xs bg-[#171914] text-[#D9FA62] flex items-center justify-center shrink-0 mt-0.5">
                     <Check className="w-3.5 h-3.5" />
                   </span>
-                  <span>Bank di Malaysia tidak lagi menghantar pautan pengesahan TAC atau kata laluan melalui SMS.</span>
+                  <span>
+                    {isEn
+                      ? 'Banks in Malaysia never send TAC confirmation links or login prompts via SMS.'
+                      : 'Bank di Malaysia tidak lagi menghantar pautan pengesahan TAC atau kata laluan melalui SMS.'}
+                  </span>
                 </li>
                 <li className="flex items-start gap-2.5">
                   <span className="w-5 h-5 rounded-xs bg-[#171914] text-[#D9FA62] flex items-center justify-center shrink-0 mt-0.5">
                     <Check className="w-3.5 h-3.5" />
                   </span>
-                  <span>Jangan sesekali pasang fail aplikasi (.apk) daripada emel tuntutan wang tunai atau hadiah.</span>
+                  <span>
+                    {isEn
+                      ? 'Never install application (.apk) files from prize-winning or cash aid grant emails.'
+                      : 'Jangan sesekali pasang fail aplikasi (.apk) daripada emel tuntutan wang tunai atau hadiah.'}
+                  </span>
                 </li>
               </ul>
 
@@ -374,7 +415,7 @@ export const InvestigationGame: React.FC = () => {
                   className="flex-1 flex items-center justify-center gap-2 px-5 py-3.5 min-h-[48px] rounded-sm font-mono font-bold text-xs uppercase tracking-wider text-[#171914] bg-white hover:bg-[#ECEAE2] border-2 border-[#171914]/20 transition-colors cursor-pointer"
                 >
                   <RotateCcw className="w-4 h-4" />
-                  <span>Siasat Semula</span>
+                  <span>{t('game.retry')}</span>
                 </button>
 
                 <Link
@@ -382,14 +423,14 @@ export const InvestigationGame: React.FC = () => {
                   className="flex-1 flex items-center justify-center gap-2 px-5 py-3.5 min-h-[48px] rounded-sm font-mono font-bold text-xs uppercase tracking-wider text-[#171914] bg-white hover:bg-[#ECEAE2] border-2 border-[#171914]/20 transition-colors cursor-pointer"
                 >
                   <Home className="w-4 h-4" />
-                  <span>Menu Utama</span>
+                  <span>{t('game.mainMenu')}</span>
                 </Link>
 
                 <Link
                   href="/challenge/passwords"
                   className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 min-h-[48px] rounded-sm font-mono font-bold text-xs uppercase tracking-wider text-[#171914] bg-[#D9FA62] hover:bg-[#CCF050] border-2 border-[#171914] transition-colors shadow-xs text-center"
                 >
-                  <span>Misi 02: Kata Laluan</span>
+                  <span>{isEn ? 'Mission 02: Passwords' : 'Misi 02: Kata Laluan'}</span>
                   <ArrowRight className="w-4 h-4" />
                 </Link>
               </div>
@@ -403,10 +444,6 @@ export const InvestigationGame: React.FC = () => {
   /* =========================================================================
      STAGE 2: INTERACTIVE INVESTIGATION (FULL PAGE SPLIT VIEW)
      ========================================================================= */
-  const validCluesFoundInCurrentCase = selectedClueIds.filter(id =>
-    currentCase.clues.some(c => c.id === id && c.isSuspicious)
-  ).length;
-
   const activeAction = currentCase.actions.find(a => a.id === selectedActionId);
 
   return (
@@ -419,11 +456,11 @@ export const InvestigationGame: React.FC = () => {
               href="/"
               className="text-[#7C7E77] hover:text-[#171914] font-bold transition-colors"
             >
-              ← [MENU UTAMA]
+              {t('game.backMenu')}
             </Link>
             <span className="text-[#171914]/20">|</span>
             <span className="font-bold text-[#171914] bg-[#D9FA62] px-2.5 py-0.5 rounded-xs border border-[#171914]/20">
-              KES 0{currentCaseIndex + 1} / 0{investigationCases.length}
+              {t('game.case')} 0{currentCaseIndex + 1} / 0{cases.length}
             </span>
             <span className="font-bold text-[#171914] text-xs sm:text-sm">
               {currentCase.title}
@@ -434,11 +471,11 @@ export const InvestigationGame: React.FC = () => {
             <button
               type="button"
               onClick={handleStartMission}
-              title="Mulakan Semula Misi Siasatan Dari Kes 1"
+              title={t('game.resetFromStart')}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-[#FAF0E6] border border-[#8A241C]/30 text-[#8A241C] hover:text-[#8A241C] rounded-xs cursor-pointer font-mono font-bold text-xs transition-colors min-h-[36px] shadow-xs"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              <span>Set Semula</span>
+              <span>{t('game.resetFromStart')}</span>
             </button>
 
             <button
@@ -447,26 +484,26 @@ export const InvestigationGame: React.FC = () => {
               className="flex items-center gap-1.5 px-3 py-1.5 bg-[#F5F4EE] hover:bg-[#ECEAE2] border border-[#171914]/20 rounded-xs cursor-pointer font-mono font-bold text-xs text-[#171914] min-h-[36px]"
             >
               <Award className="w-3.5 h-3.5 text-[#171914]" />
-              <span>Lencana ({badges.filter(b => b.isUnlocked).length}/{badges.length})</span>
+              <span>{t('game.badges')} ({badges.filter(b => b.isUnlocked).length}/{badges.length})</span>
             </button>
 
             <div className="font-bold text-[#171914] bg-white px-3 py-1.5 border border-[#171914]/20 rounded-xs min-h-[36px] flex items-center">
-              MATA: <span className="bg-[#D9FA62] px-2 py-0.5 border border-[#171914]/20 ml-1">{totalScore} / 50</span>
+              {t('game.score')} <span className="bg-[#D9FA62] px-2 py-0.5 border border-[#171914]/20 ml-1">{totalScore} / 50</span>
             </div>
           </div>
         </div>
 
         {/* Progress track */}
         <div className="pt-3 flex items-center gap-3 font-mono text-xs text-[#7C7E77]">
-          <span>Kemajuan:</span>
+          <span>{t('game.missionProgress')}</span>
           <div className="flex-1 h-2 bg-[#ECEAE2] rounded-xs overflow-hidden border border-[#171914]/10">
             <div
               className="h-full bg-[#171914] transition-all duration-300"
-              style={{ width: `${((currentCaseIndex + 1) / investigationCases.length) * 100}%` }}
+              style={{ width: `${((currentCaseIndex + 1) / cases.length) * 100}%` }}
             />
           </div>
           <span className="font-bold text-[#171914]">
-            {Math.round(((currentCaseIndex + 1) / investigationCases.length) * 100)}%
+            {Math.round(((currentCaseIndex + 1) / cases.length) * 100)}%
           </span>
         </div>
       </div>
@@ -478,23 +515,22 @@ export const InvestigationGame: React.FC = () => {
         </div>
       )}
 
-      {/* Main Two-Column Split Screen (Laptop Native) */}
+      {/* Main Two-Column Split Screen */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
         {/* ===================================================================
             LEFT COLUMN: THE QUESTION & EVIDENCE TO INVESTIGATE (Cols 1-7)
             =================================================================== */}
         <div className="lg:col-span-7 flex flex-col space-y-4">
           <div className="rounded-sm border-2 border-[#171914] bg-white p-5 sm:p-6 shadow-xs flex-1 flex flex-col justify-between space-y-4">
-            {/* Header of Evidence Card */}
             <div>
               <div className="flex flex-wrap items-center justify-between gap-2 pb-3 mb-3 border-b border-[#171914]/15 font-mono text-xs">
                 <span className="font-bold text-[#171914] uppercase tracking-wider flex items-center gap-1.5">
                   <Search className="w-4 h-4 text-[#171914]" />
-                  <span>1. Teliti Bahan Bukti (Mesej)</span>
+                  <span>{isEn ? '1. Inspect Evidence (Message)' : '1. Teliti Bahan Bukti (Mesej)'}</span>
                 </span>
                 <div className="flex items-center gap-2">
                   <span className="bg-[#ECEAE2] px-2 py-0.5 rounded-xs font-bold uppercase text-[11px] text-[#575953]">
-                    {currentCase.format === 'email' ? 'Peti Masuk Emel' : 'SMS Telefon'}
+                    {currentCase.format === 'email' ? (isEn ? 'Email Inbox' : 'Peti Masuk Emel') : (isEn ? 'Phone SMS' : 'SMS Telefon')}
                   </span>
                   {currentCase.urgencyBadge && (
                     <span className="bg-[#FAF0E6] text-[#8A241C] border border-[#8A241C]/30 px-2 py-0.5 rounded-xs font-bold uppercase text-[11px]">
@@ -506,7 +542,7 @@ export const InvestigationGame: React.FC = () => {
 
               {/* Scenario Context */}
               <p className="text-xs sm:text-sm text-[#575953] leading-relaxed mb-4">
-                <strong>Senario:</strong> {currentCase.scenarioContext}
+                <strong>{isEn ? 'Scenario:' : 'Senario:'}</strong> {currentCase.scenarioContext}
               </p>
 
               {/* Prominent Link X-Ray Scanner Action if available */}
@@ -515,7 +551,7 @@ export const InvestigationGame: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <Globe className="w-4 h-4 text-[#D9FA62] shrink-0" />
                     <span className="font-mono text-xs text-white">
-                      Pautan Dikesan: <code className="text-[#D9FA62] font-bold">{linkClue.targetText}</code>
+                      {isEn ? 'Link Detected:' : 'Pautan Dikesan:'} <code className="text-[#D9FA62] font-bold">{linkClue.targetText}</code>
                     </span>
                   </div>
                   <button
@@ -523,33 +559,33 @@ export const InvestigationGame: React.FC = () => {
                     onClick={() => handleOpenScanner(linkClue.targetText)}
                     className="px-4 py-2 bg-[#D9FA62] text-[#171914] hover:bg-[#CCF050] font-mono font-bold text-xs uppercase rounded-xs cursor-pointer min-h-[38px] flex items-center justify-center gap-1.5 shrink-0"
                   >
-                    <span>Imbas Pautan X-Ray</span>
+                    <span>{isEn ? 'Scan Link with X-Ray' : 'Imbas Pautan X-Ray'}</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
               )}
 
-              {/* Realistic Message Simulation Window */}
+              {/* Message Simulation */}
               {currentCase.format === 'email' ? (
                 /* EMAIL INTERFACE */
                 <div className="rounded-sm border-2 border-[#171914]/25 bg-white overflow-hidden shadow-xs">
-                  {/* Email Chrome Header */}
                   <div className="bg-[#ECEAE2] px-4 py-2.5 border-b border-[#171914]/15 flex items-center justify-between font-mono text-xs text-[#575953]">
                     <div className="flex items-center gap-1.5">
                       <span className="w-2.5 h-2.5 rounded-full bg-[#171914]/30" />
                       <span className="w-2.5 h-2.5 rounded-full bg-[#171914]/30" />
                       <span className="w-2.5 h-2.5 rounded-full bg-[#171914]/30" />
                       <span className="ml-2 font-bold text-[#171914] uppercase text-[11px]">
-                        Peti Masuk Emel Rasmi
+                        {isEn ? 'Official Email Inbox' : 'Peti Masuk Emel Rasmi'}
                       </span>
                     </div>
                     <span className="text-[11px] text-[#7C7E77]">{currentCase.receivedTime}</span>
                   </div>
 
-                  {/* Email Headers */}
                   <div className="p-4 bg-[#FAF9F5] border-b border-[#171914]/10 space-y-1.5 text-xs sm:text-sm">
                     <div className="flex items-baseline gap-2">
-                      <span className="font-mono font-bold text-[#7C7E77] text-xs uppercase w-20 shrink-0">Daripada:</span>
+                      <span className="font-mono font-bold text-[#7C7E77] text-xs uppercase w-20 shrink-0">
+                        {isEn ? 'From:' : 'Daripada:'}
+                      </span>
                       <span className="font-bold text-[#171914]">{currentCase.sender}</span>
                       {currentCase.senderAddress && (
                         <code className="text-xs bg-white px-2 py-0.5 border border-[#171914]/15 font-mono text-[#8A241C] font-bold rounded-xs">
@@ -559,17 +595,17 @@ export const InvestigationGame: React.FC = () => {
                     </div>
                     {currentCase.subject && (
                       <div className="flex items-baseline gap-2">
-                        <span className="font-mono font-bold text-[#7C7E77] text-xs uppercase w-20 shrink-0">Perkara:</span>
+                        <span className="font-mono font-bold text-[#7C7E77] text-xs uppercase w-20 shrink-0">
+                          {isEn ? 'Subject:' : 'Perkara:'}
+                        </span>
                         <span className="font-bold text-[#171914]">{currentCase.subject}</span>
                       </div>
                     )}
                   </div>
 
-                  {/* Email Body */}
                   <div className="p-5 text-sm sm:text-base text-[#171914] leading-relaxed whitespace-pre-line space-y-4 bg-white">
                     <p>{currentCase.body}</p>
 
-                    {/* Email Attachment if present */}
                     {currentCase.attachmentName && (
                       <div className="mt-4 p-3.5 rounded-xs border-2 border-[#8A241C]/40 bg-[#FAF0E6] flex items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
@@ -578,11 +614,13 @@ export const InvestigationGame: React.FC = () => {
                           </div>
                           <div>
                             <div className="text-sm font-mono font-bold text-[#8A241C]">{currentCase.attachmentName}</div>
-                            <div className="text-xs text-[#575953]">Lampiran Aplikasi Berbahaya (.apk)</div>
+                            <div className="text-xs text-[#575953]">
+                              {isEn ? 'Dangerous App Package (.apk)' : 'Lampiran Aplikasi Berbahaya (.apk)'}
+                            </div>
                           </div>
                         </div>
                         <span className="text-[11px] font-mono font-bold uppercase text-[#8A241C] bg-white px-2 py-1 rounded-xs border border-[#8A241C]/30">
-                          AMARAN MALWARE
+                          {isEn ? 'MALWARE ALERT' : 'AMARAN MALWARE'}
                         </span>
                       </div>
                     )}
@@ -591,7 +629,6 @@ export const InvestigationGame: React.FC = () => {
               ) : (
                 /* SMS PHONE INTERFACE */
                 <div className="max-w-md mx-auto rounded-xl border-2 border-[#171914] bg-[#0F141C] text-white p-4 sm:p-5 shadow-md space-y-4">
-                  {/* Phone Status bar */}
                   <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono px-1">
                     <span>10:42 AM</span>
                     <div className="flex items-center gap-1.5">
@@ -600,16 +637,16 @@ export const InvestigationGame: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* SMS Header */}
                   <div className="text-center pb-2 border-b border-slate-800">
                     <div className="w-10 h-10 rounded-full bg-slate-800 text-[#D9FA62] mx-auto flex items-center justify-center font-bold font-mono text-sm mb-1">
                       SMS
                     </div>
                     <div className="text-sm font-bold text-white font-mono">{currentCase.sender}</div>
-                    <div className="text-[11px] text-slate-400 font-mono">Mesej Teks Rawak</div>
+                    <div className="text-[11px] text-slate-400 font-mono">
+                      {isEn ? 'Random Incoming SMS' : 'Mesej Teks Rawak'}
+                    </div>
                   </div>
 
-                  {/* SMS Bubble */}
                   <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 text-sm sm:text-base text-slate-100 leading-relaxed shadow-xs space-y-2">
                     <p className="whitespace-pre-line">{currentCase.body}</p>
                     <div className="text-right">
@@ -620,10 +657,9 @@ export const InvestigationGame: React.FC = () => {
               )}
             </div>
 
-            {/* Left Footer Reminder */}
             <div className="pt-3 border-t border-[#171914]/15 font-mono text-xs text-[#7C7E77] flex items-center justify-between">
-              <span>Bandingkan mesej di atas dengan soalan di sebelah kanan →</span>
-              <span className="font-bold text-[#171914]">Petunjuk: {currentCase.clues.length} jumlah</span>
+              <span>{isEn ? 'Compare the message above with the questions on the right →' : 'Bandingkan mesej di atas dengan soalan di sebelah kanan →'}</span>
+              <span className="font-bold text-[#171914]">{isEn ? `Clues: ${currentCase.clues.length} total` : `Petunjuk: ${currentCase.clues.length} jumlah`}</span>
             </div>
           </div>
         </div>
@@ -633,19 +669,18 @@ export const InvestigationGame: React.FC = () => {
             =================================================================== */}
         <div className="lg:col-span-5 flex flex-col space-y-4">
           <div className="rounded-sm border-2 border-[#171914] bg-white p-5 sm:p-6 shadow-xs flex-1 flex flex-col justify-between space-y-5">
-            {/* Header of Action Panel */}
             <div className="space-y-1">
               <div className="flex items-center justify-between pb-3 border-b border-[#171914]/15 font-mono text-xs">
                 <span className="font-bold text-[#171914] uppercase tracking-wider flex items-center gap-1.5">
                   <ShieldCheck className="w-4 h-4 text-[#171914]" />
-                  <span>2. Jawab & Buat Keputusan</span>
+                  <span>{isEn ? '2. Answer & Decide' : '2. Jawab & Buat Keputusan'}</span>
                 </span>
                 <span className={`px-2 py-0.5 rounded-xs font-bold text-[11px] ${
                   isFindingsSubmitted
                     ? 'bg-[#E7F3EB] text-[#123E23] border border-[#1E4D2B]/30'
                     : 'bg-[#D9FA62] text-[#171914] border border-[#171914]/20'
                 }`}>
-                  {!isFindingsSubmitted ? 'LANGKAH 1: KESAN PETUNJUK' : 'LANGKAH 2: TINDAKAN'}
+                  {!isFindingsSubmitted ? t('game.step1Badge') : t('game.step2Badge')}
                 </span>
               </div>
             </div>
@@ -653,17 +688,24 @@ export const InvestigationGame: React.FC = () => {
             {/* Content Area: Step 1 or Step 2 */}
             <div className="space-y-4 flex-1">
               {!isFindingsSubmitted ? (
-                /* -------------------------------------------------------------
-                   STEP 1: SELECT SUSPICIOUS CLUES
-                   ------------------------------------------------------------- */
+                /* STEP 1 */
                 <div className="space-y-4">
                   <div>
                     <h3 className="text-base sm:text-lg font-black text-[#171914] tracking-tight">
-                      Langkah 1: Tandakan HANYA Petunjuk Bahaya
+                      {isEn ? 'Step 1: Mark ONLY Warning Signs / Red Flags' : 'Langkah 1: Tandakan HANYA Petunjuk Bahaya'}
                     </h3>
                     <p className="text-xs sm:text-sm text-[#575953] mt-1 leading-relaxed">
-                      Berdasarkan mesej di sebelah kiri, tandakan <strong>bahagian yang mencurigakan sahaja</strong>. <br className="hidden sm:inline" />
-                      <span className="text-[#8A241C] font-semibold">Awas: Sesetengah pilihan di bawah adalah maklumat biasa yang TIDAK PERLU ditandakan!</span>
+                      {isEn ? (
+                        <>
+                          Based on the message on the left, mark <strong>only the suspicious parts</strong>.<br className="hidden sm:inline" />
+                          <span className="text-[#8A241C] font-semibold">Caution: Some choices below are harmless text that DO NOT need to be marked!</span>
+                        </>
+                      ) : (
+                        <>
+                          Berdasarkan mesej di sebelah kiri, tandakan <strong>bahagian yang mencurigakan sahaja</strong>.<br className="hidden sm:inline" />
+                          <span className="text-[#8A241C] font-semibold">Awas: Sesetengah pilihan di bawah adalah maklumat biasa yang TIDAK PERLU ditandakan!</span>
+                        </>
+                      )}
                     </p>
                   </div>
 
@@ -690,7 +732,7 @@ export const InvestigationGame: React.FC = () => {
                           <span className={`shrink-0 font-mono text-xs font-bold px-2.5 py-1 rounded-xs border ${
                             isMarked ? 'bg-[#D9FA62] text-[#171914] border-[#D9FA62]' : 'bg-[#ECEAE2] text-[#575953] border-[#171914]/15'
                           }`}>
-                            {isMarked ? '✓ DITANDAKAN' : '+ TANDAKAN'}
+                            {isMarked ? t('game.marked') : t('game.mark')}
                           </span>
                         </button>
                       );
@@ -698,19 +740,17 @@ export const InvestigationGame: React.FC = () => {
                   </div>
                 </div>
               ) : (
-                /* -------------------------------------------------------------
-                   STEP 2: ACTION DECISION & IMMEDIATE CONSEQUENCES
-                   ------------------------------------------------------------- */
+                /* STEP 2 */
                 <div className="space-y-4">
                   {/* Detailed Clues Review Breakdown Box */}
                   <div className="p-4 bg-[#FAF9F5] border-2 border-[#171914]/15 rounded-sm space-y-3">
                     <div className="flex items-center justify-between font-mono text-xs pb-2 border-b border-[#171914]/10">
                       <span className="font-bold text-[#171914] flex items-center gap-1.5">
                         <CheckCircle2 className="w-4 h-4 text-[#1E4D2B]" />
-                        <span>Hasil Semakan Petunjuk Pasukan:</span>
+                        <span>{isEn ? 'Team Clue Review Results:' : 'Hasil Semakan Petunjuk Pasukan:'}</span>
                       </span>
                       <span className="font-bold bg-[#D9FA62] px-2.5 py-0.5 rounded-xs text-[#171914] border border-[#171914]/20">
-                        +{caseClueScore} / 5 Mata
+                        +{caseClueScore} / 5 {t('game.pts')}
                       </span>
                     </div>
 
@@ -723,7 +763,7 @@ export const InvestigationGame: React.FC = () => {
                           return (
                             <div key={clue.id} className="p-2.5 bg-[#E7F3EB] border border-[#1E4D2B]/30 rounded-xs text-[#123E23]">
                               <div className="font-bold flex items-center gap-1.5">
-                                <span>✓ Tepat Dikesan:</span>
+                                <span>{isEn ? '✓ Correctly Spotted:' : '✓ Tepat Dikesan:'}</span>
                                 <code className="bg-white/80 px-1 rounded">&ldquo;{clue.targetText}&rdquo;</code>
                               </div>
                               <p className="text-[11px] text-[#575953] mt-1 leading-relaxed">{clue.explanation}</p>
@@ -735,7 +775,7 @@ export const InvestigationGame: React.FC = () => {
                           return (
                             <div key={clue.id} className="p-2.5 bg-[#FAF0E6] border border-[#8A241C]/30 rounded-xs text-[#78271C]">
                               <div className="font-bold flex items-center gap-1.5">
-                                <span>✕ Tersilap Tanda:</span>
+                                <span>{isEn ? '✕ False Alarm:' : '✕ Tersilap Tanda:'}</span>
                                 <code className="bg-white/80 px-1 rounded">&ldquo;{clue.targetText}&rdquo;</code>
                               </div>
                               <p className="text-[11px] text-[#575953] mt-1 leading-relaxed">{clue.explanation}</p>
@@ -747,7 +787,7 @@ export const InvestigationGame: React.FC = () => {
                           return (
                             <div key={clue.id} className="p-2.5 bg-[#FAF0E6] border border-[#8A241C]/20 rounded-xs text-[#8A241C]">
                               <div className="font-bold flex items-center gap-1.5">
-                                <span>⚠ Terlepas Pandang:</span>
+                                <span>{isEn ? '⚠ Missed Red Flag:' : '⚠ Terlepas Pandang:'}</span>
                                 <code className="bg-white/80 px-1 rounded">&ldquo;{clue.targetText}&rdquo;</code>
                               </div>
                               <p className="text-[11px] text-[#575953] mt-1 leading-relaxed">{clue.explanation}</p>
@@ -755,13 +795,14 @@ export const InvestigationGame: React.FC = () => {
                           );
                         }
 
-                        // Unticked and not suspicious -> Great discernment!
                         return (
                           <div key={clue.id} className="p-2 bg-white border border-[#171914]/10 rounded-xs text-[#575953]">
                             <div className="font-bold text-[#1E4D2B] flex items-center gap-1.5">
-                              <span>✓ Tepat Dibiarkan:</span>
+                              <span>{isEn ? '✓ Correctly Ignored:' : '✓ Tepat Dibiarkan:'}</span>
                               <code className="text-[#171914] bg-[#FAF9F5] px-1 rounded">&ldquo;{clue.targetText}&rdquo;</code>
-                              <span className="text-[10px] text-[#7C7E77] font-normal">(Maklumat biasa, bukan ancaman)</span>
+                              <span className="text-[10px] text-[#7C7E77] font-normal">
+                                {isEn ? '(Normal text, not a threat)' : '(Maklumat biasa, bukan ancaman)'}
+                              </span>
                             </div>
                           </div>
                         );
@@ -771,10 +812,10 @@ export const InvestigationGame: React.FC = () => {
 
                   <div>
                     <h3 className="text-base sm:text-lg font-black text-[#171914] tracking-tight">
-                      Langkah 2: Apakah Tindakan Paling Selamat?
+                      {t('game.step2Header')}
                     </h3>
                     <p className="text-xs sm:text-sm text-[#575953] mt-1 leading-relaxed">
-                      Pilih satu keputusan terbaik untuk melindungi maklumat dan wang anda:
+                      {t('game.step2Sub')}
                     </p>
                   </div>
 
@@ -812,7 +853,7 @@ export const InvestigationGame: React.FC = () => {
                           </div>
                           {isSelected && !isActionSubmitted && (
                             <span className="mt-2 font-mono text-xs font-bold text-[#171914] bg-[#D9FA62] px-2 py-0.5 rounded-xs self-start border border-[#171914]/20">
-                              PILIHAN ANDA ✓
+                              {t('game.yourChoice')}
                             </span>
                           )}
                         </button>
@@ -839,7 +880,7 @@ export const InvestigationGame: React.FC = () => {
                         )}
                         <div className="space-y-1">
                           <span className="font-mono text-xs uppercase font-bold tracking-wider block">
-                            {activeAction.isSafe ? 'Tindakan Tepat! (+5 Mata)' : 'Amaran Risiko Tindakan'}
+                            {activeAction.isSafe ? (isEn ? 'Safe Action! (+5 Points)' : 'Tindakan Tepat! (+5 Mata)') : (isEn ? 'Action Risk Warning' : 'Amaran Risiko Tindakan')}
                           </span>
                           <p className="text-xs sm:text-sm leading-relaxed text-[#171914]">
                             {activeAction.consequence}
@@ -858,8 +899,8 @@ export const InvestigationGame: React.FC = () => {
                 <div className="flex flex-col gap-2">
                   <div className="font-mono text-xs text-[#7C7E77]">
                     {selectedClueIds.length === 0
-                      ? 'Sila tandakan sekurang-kurangnya satu petunjuk bahaya.'
-                      : `${selectedClueIds.length} petunjuk ditandakan.`}
+                      ? (isEn ? 'Please mark at least one warning sign/red flag.' : 'Sila tandakan sekurang-kurangnya satu petunjuk bahaya.')
+                      : (isEn ? `${selectedClueIds.length} signs marked.` : `${selectedClueIds.length} petunjuk ditandakan.`)}
                   </div>
                   <button
                     type="button"
@@ -871,13 +912,13 @@ export const InvestigationGame: React.FC = () => {
                         : 'bg-[#ECEAE2] text-[#82847C] cursor-not-allowed border border-[#171914]/10'
                     }`}
                   >
-                    <span>Semak Petunjuk & Ke Langkah 2 →</span>
+                    <span>{t('game.submitStep1')}</span>
                   </button>
                 </div>
               ) : !isActionSubmitted ? (
                 <div className="flex flex-col gap-2">
                   <div className="font-mono text-xs text-[#7C7E77]">
-                    Pilih salah satu daripada 3 pilihan tindakan di atas.
+                    {isEn ? 'Select one of the 3 action choices above.' : 'Pilih salah satu daripada 3 pilihan tindakan di atas.'}
                   </div>
                   <button
                     type="button"
@@ -889,7 +930,7 @@ export const InvestigationGame: React.FC = () => {
                         : 'bg-[#ECEAE2] text-[#82847C] cursor-not-allowed border border-[#171914]/10'
                     }`}
                   >
-                    <span>Sahkan Pilihan Tindakan</span>
+                    <span>{t('game.submitStep2')}</span>
                   </button>
                 </div>
               ) : (
@@ -899,9 +940,9 @@ export const InvestigationGame: React.FC = () => {
                   className="w-full py-4 px-6 min-h-[50px] rounded-sm font-mono font-bold text-xs sm:text-sm uppercase tracking-wider text-[#171914] bg-[#D9FA62] hover:bg-[#CCF050] border-2 border-[#171914] transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-xs"
                 >
                   <span>
-                    {currentCaseIndex + 1 === investigationCases.length
-                      ? 'Lihat Laporan Misi Selesai'
-                      : `Siasatan Seterusnya (Kes 0${currentCaseIndex + 2})`}
+                    {currentCaseIndex + 1 === cases.length
+                      ? t('game.viewFinalReport')
+                      : (isEn ? `Next Investigation (Case 0${currentCaseIndex + 2})` : `Siasatan Seterusnya (Kes 0${currentCaseIndex + 2})`)}
                   </span>
                   <ArrowRight className="w-4 h-4" />
                 </button>

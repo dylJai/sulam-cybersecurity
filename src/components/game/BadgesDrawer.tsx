@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { Award, Shield, Check } from 'lucide-react';
+import { Award } from 'lucide-react';
+import { useLanguage } from '@/context/LanguageContext';
 
 export interface BadgeItem {
   id: string;
@@ -16,6 +17,7 @@ interface BadgesDrawerProps {
 }
 
 export const BadgesDrawer: React.FC<BadgesDrawerProps> = ({ badges }) => {
+  const { language } = useLanguage();
   const unlockedCount = badges.filter(b => b.isUnlocked).length;
 
   return (
@@ -24,11 +26,11 @@ export const BadgesDrawer: React.FC<BadgesDrawerProps> = ({ badges }) => {
         <div className="flex items-center gap-2">
           <Award className="w-4 h-4 text-[#171914]" />
           <span className="font-bold uppercase tracking-wider text-[#171914]">
-            Lencana Siasatan Stesen
+            {language === 'en' ? 'Station Investigation Badges' : 'Lencana Siasatan Stesen'}
           </span>
         </div>
         <span className="font-bold text-[#171914] bg-[#ECEAE2] px-2 py-0.5 rounded-xs">
-          {unlockedCount} / {badges.length} Dibuka
+          {unlockedCount} / {badges.length} {language === 'en' ? 'Unlocked' : 'Dibuka'}
         </span>
       </div>
 
@@ -48,7 +50,7 @@ export const BadgesDrawer: React.FC<BadgesDrawerProps> = ({ badges }) => {
                 {badge.name}
               </span>
               <span className="text-[10px] text-[#575953] block truncate">
-                {badge.isUnlocked ? '✓ Dibuka' : 'Terkunci'}
+                {badge.isUnlocked ? (language === 'en' ? '✓ Unlocked' : '✓ Dibuka') : (language === 'en' ? 'Locked' : 'Terkunci')}
               </span>
             </div>
           </div>

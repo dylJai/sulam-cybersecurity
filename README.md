@@ -8,30 +8,30 @@ A modern, interactive, and beginner-friendly cybersecurity awareness web applica
 
 1. **Station Team Mode**:
    - Zero login or personal data collection required.
-   - Live persistent station score tracker (up to 100 points).
+   - Live persistent station score tracker (up to 300 points across 6 modules).
    - "Set Semula Stesen" (Reset Station) button in the header so facilitators can quickly reset progress for the next team.
+   - **Bilingual Toggle (BM / EN)**: Instantly switch the entire interface between Bahasa Melayu and English with a single click.
 
-2. **Challenge 1: Phishing Detection (5 Scenarios)**:
-   - **Realistic Mock Interfaces**: Authentic SMS smartphone preview and email inbox UI.
-   - **Local Malaysian Scenarios**: RM2.50 parcel delivery redelivery scam, fake banking TAC security alert, festive eWallet cash prize with malicious `.apk` attachment, emergency WhatsApp relative impersonation.
-   - **Interactive Feature: Spot the Warning Signs**: Interactive inspection of sender domains, artificial 2-hour deadlines, unverified links, and credential-harvesting forms.
+2. **6 Interactive Workshop Missions**:
+   - **Misi 01: Pancingan Tipu & Jerat Mesej Palsu (Phishing)**: Authentic SMS and email mockups, fake parcel redelivery, and banking alerts.
+   - **Misi 02: Pertahanan Kata Laluan & Kunci Akaun**: Side-by-side comparison of weak vs strong passphrases and 2FA protection.
+   - **Misi 03: Panggilan Penipuan & Talian NSRC 997**: Real-world Macau Scam scenarios with real Malaysian news case studies, CCID SemakMule search, and 997 hotline guidance.
+   - **Misi 04: Perangkap Pemasangan Fail APK**: Permission X-Ray scanner detecting trojan banking malware and fake FPX payment portals.
+   - **Misi 05: Skim Pelaburan Telegram & Kripto Palsu**: Fake Telegram investment groups, Ponzi schemes, fake ROI dashboards, SC Alert List check, and real Malaysian case studies.
+   - **Misi 06: Privasi Media Sosial & Pengesan Klon AI**: Visual photo inspection (airline boarding pass barcode, house keys, child badge) and AI voice cloning detection with Family Secret Word defense.
 
-3. **Challenge 2: Password Protector (5 Scenarios)**:
-   - **Interactive Feature: Choose the Safer Password**: Side-by-side entropy comparison of short predictable words (`password123`), personal info with symbols (`Kamal1985!`), and long memorable passphrases (`kucing-suka-makan-ikan-kembung`).
-   - Educational lessons on credential stuffing, Two-Factor Authentication (2FA), password managers (Bitwarden, Google, Apple), and avoiding OTP theft.
-
-4. **Scoring & Rewarding Results**:
-   - 10 points per question (50 points per challenge, 100 points maximum).
-   - Immediate educational feedback explaining *why* an action is safe or risky without punishing learners.
-   - Non-judgmental results screen with key takeaway summaries and encouraging badges.
+3. **Scoring & Rewarding Results**:
+   - 50 points maximum per mission (300 points total).
+   - Immediate educational feedback explaining *why* an action is safe or risky in everyday, relatable language.
+   - Results report with actionable community takeaways and earned station badges.
 
 ---
 
 ## 🛠️ Tech Stack
 
-- **Framework**: [Next.js](https://nextjs.org) (App Router)
+- **Framework**: [Next.js](https://nextjs.org) (App Router, Turbopack)
 - **Language**: [TypeScript](https://www.typescriptlang.org)
-- **Styling**: [Tailwind CSS v4](https://tailwindcss.com) (Dark Navy & Electric Cyan theme)
+- **Styling**: [Tailwind CSS v4](https://tailwindcss.com)
 - **Icons**: [Lucide React](https://lucide.dev)
 - **Animations**: [Framer Motion](https://www.framer.com/motion/)
 
@@ -39,9 +39,9 @@ A modern, interactive, and beginner-friendly cybersecurity awareness web applica
 
 ## 🚀 Getting Started
 
-### 1. Navigate to the project directory:
+### 1. Install dependencies:
 ```bash
-cd ~/Documents/"Sulam CyberSecurity"
+npm install
 ```
 
 ### 2. Start the development server:
@@ -51,49 +51,6 @@ npm run dev
 
 ### 3. Open in your browser:
 Navigate to [http://localhost:3000](http://localhost:3000).
-
----
-
-## 📁 Project Architecture
-
-```
-src/
-├── app/
-│   ├── layout.tsx             # Root layout with Header, Footer, and theme
-│   ├── page.tsx               # Workshop Home: Hero, Challenge Cards, How It Works
-│   ├── globals.css            # Custom dark theme, glows, and accessibility styles
-│   └── challenge/[id]/
-│       └── page.tsx           # Dynamic challenge route (/challenge/phishing, /challenge/passwords)
-├── components/
-│   ├── Header.tsx             # Team score counter and station reset modal
-│   ├── Footer.tsx             # National Scam Response Centre (NSRC 997) hotline
-│   ├── ChallengeCard.tsx      # Home screen interactive challenge cards
-│   ├── ChallengeInstructions.tsx # Pre-challenge briefing and objectives
-│   ├── ChallengeEngine.tsx    # Unified quiz runner with state and transitions
-│   ├── ProgressBar.tsx        # Step indicator and challenge score meter
-│   ├── MockMessage.tsx        # Authentic SMS bubble and Email client mockup
-│   ├── SpotTheCluesQuestion.tsx # Interactive hotspot inspector for phishing clues
-│   ├── PasswordStrengthQuestion.tsx # Interactive password comparison & crack time
-│   └── ResultsScreen.tsx      # Final score, badge, and summary takeaways
-├── data/
-│   ├── challenges.ts          # Central registry for dynamic challenge loading
-│   ├── phishing-challenge.ts  # 5 Phishing scenarios & explanations
-│   └── password-challenge.ts  # 5 Password scenarios & explanations
-├── types/
-│   └── challenge.ts           # TypeScript interfaces and types
-└── lib/
-    └── storage.ts             # LocalStorage station tracker and reset helpers
-```
-
----
-
-## ➕ Adding New Challenges in the Future
-
-To add future workshop stations (e.g., *Online Shopping Scam*, *OTP Protection*, *Public Wi-Fi Safety*):
-
-1. Create a data file in `src/data/your-challenge.ts` implementing `ChallengeMeta` and `ChallengeQuestion[]`.
-2. Register the challenge in `src/data/challenges.ts`.
-3. The dynamic route `/challenge/[id]` and Home Page will automatically render and track it without changing the core quiz engine!
 
 ---
 

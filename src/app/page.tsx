@@ -6,10 +6,12 @@ import { ChallengeCard } from '@/components/ChallengeCard';
 import { getStationRecords, StationRecords, getOverallStats } from '@/lib/storage';
 import { ArrowDown, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
+import { useLanguage } from '@/context/LanguageContext';
 
 export default function HomePage() {
+  const { t } = useLanguage();
   const [records, setRecords] = useState<StationRecords>({});
-  const [stats, setStats] = useState({ totalScore: 0, maxPossibleScore: 350, completedCount: 0 });
+  const [stats, setStats] = useState({ totalScore: 0, maxPossibleScore: 300, completedCount: 0 });
 
   const refreshData = () => {
     const data = getStationRecords();
@@ -28,28 +30,28 @@ export default function HomePage() {
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16 space-y-16">
       {/* Top Editorial Metadata Line */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#171914]/15 pb-3 font-mono text-[11px] text-[#7C7E77] uppercase tracking-wider">
-        <span>BENGKEL KESELAMATAN SIBER KOMUNITI</span>
-        <span>EDISI STESEN KOMPUTER RIBA • MALAYSIA</span>
+        <span>{t('home.topTag')}</span>
+        <span>MALAYSIA • EDISI KOMUNITI</span>
       </div>
 
       {/* Distinctive Editorial Hero Section */}
       <section className="space-y-8">
         <div className="space-y-4 max-w-4xl">
           <div className="inline-block bg-[#171914] text-[#D9FA62] font-mono text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-xs">
-            CyberSafe Community • Komuniti Siber Selamat
+            {t('home.heroBadge')}
           </div>
 
           <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black text-[#171914] tracking-tight leading-[1.05]">
-            Kenali Ancaman. <br className="hidden sm:inline" />
-            Lindungi Keluarga.
+            {t('home.heroTitle1')} <br className="hidden sm:inline" />
+            {t('home.heroTitle2')}
           </h1>
 
           <p className="text-xl sm:text-2xl font-serif italic text-[#575953] tracking-normal">
-            &ldquo;Kesan ancaman dalam talian. Kekal selamat. Lindungi diri anda.&rdquo;
+            {t('home.heroQuote')}
           </p>
 
           <p className="text-sm sm:text-base text-[#575953] leading-relaxed max-w-2xl pt-2">
-            Modul latihan praktikal stesen komputer riba untuk bengkel komuniti. Bekerjasama dalam kumpulan untuk mengesan SMS tipu, membongkar emel phishing, dan membina kata laluan yang tidak boleh dipecahkan oleh penggodam.
+            {t('home.heroDesc')}
           </p>
         </div>
 
@@ -59,7 +61,7 @@ export default function HomePage() {
             href="/challenge/phishing"
             className="inline-flex items-center justify-center gap-2 px-7 py-4 min-h-[52px] rounded-sm font-mono font-bold text-xs sm:text-sm uppercase tracking-wider text-[#171914] bg-[#D9FA62] hover:bg-[#CCF050] border-2 border-[#171914] transition-colors shadow-xs"
           >
-            <span>Mula Cabaran 01: Pengesanan Phishing</span>
+            <span>{t('home.startBtn')}</span>
             <ArrowRight className="w-4 h-4" />
           </Link>
 
@@ -67,18 +69,18 @@ export default function HomePage() {
             href="#cabaran-stesen"
             className="inline-flex items-center gap-2 font-mono text-xs sm:text-sm uppercase tracking-wider text-[#575953] hover:text-[#171914] transition-colors py-2 min-h-[44px]"
           >
-            <span>Pilih Modul di Bawah</span>
+            <span>{t('home.browseBtn')}</span>
             <ArrowDown className="w-4 h-4" />
           </a>
 
-          <div className="sm:ml-auto flex items-center gap-3 font-mono text-xs bg-white border border-[#171914]/15 px-3 py-2 rounded-sm">
-            <span className="text-[#7C7E77] uppercase text-[10px]">Kemajuan Stesen:</span>
+          <div className="sm:ml-auto flex items-center gap-3 font-mono text-xs bg-white border border-[#171914]/15 px-3.5 py-2 rounded-sm shadow-xs">
+            <span className="text-[#7C7E77] uppercase text-[10px]">{t('home.progressLabel')}</span>
             <span className="font-bold text-[#171914]">
-              {stats.completedCount} / {allChallengesMeta.length} Selesai
+              {stats.completedCount} / {allChallengesMeta.length} {t('home.completedText')}
             </span>
             <span className="text-[#D8D5CA]">|</span>
             <span className="font-bold text-[#171914]">
-              {stats.totalScore} / {stats.maxPossibleScore} Mata
+              {stats.totalScore} / {stats.maxPossibleScore} {t('home.pointsText')}
             </span>
           </div>
         </div>
@@ -89,14 +91,14 @@ export default function HomePage() {
         <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2">
           <div>
             <span className="font-mono text-xs uppercase tracking-wider text-[#7C7E77] block">
-              BAHAGIAN 01 / MISI AMALI INTERAKTIF
+              {t('home.missionsHeader')}
             </span>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-[#171914] tracking-tight">
-              Misi Keselamatan Siber Stesen Komuniti
+              {t('home.missionsTitle')}
             </h2>
           </div>
-          <span className="font-mono text-xs text-[#7C7E77]">
-            {allChallengesMeta.length} PERMAINAN INTERAKTIF • {stats.maxPossibleScore} MATA MAKSIMUM
+          <span className="font-mono text-xs text-[#7C7E77] font-bold">
+            {t('home.missionsSummary')}
           </span>
         </div>
 
@@ -116,35 +118,35 @@ export default function HomePage() {
       <section className="border-t border-[#171914]/15 pt-10 space-y-6">
         <div>
           <span className="font-mono text-xs uppercase tracking-wider text-[#7C7E77] block">
-            BAHAGIAN 02 / PANDUAN PENYIASATAN
+            {t('home.guideHeader')}
           </span>
           <h3 className="text-xl font-bold text-[#171914] tracking-tight">
-            Bagaimana Misi Interaktif Ini Berfungsi?
+            {t('home.guideTitle')}
           </h3>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x border-y border-[#171914]/15">
           <div className="py-6 md:py-0 md:pr-6 space-y-2">
-            <span className="font-mono text-2xl font-bold text-[#171914]">01.</span>
-            <h4 className="font-bold text-sm text-[#171914]">Siasat Petunjuk Tersembunyi</h4>
+            <span className="font-mono text-2xl font-bold text-[#171914]">{t('home.step1Num')}</span>
+            <h4 className="font-bold text-sm text-[#171914]">{t('home.step1Title')}</h4>
             <p className="text-xs text-[#575953] leading-relaxed">
-              Klik pada bahagian mesej yang meragukan—seperti pautan aneh, fail .apk, atau desakan masa 15 minit.
+              {t('home.step1Desc')}
             </p>
           </div>
 
           <div className="py-6 md:py-0 md:px-6 space-y-2">
-            <span className="font-mono text-2xl font-bold text-[#171914]">02.</span>
-            <h4 className="font-bold text-sm text-[#171914]">Buat Keputusan Bertindak</h4>
+            <span className="font-mono text-2xl font-bold text-[#171914]">{t('home.step2Num')}</span>
+            <h4 className="font-bold text-sm text-[#171914]">{t('home.step2Title')}</h4>
             <p className="text-xs text-[#575953] leading-relaxed">
-              Pilih tindakan selamat untuk menyelamatkan baki wang anda dan saksikan akibat serta-merta bagi setiap langkah.
+              {t('home.step2Desc')}
             </p>
           </div>
 
           <div className="py-6 md:py-0 md:pl-6 space-y-2">
-            <span className="font-mono text-2xl font-bold text-[#171914]">03.</span>
-            <h4 className="font-bold text-sm text-[#171914]">Kukuhkan Perisai Akaun</h4>
+            <span className="font-mono text-2xl font-bold text-[#171914]">{t('home.step3Num')}</span>
+            <h4 className="font-bold text-sm text-[#171914]">{t('home.step3Title')}</h4>
             <p className="text-xs text-[#575953] leading-relaxed">
-              Bina frasa laluan unik, sekat pencerobohan berjangkit, dan aktifkan 2FA untuk mencapai skor perlindungan 100%.
+              {t('home.step3Desc')}
             </p>
           </div>
         </div>
@@ -154,28 +156,28 @@ export default function HomePage() {
       <section className="bg-[#171914] text-[#F5F4EE] rounded-sm p-6 sm:p-8 space-y-4">
         <div className="flex items-center justify-between font-mono text-xs border-b border-[#F5F4EE]/20 pb-3">
           <span className="text-[#D9FA62] font-bold uppercase tracking-wider">
-            PRINSIP PERTAHANAN UTAMA
+            {t('home.rulesHeader')}
           </span>
-          <span className="text-[#7C7E77]">INGATAN PANTAS KOMUNITI</span>
+          <span className="text-[#7C7E77]">{t('home.rulesSubtitle')}</span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-2">
           <div>
-            <span className="font-mono text-xs text-[#D9FA62] block">A. JANGAN PANIK</span>
+            <span className="font-mono text-xs text-[#D9FA62] block">{t('home.ruleATitle')}</span>
             <p className="text-xs text-[#ECEAE2] mt-1 leading-relaxed">
-              Scammer sengaja mencipta perasaan cemas (contoh: 2 jam sebelum bekalan dipotong). Bertenang dan semak kesahihan.
+              {t('home.ruleADesc')}
             </p>
           </div>
           <div>
-            <span className="font-mono text-xs text-[#D9FA62] block">B. JANGAN KLIK PAUTAN RAWAK</span>
+            <span className="font-mono text-xs text-[#D9FA62] block">{t('home.ruleBTitle')}</span>
             <p className="text-xs text-[#ECEAE2] mt-1 leading-relaxed">
-              Bank dan agensi rasmi tidak lagi menghantar pautan melalui SMS. Sentiasa buka aplikasi rasmi secara terus.
+              {t('home.ruleBDesc')}
             </p>
           </div>
           <div>
-            <span className="font-mono text-xs text-[#D9FA62] block">C. KATA LALUAN PANJANG & KOD TAC</span>
+            <span className="font-mono text-xs text-[#D9FA62] block">{t('home.ruleCTitle')}</span>
             <p className="text-xs text-[#ECEAE2] mt-1 leading-relaxed">
-              Gunakan frasa laluan 4–5 perkataan dan jangan sekali-kali menyerahkan kod 6-digit TAC kepada sesiapa pun.
+              {t('home.ruleCDesc')}
             </p>
           </div>
         </div>
