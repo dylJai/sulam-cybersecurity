@@ -8,6 +8,7 @@ export interface InvestigationClue {
   label: string;
   explanation: string;
   isSuspicious: boolean;
+  isClue?: boolean;
 }
 
 export interface InvestigationAction {

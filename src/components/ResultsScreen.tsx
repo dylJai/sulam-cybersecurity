@@ -1,10 +1,11 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { ChallengeMeta } from '@/types/challenge';
-import { RotateCcw, ArrowRight, Home, Check } from 'lucide-react';
+import { RotateCcw, ArrowRight, Home, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import { playPopSound, triggerCelebration } from '@/lib/sound';
 
 interface ResultsScreenProps {
   meta: ChallengeMeta;
@@ -23,10 +24,14 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
   totalQuestions,
   onPlayAgain
 }) => {
+  useEffect(() => {
+    triggerCelebration();
+  }, []);
+
   const percentage = Math.round((score / maxScore) * 100);
 
   let statusLabel = 'USAHA YANG SANGAT BAIK';
-  let messageTitle = 'Pembelajaran Berjaya Dilengkapkan';
+  let messageTitle = 'Pembelajaran Berjaya Dilengkapkan!';
   let messageText = 'Setiap kesilapan adalah peluang pembelajaran berharga untuk melindungi diri dan keluarga anda daripada jenayah siber di dunia sebenar.';
 
   if (percentage >= 80) {
@@ -44,61 +49,61 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 6 }}
+      initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
       className="max-w-3xl mx-auto space-y-6 py-4"
     >
       {/* Scorecard Header */}
-      <div className="rounded-sm border border-[#171914]/20 bg-white p-6 sm:p-8 shadow-xs space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#171914]/15 font-mono text-xs">
-          <span className="font-bold uppercase tracking-wider text-[#171914] bg-[#D9FA62] px-2.5 py-0.5 rounded-xs border border-[#171914]/20">
+      <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+          <span className="font-bold text-xs uppercase tracking-wider text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200 w-fit">
             {statusLabel}
           </span>
-          <span className="text-[#7C7E77]">
-            {meta.title.toUpperCase()} / KEPUTUSAN
+          <span className="text-slate-500 text-xs font-semibold">
+            {meta.title} • KEPUTUSAN MISI
           </span>
         </div>
 
         <div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-[#171914] tracking-tight">
+          <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
             {messageTitle}
           </h2>
-          <p className="text-xs sm:text-sm text-[#575953] mt-2 leading-relaxed max-w-xl">
+          <p className="text-sm sm:text-base text-slate-600 mt-2 leading-relaxed max-w-xl">
             {messageText}
           </p>
         </div>
 
         {/* Big Numbers Grid */}
-        <div className="grid grid-cols-3 gap-3 border-t border-b border-[#171914]/10 py-5">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 border-y border-slate-100 py-5">
           {/* Total Score */}
-          <div>
-            <span className="font-mono text-[10px] uppercase tracking-wider text-[#7C7E77] block">
+          <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 text-center sm:text-left">
+            <span className="text-xs uppercase tracking-wider font-semibold text-slate-500 block">
               Jumlah Mata
             </span>
-            <span className="font-mono text-2xl sm:text-4xl font-extrabold text-[#171914] mt-1 block">
+            <span className="text-3xl sm:text-4xl font-extrabold text-blue-700 mt-1 block">
               {score}
-              <span className="text-xs font-normal text-[#82847C]"> / {maxScore}</span>
+              <span className="text-sm font-normal text-slate-400"> / {maxScore}</span>
             </span>
           </div>
 
           {/* Correct Count */}
-          <div>
-            <span className="font-mono text-[10px] uppercase tracking-wider text-[#7C7E77] block">
+          <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 text-center sm:text-left">
+            <span className="text-xs uppercase tracking-wider font-semibold text-slate-500 block">
               Jawapan Tepat
             </span>
-            <span className="font-mono text-2xl sm:text-4xl font-extrabold text-[#171914] mt-1 block">
+            <span className="text-3xl sm:text-4xl font-extrabold text-emerald-700 mt-1 block">
               {correctCount}
-              <span className="text-xs font-normal text-[#82847C]"> / {totalQuestions}</span>
+              <span className="text-sm font-normal text-slate-400"> / {totalQuestions}</span>
             </span>
           </div>
 
           {/* Percentage */}
-          <div>
-            <span className="font-mono text-[10px] uppercase tracking-wider text-[#7C7E77] block">
+          <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 text-center sm:text-left">
+            <span className="text-xs uppercase tracking-wider font-semibold text-slate-500 block">
               Ketepatan
             </span>
-            <span className="font-mono text-2xl sm:text-4xl font-extrabold text-[#171914] mt-1 block">
+            <span className="text-3xl sm:text-4xl font-extrabold text-slate-900 mt-1 block">
               {percentage}%
             </span>
           </div>
@@ -106,15 +111,13 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
 
         {/* Key Takeaways */}
         <div className="space-y-3 pt-1">
-          <span className="font-mono text-xs font-bold uppercase tracking-wider text-[#171914] block">
+          <span className="text-sm font-bold uppercase tracking-wider text-slate-900 block">
             Rumusan Pelajaran Penting:
           </span>
-          <ul className="space-y-2">
+          <ul className="space-y-2.5">
             {meta.keyTakeaways.map((takeaway, idx) => (
-              <li key={idx} className="flex items-start gap-3 text-xs sm:text-sm text-[#575953] leading-relaxed">
-                <span className="w-4 h-4 rounded-xs bg-[#171914] text-[#D9FA62] flex items-center justify-center shrink-0 mt-0.5">
-                  <Check className="w-3 h-3" />
-                </span>
+              <li key={idx} className="flex items-start gap-3 text-sm text-slate-700 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
                 <span>{takeaway}</span>
               </li>
             ))}
@@ -125,27 +128,29 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
       {/* Action Buttons */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 pt-2">
         <button
-          onClick={onPlayAgain}
-          className="flex items-center justify-center gap-2 px-5 py-3 rounded-sm font-mono font-bold text-xs uppercase tracking-wider text-[#171914] bg-white hover:bg-[#ECEAE2] border border-[#171914]/20 transition-colors cursor-pointer"
+          onClick={() => { playPopSound(); onPlayAgain(); }}
+          className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-bold text-sm text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 transition-colors cursor-pointer shadow-sm active:scale-[0.985]"
         >
-          <RotateCcw className="w-3.5 h-3.5" />
+          <RotateCcw className="w-4 h-4" />
           <span>Cuba Semula</span>
         </button>
 
         <Link
           href="/"
-          className="flex items-center justify-center gap-2 px-5 py-3 rounded-sm font-mono font-bold text-xs uppercase tracking-wider text-[#171914] bg-white hover:bg-[#ECEAE2] border border-[#171914]/20 transition-colors cursor-pointer"
+          onClick={() => playPopSound()}
+          className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-bold text-sm text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 transition-colors cursor-pointer shadow-sm active:scale-[0.985]"
         >
-          <Home className="w-3.5 h-3.5" />
+          <Home className="w-4 h-4" />
           <span>Menu Utama</span>
         </Link>
 
         <Link
           href={`/challenge/${nextChallengeId}`}
-          className="flex items-center justify-center gap-2 px-6 py-3 rounded-sm font-mono font-bold text-xs uppercase tracking-wider text-[#171914] bg-[#D9FA62] hover:bg-[#CCF050] border-2 border-[#171914] transition-colors shadow-xs"
+          onClick={() => playPopSound()}
+          className="flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl font-bold text-sm text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-sm active:scale-[0.985]"
         >
           <span>Seterusnya: {nextChallengeTitle}</span>
-          <ArrowRight className="w-3.5 h-3.5" />
+          <ArrowRight className="w-4 h-4" />
         </Link>
       </div>
     </motion.div>

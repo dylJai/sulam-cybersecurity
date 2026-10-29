@@ -5,6 +5,7 @@ import { getCallScamCases, CallScamCase, getRealWorldCallScamStories, RealWorldS
 import { BadgesDrawer, BadgeItem } from '@/components/game/BadgesDrawer';
 import { saveChallengeResult } from '@/lib/storage';
 import { useLanguage } from '@/context/LanguageContext';
+import { playPopSound, playSuccessChime, playWarningTone, triggerCelebration } from '@/lib/sound';
 import {
   PhoneCall,
   RotateCcw,
@@ -20,10 +21,13 @@ import {
   Volume2,
   Clock,
   BookOpen,
-  X
+  X,
+  PhoneOff
 } from 'lucide-react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
+import { VoiceOverButton } from '@/components/common/VoiceOverButton';
+import { voiceOverManager } from '@/lib/voice-over';
 
 export const CallScamGame: React.FC = () => {
   const { language, t } = useLanguage();
@@ -46,37 +50,44 @@ export const CallScamGame: React.FC = () => {
   const [totalScore, setTotalScore] = useState<number>(0);
   const [showBadges, setShowBadges] = useState<boolean>(false);
 
+  React.useEffect(() => {
+    return () => {
+      voiceOverManager.stopAll();
+    };
+  }, [currentCaseIndex, stage]);
+
   const cases = getCallScamCases(language);
   const currentCase: CallScamCase = cases[currentCaseIndex] || cases[0];
+  const isEn = language === 'en';
 
   // Badges
   const badges: BadgeItem[] = [
     {
       id: 'b-mule-checker',
-      name: language === 'en' ? 'SemakMule Expert' : 'Pakar SemakMule',
+      name: isEn ? 'SemakMule Expert' : 'Pakar SemakMule',
       icon: '🔍',
-      description: language === 'en' ? 'Checked phone number against police database' : 'Menyemak nombor scammer di pangkalan data polis SemakMule PDRM',
+      description: isEn ? 'Checked phone number against police database' : 'Menyemak nombor scammer di pangkalan data polis SemakMule PDRM',
       isUnlocked: semakMuleSearched
     },
     {
       id: 'b-psych-shield',
-      name: language === 'en' ? 'Immune to Threat' : 'Kalis Ugutan Polis Palsu',
+      name: isEn ? 'Immune to Threat' : 'Kalis Ugutan Polis Palsu',
       icon: '🛡️',
-      description: language === 'en' ? 'Spotted panic and arrest coercion tactics' : 'Mengesan taktik panik dan ugutan tangkapan penipu',
+      description: isEn ? 'Spotted panic and arrest coercion tactics' : 'Mengesan taktik panik dan ugutan tangkapan penipu',
       isUnlocked: totalTacticsFound >= 6
     },
     {
       id: 'b-nsrc-ready',
-      name: language === 'en' ? 'NSRC 997 Hero' : 'Wira NSRC 997',
+      name: isEn ? 'NSRC 997 Hero' : 'Wira NSRC 997',
       icon: '📞',
-      description: language === 'en' ? 'Memorized the national 997 hotline' : 'Menghafal dan mengutamakan talian kecemasan 997',
+      description: isEn ? 'Knows how to respond in 1-hour golden window' : 'Hafal talian kecemasan 997 dalam tempoh 1 jam',
       isUnlocked: correctActionDecisions >= 3
     },
     {
-      id: 'b-call-hero',
-      name: language === 'en' ? 'Call Scam Buster' : 'Penangkis Panggilan Penipuan',
+      id: 'b-call-crusher',
+      name: isEn ? 'Call Scam Buster' : 'Penangkis Panggilan Palsu',
       icon: '🛑',
-      description: language === 'en' ? 'Completed all 4 call scam scenarios' : 'Menyelesaikan kesemua 4 senario panggilan penipuan',
+      description: isEn ? 'Completed all 4 call scam cases' : 'Menyelesaikan kesemua 4 kes panggilan scam',
       isUnlocked: stage === 'results'
     }
   ];
@@ -100,14 +111,16 @@ export const CallScamGame: React.FC = () => {
     setShowSemakMule(false);
   };
 
-  const handleToggleTactic = (id: string) => {
+  const handleToggleTactic = (tacticId: string) => {
     if (isTacticsSubmitted) return;
+    playPopSound();
     setSelectedTacticIds(prev =>
-      prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id]
+      prev.includes(tacticId) ? prev.filter(id => id !== tacticId) : [...prev, tacticId]
     );
   };
 
   const handleSearchSemakMule = () => {
+    playSuccessChime();
     setShowSemakMule(true);
     setSemakMuleSearched(true);
   };
@@ -116,49 +129,60 @@ export const CallScamGame: React.FC = () => {
     if (isTacticsSubmitted) return;
     setIsTacticsSubmitted(true);
 
-    const trapTactics = currentCase.tactics.filter(t => t.isTrap);
-    const benignTactics = currentCase.tactics.filter(t => !t.isTrap);
+    let score = 0;
+    let correctlyIdentified = 0;
 
-    const correctTrapsTicked = selectedTacticIds.filter(id =>
-      trapTactics.some(t => t.id === id)
-    ).length;
+    currentCase.tactics.forEach(t => {
+      const isSelected = selectedTacticIds.includes(t.id);
+      if (t.isTrap && isSelected) {
+        score += 2;
+        correctlyIdentified += 1;
+      } else if (!t.isTrap && isSelected) {
+        score = Math.max(0, score - 1);
+      }
+    });
 
-    const falseAlarms = selectedTacticIds.filter(id =>
-      benignTactics.some(t => t.id === id)
-    ).length;
+    if (correctlyIdentified > 0) {
+      playSuccessChime();
+    } else {
+      playWarningTone();
+    }
 
-    const correctBenignIgnored = benignTactics.length - falseAlarms;
-    const totalCorrect = correctTrapsTicked + correctBenignIgnored;
-    const points = Math.max(0, Math.min(6, Math.round((totalCorrect / currentCase.tactics.length) * 6)));
-
-    setTacticsScore(points);
-    setTotalTacticsFound(prev => prev + correctTrapsTicked);
-    setTotalScore(prev => prev + points);
+    const finalTacticScore = Math.min(6, score);
+    setTacticsScore(finalTacticScore);
+    setTotalTacticsFound(prev => prev + correctlyIdentified);
+    setTotalScore(prev => prev + finalTacticScore);
   };
 
-  const handleSelectAction = (id: string) => {
+  const handleSelectAction = (actionId: string) => {
     if (isActionSubmitted) return;
-    setSelectedActionId(id);
+    playPopSound();
+    setSelectedActionId(actionId);
   };
 
   const handleSubmitAction = () => {
     if (!selectedActionId || isActionSubmitted) return;
     setIsActionSubmitted(true);
 
-    const chosen = currentCase.actions.find(a => a.id === selectedActionId);
-    if (chosen?.isSafe) {
+    const chosenAction = currentCase.actions.find(a => a.id === selectedActionId);
+    if (chosenAction?.isSafe) {
+      playSuccessChime();
       setCorrectActionDecisions(prev => prev + 1);
-      setTotalScore(prev => prev + 6.5); // total for 4 cases: (6+6.5)*4 = 50 pts
+      setTotalScore(prev => prev + 6.5);
+    } else {
+      playWarningTone();
     }
   };
 
   const handleNextCase = () => {
+    playPopSound();
     if (currentCaseIndex + 1 < cases.length) {
       setCurrentCaseIndex(prev => prev + 1);
       resetCaseState();
     } else {
       const finalScore = Math.min(50, Math.round(totalScore));
       saveChallengeResult('call-scam', finalScore, 50);
+      triggerCelebration();
       setStage('results');
     }
   };
@@ -172,99 +196,105 @@ export const CallScamGame: React.FC = () => {
         <div>
           <Link
             href="/"
-            className="inline-flex items-center gap-2 font-mono text-xs sm:text-sm text-[#7C7E77] hover:text-[#171914] transition-colors"
+            className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors py-1"
           >
-            {t('game.backToMain')}
+            ← {t('nav.backToMenuFriendly')}
           </Link>
         </div>
 
-        <div className="rounded-sm border-2 border-[#171914] bg-white p-6 sm:p-8 shadow-xs">
+        <div className="rounded-3xl border border-slate-200/90 bg-white p-6 sm:p-10 shadow-sm space-y-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             <div className="lg:col-span-7 space-y-5">
-              <div className="flex items-center gap-2 font-mono text-xs">
-                <span className="font-bold text-[#171914] bg-[#D9FA62] px-2.5 py-1 rounded-xs border border-[#171914]/20">
-                  {language === 'en' ? 'MISSION 03' : 'MISI 03'}
+              <div className="flex items-center gap-3">
+                <span className="font-extrabold text-blue-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-100 text-xs">
+                  {isEn ? 'MISSION 03' : 'MISI 03'}
                 </span>
-                <span className="text-[#7C7E77] uppercase font-bold">
-                  {language === 'en' ? 'TIME: 5-7 MINS • MAX: 50 POINTS' : 'MASA: 5-7 MINIT • MAKSIMUM: 50 MATA'}
+                <span className="text-slate-500 font-semibold text-xs sm:text-sm">
+                  {isEn ? '⏱️ 5-7 Mins • 50 Points' : '⏱️ 5-7 Minit • 50 Mata'}
                 </span>
               </div>
 
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#171914] tracking-tight">
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight leading-snug">
                 {t('m3.title')}
               </h1>
 
-              <p className="text-base sm:text-lg text-[#575953] leading-relaxed">
-                {language === 'en'
-                  ? '“Phone scammers (Macau Scam) impersonate police officers, court officials, or tax authorities to terrify victims with immediate arrest or frozen bank accounts. Your mission is to spot manipulation tactics, use the police SemakMule database, and remember the 997 hotline.”'
-                  : '“Penipu telefon (Macau Scam) menyamar sebagai pegawai polis, mahkamah, atau LHDN untuk menakut-nakutkan anda dengan ugutan tangkap atau sekatan bank. Tugas anda adalah mengecam helah mereka, menggunakan portal SemakMule PDRM, dan menghafal talian kecemasan 997.”'}
+              <p className="text-base sm:text-lg text-slate-600 leading-relaxed">
+                {isEn
+                  ? 'Syndicates pose as police officers, tax auditors (LHDN), and court judges to terrify citizens with false arrest warrants. Learn how to stay calm, check numbers in police database SemakMule, and memorize the 997 hotline.'
+                  : 'Sindiket menyamar sebagai pegawai polis, LHDN, dan pegawai mahkamah untuk menakut-nakutkan orang ramai kononnya waran tangkap telah dikeluarkan. Ketahui cara bertenang, menyemak nombor di portal SemakMule PDRM, dan menghafal talian kecemasan 997.'}
               </p>
 
-              <div className="p-4 bg-[#F5F4EE] border border-[#171914]/15 rounded-sm space-y-2 text-xs sm:text-sm">
-                <span className="font-mono font-bold uppercase text-[#171914] block">
-                  {language === 'en' ? '3 Core Rules to Defeat Fake Call Scams:' : '3 Petua Pantas Elak Ditipu Panggilan Palsu:'}
+              <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+                <span className="font-extrabold text-sm sm:text-base text-slate-900 block">
+                  {isEn ? '📋 3 Core Steps in This Mission:' : '📋 3 Langkah Mudah Menangkis Panggilan Tipu:'}
                 </span>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[#575953]">
-                  <div className="p-2.5 bg-white border border-[#171914]/10 rounded-xs">
-                    <strong>{language === 'en' ? '1. Stay Calm' : '1. Bertenang & Fikir'}</strong>
-                    <p className="text-xs mt-0.5">
-                      {language === 'en' ? 'Real police and tax agencies never threaten arrest over a phone call.' : 'Polis dan LHDN sebenar tidak pernah mengugut tangkapan melalui panggilan telefon.'}
-                    </p>
+                <div className="space-y-2 text-sm sm:text-base text-slate-700 leading-relaxed">
+                  <div className="flex items-start gap-2.5">
+                    <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center shrink-0 mt-0.5 text-xs">
+                      1
+                    </span>
+                    <span>
+                      <strong>{isEn ? 'Listen to Caller Transcript:' : 'Dengar & Baca Percakapan:'}</strong>{' '}
+                      {isEn ? 'Examine how scammers use panic and urgency to rush you.' : 'Perhatikan bagaimana scammer mendesak anda supaya panik.'}
+                    </span>
                   </div>
-                  <div className="p-2.5 bg-white border border-[#171914]/10 rounded-xs">
-                    <strong>{language === 'en' ? '2. Check SemakMule' : '2. Semak di SemakMule'}</strong>
-                    <p className="text-xs mt-0.5">
-                      {language === 'en' ? 'Check phone numbers and bank accounts against police records before sending money.' : 'Periksa nombor telefon dan akaun bank pada rekod polis sebelum pindah wang.'}
-                    </p>
+                  <div className="flex items-start gap-2.5">
+                    <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center shrink-0 mt-0.5 text-xs">
+                      2
+                    </span>
+                    <span>
+                      <strong>{isEn ? 'Check SemakMule PDRM:' : 'Semak Portal SemakMule PDRM:'}</strong>{' '}
+                      {isEn ? 'Use the official police tool to check if the caller number has fraud reports.' : 'Gunakan alat semakan polis untuk memeriksa rekod jenayah nombor telefon.'}
+                    </span>
                   </div>
-                  <div className="p-2.5 bg-white border border-[#171914]/10 rounded-xs">
-                    <strong>{language === 'en' ? '3. Dial NSRC 997' : '3. Dail NSRC 997'}</strong>
-                    <p className="text-xs mt-0.5">
-                      {language === 'en' ? 'National hotline to freeze scammer mule accounts if you accidentally transferred money.' : 'Talian khas kebangsaan untuk membekukan akaun scammer jika tersilap pindah duit.'}
-                    </p>
+                  <div className="flex items-start gap-2.5">
+                    <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center shrink-0 mt-0.5 text-xs">
+                      3
+                    </span>
+                    <span>
+                      <strong>{isEn ? 'Remember 997 Hotline:' : 'Hafal Talian 997:'}</strong>{' '}
+                      {isEn ? 'Call NSRC within 1 hour if anyone accidentally transferred money.' : 'Dail 997 dalam tempoh 1 jam jika tersilap memindahkan wang.'}
+                    </span>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="lg:col-span-5 bg-[#FAF9F5] border-2 border-[#171914]/20 rounded-sm p-6 space-y-5">
-              <span className="font-mono text-xs font-bold uppercase tracking-wider text-[#171914] block pb-2 border-b border-[#171914]/15">
-                {language === 'en' ? 'Station Interactive Tools:' : 'Alat Interaktif Stesen:'}
+            {/* Right side: Tools & Start CTA */}
+            <div className="lg:col-span-5 bg-blue-50/60 border border-blue-100 rounded-3xl p-6 sm:p-7 space-y-5">
+              <span className="text-sm font-extrabold text-blue-900 block pb-2 border-b border-blue-200/60">
+                {isEn ? 'Community Investigation Tools:' : 'Alat Bantuan Stesen:'}
               </span>
 
-              <div className="space-y-3 text-xs sm:text-sm text-[#575953]">
-                <div className="p-3 bg-white border border-[#171914]/15 rounded-xs space-y-1">
-                  <div className="flex items-center gap-2 font-bold text-[#171914]">
-                    <PhoneCall className="w-4 h-4 text-[#8A241C]" />
-                    <span>{language === 'en' ? 'Phone UI & Voice Transcript Simulator' : 'Simulasi Skrin Panggilan & Transkrip Suara'}</span>
+              <div className="space-y-3.5 text-sm text-slate-700">
+                <div className="p-4 bg-white border border-blue-100 rounded-2xl space-y-1 shadow-2xs">
+                  <div className="flex items-center gap-2 font-bold text-slate-900">
+                    <Search className="w-4 h-4 text-blue-600" />
+                    <span>{isEn ? 'PDRM SemakMule Scanner' : 'Alat SemakMule Polis PDRM'}</span>
                   </div>
-                  <p>{language === 'en' ? 'Experience the real psychological pressure of calls claiming to be enforcement officers.' : 'Alami tekanan panggilan sebenar daripada pihak yang mendakwa pegawai polis dan LHDN.'}</p>
+                  <p className="text-xs sm:text-sm text-slate-600">
+                    {isEn ? 'Directly check fraudulent caller telephone numbers in police records.' : 'Semak terus nombor pemanggil dalam rekod laporan polis.'}
+                  </p>
                 </div>
 
-                <div className="p-3 bg-white border border-[#171914]/15 rounded-xs space-y-1">
-                  <div className="flex items-center gap-2 font-bold text-[#171914]">
-                    <Search className="w-4 h-4 text-[#171914]" />
-                    <span>{language === 'en' ? 'PDRM SemakMule Crime Record Scanner' : 'Pengimbas Rekod SemakMule PDRM'}</span>
+                <div className="p-4 bg-white border border-blue-100 rounded-2xl space-y-1 shadow-2xs">
+                  <div className="flex items-center gap-2 font-bold text-slate-900">
+                    <BookOpen className="w-4 h-4 text-amber-500" />
+                    <span>{isEn ? 'Real Malaysian Scam Cases' : 'Kisah Sebenar Mangsa di Malaysia'}</span>
                   </div>
-                  <p>{language === 'en' ? 'Search caller phone numbers in real-time police fraud records.' : 'Semak rekod laporan jenayah polis bagi nombor pemanggil dalam masa nyata.'}</p>
-                </div>
-
-                <div className="p-3 bg-white border border-[#171914]/15 rounded-xs space-y-1">
-                  <div className="flex items-center gap-2 font-bold text-[#171914]">
-                    <BookOpen className="w-4 h-4 text-[#1E4D2B]" />
-                    <span>{language === 'en' ? 'Real Malaysian Case Studies' : 'Contoh Kes Sebenar di Malaysia'}</span>
-                  </div>
-                  <p>{language === 'en' ? 'Read real stories of how local victims lost hundreds of thousands of ringgit.' : 'Ketahui kisah nyata bagaimana mangsa di Malaysia kehilangan ratusan ribu ringgit.'}</p>
+                  <p className="text-xs sm:text-sm text-slate-600">
+                    {isEn ? 'Read real verified police news stories from Selangor, Perak, and Sabah.' : 'Baca laporan berita polis sebenar mangsa scam panggilan dari seluruh negara.'}
+                  </p>
                 </div>
               </div>
 
               <div className="pt-2">
                 <button
                   onClick={handleStart}
-                  className="w-full py-4 px-6 min-h-[54px] rounded-sm font-mono font-bold text-sm uppercase tracking-wider text-[#171914] bg-[#D9FA62] hover:bg-[#CCF050] border-2 border-[#171914] transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                  className="w-full py-4 px-6 min-h-[56px] rounded-2xl font-bold text-base sm:text-lg text-white bg-blue-600 hover:bg-blue-700 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md hover:shadow-lg"
                 >
-                  <span>{language === 'en' ? 'Start Phone Scam Investigation' : 'Mulakan Siasatan Panggilan Penipuan'}</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <span>{isEn ? 'Start Phone Scam Mission' : 'Mulakan Misi Panggilan Tipu'}</span>
+                  <ArrowRight className="w-5 h-5" />
                 </button>
               </div>
             </div>
@@ -282,79 +312,79 @@ export const CallScamGame: React.FC = () => {
       <div className="w-full space-y-6">
         <BadgesDrawer badges={badges} />
 
-        <div className="rounded-sm border-2 border-[#171914] bg-white p-6 sm:p-8 shadow-xs">
+        <div className="rounded-3xl border border-slate-200/90 bg-white p-6 sm:p-10 shadow-sm space-y-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             <div className="lg:col-span-6 space-y-6">
-              <div className="flex items-center justify-between pb-3 border-b border-[#171914]/15 font-mono text-xs">
-                <span className="font-bold uppercase tracking-wider text-[#171914] bg-[#D9FA62] px-2.5 py-1 rounded-xs border border-[#171914]/20">
-                  {language === 'en' ? 'MISSION 03 REPORT COMPLETE' : 'LAPORAN MISI 03 SELESAI'}
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100 text-xs sm:text-sm">
+                <span className="font-extrabold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+                  {isEn ? 'MISSION 03 REPORT COMPLETE' : 'LAPORAN MISI 03 SELESAI'}
                 </span>
-                <span className="text-[#7C7E77]">{language === 'en' ? 'PHONE SCAM & NSRC' : 'PANGGILAN PENIPUAN & NSRC'}</span>
+                <span className="text-slate-500 font-bold">{isEn ? 'PHONE SCAM & NSRC' : 'PANGGILAN PENIPUAN & NSRC'}</span>
               </div>
 
               <div>
-                <h2 className="text-3xl sm:text-4xl font-black text-[#171914] tracking-tight">
-                  {language === 'en' ? 'Investigation Successfully Repelled!' : 'Siasatan Berjaya Ditangkis!'}
+                <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
+                  {isEn ? '🎉 Fake Calls Successfully Repelled!' : '🎉 Panggilan Penipu Berjaya Ditangkis!'}
                 </h2>
-                <p className="text-sm sm:text-base text-[#575953] mt-2 leading-relaxed">
-                  {language === 'en'
+                <p className="text-base text-slate-600 mt-2.5 leading-relaxed">
+                  {isEn
                     ? 'Your team successfully identified panic coercion tactics, rejected sending money to mule accounts, and is prepared to use the 997 hotline.'
-                    : 'Pasukan anda berjaya mengesan helah manipulasi ketakutan, menolak bayaran ke akaun keldai, dan bersedia menggunakan talian kecemasan 997.'}
+                    : 'Pasukan anda berjaya mengesan helah ugutan ketakutan, menolak bayaran ke akaun keldai, dan bersedia menggunakan talian kecemasan 997.'}
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 border-y border-[#171914]/15 py-4">
-                <div className="p-3 bg-[#FAF9F5] border border-[#171914]/10 rounded-xs">
-                  <span className="font-mono text-[10px] uppercase text-[#7C7E77] block font-bold">{t('results.scenariosTested')}</span>
-                  <span className="font-mono text-2xl font-black text-[#171914] mt-1 block">4 / 4</span>
+              <div className="grid grid-cols-2 gap-3.5 border-y border-slate-100 py-4">
+                <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-2xl">
+                  <span className="text-xs uppercase text-slate-500 block font-bold">{t('results.scenariosTested')}</span>
+                  <span className="text-2xl sm:text-3xl font-black text-slate-900 mt-1 block">4 / 4</span>
                 </div>
-                <div className="p-3 bg-[#FAF9F5] border border-[#171914]/10 rounded-xs">
-                  <span className="font-mono text-[10px] uppercase text-[#7C7E77] block font-bold">{t('results.cluesFound')}</span>
-                  <span className="font-mono text-2xl font-black text-[#171914] mt-1 block">{totalTacticsFound}</span>
+                <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-2xl">
+                  <span className="text-xs uppercase text-slate-500 block font-bold">{t('results.cluesFound')}</span>
+                  <span className="text-2xl sm:text-3xl font-black text-slate-900 mt-1 block">{totalTacticsFound}</span>
                 </div>
-                <div className="p-3 bg-[#FAF9F5] border border-[#171914]/10 rounded-xs">
-                  <span className="font-mono text-[10px] uppercase text-[#7C7E77] block font-bold">{t('results.safeDecisions')}</span>
-                  <span className="font-mono text-2xl font-black text-[#171914] mt-1 block">{correctActionDecisions} / 4</span>
+                <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-2xl">
+                  <span className="text-xs uppercase text-slate-500 block font-bold">{t('results.safeDecisions')}</span>
+                  <span className="text-2xl sm:text-3xl font-black text-slate-900 mt-1 block">{correctActionDecisions} / 4</span>
                 </div>
-                <div className="p-3 bg-[#E7F3EB] border border-[#1E4D2B]/20 rounded-xs">
-                  <span className="font-mono text-[10px] uppercase text-[#123E23] block font-bold">{t('results.totalScore')}</span>
-                  <span className="font-mono text-2xl font-black text-[#123E23] mt-1 block">
-                    {Math.min(50, Math.round(totalScore))} <span className="text-xs font-normal text-[#123E23]/70">/ 50</span>
+                <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl">
+                  <span className="text-xs uppercase text-emerald-800 block font-bold">{t('results.totalScore')}</span>
+                  <span className="text-2xl sm:text-3xl font-black text-emerald-900 mt-1 block">
+                    {Math.min(50, Math.round(totalScore))} <span className="text-sm font-normal text-emerald-700">/ 50 Mata</span>
                   </span>
                 </div>
               </div>
             </div>
 
-            <div className="lg:col-span-6 bg-[#FAF9F5] border-2 border-[#171914]/20 rounded-sm p-6 space-y-6">
-              <span className="font-mono text-xs font-bold uppercase tracking-wider text-[#171914] block pb-2 border-b border-[#171914]/15">
-                {language === 'en' ? 'Community Quick Emergency Guide:' : 'Panduan Pantas Kecemasan Komuniti:'}
+            <div className="lg:col-span-6 bg-slate-50 border border-slate-200 rounded-3xl p-6 sm:p-7 space-y-6">
+              <span className="text-sm font-extrabold uppercase tracking-wider text-slate-900 block pb-2 border-b border-slate-200">
+                {isEn ? 'Community Emergency Defense Guide:' : 'Panduan Pantas Kecemasan Komuniti:'}
               </span>
 
-              <ul className="space-y-3 text-xs sm:text-sm text-[#575953]">
-                <li className="flex items-start gap-2.5">
-                  <span className="w-5 h-5 rounded-xs bg-[#171914] text-[#D9FA62] flex items-center justify-center shrink-0 mt-0.5">
-                    <Check className="w-3.5 h-3.5" />
+              <ul className="space-y-3.5 text-sm sm:text-base text-slate-700">
+                <li className="flex items-start gap-3">
+                  <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
+                    <Check className="w-4 h-4" />
                   </span>
-                  <span><strong>{language === 'en' ? 'Memorize 997 (NSRC):' : 'Hafal Talian 997 (NSRC):'}</strong> {language === 'en' ? 'Call the National Scam Response Centre within 1 hour if you accidentally sent funds to a scammer.' : 'Hubungi Pusat Respons Scam Kebangsaan dalam tempoh 1 jam sekiranya tersilap memindahkan wang.'}</span>
+                  <span><strong>{isEn ? 'Memorize 997 (NSRC):' : 'Hafal Talian 997 (NSRC):'}</strong> {isEn ? 'Call the National Scam Response Centre within 1 hour if you accidentally sent funds to a scammer.' : 'Hubungi Pusat Respons Scam Kebangsaan dalam tempoh 1 jam sekiranya tersilap memindahkan wang.'}</span>
                 </li>
-                <li className="flex items-start gap-2.5">
-                  <span className="w-5 h-5 rounded-xs bg-[#171914] text-[#D9FA62] flex items-center justify-center shrink-0 mt-0.5">
-                    <Check className="w-3.5 h-3.5" />
+                <li className="flex items-start gap-3">
+                  <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
+                    <Check className="w-4 h-4" />
                   </span>
-                  <span><strong>{language === 'en' ? 'Check SemakMule:' : 'Semak di SemakMule:'}</strong> {language === 'en' ? 'Enter bank accounts or caller numbers into the PDRM CCID portal before dealing.' : 'Masukkan nombor akaun bank atau telefon di portal CCID SemakMule PDRM sebelum membuat sebarang urusan.'}</span>
+                  <span><strong>{isEn ? 'Check SemakMule:' : 'Semak di SemakMule:'}</strong> {isEn ? 'Enter bank accounts or caller numbers into the PDRM CCID portal before dealing.' : 'Masukkan nombor akaun bank atau telefon di portal CCID SemakMule PDRM sebelum membuat sebarang urusan.'}</span>
                 </li>
-                <li className="flex items-start gap-2.5">
-                  <span className="w-5 h-5 rounded-xs bg-[#171914] text-[#D9FA62] flex items-center justify-center shrink-0 mt-0.5">
-                    <Check className="w-3.5 h-3.5" />
+                <li className="flex items-start gap-3">
+                  <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
+                    <Check className="w-4 h-4" />
                   </span>
-                  <span><strong>{language === 'en' ? 'Hang Up Immediately:' : 'Jangan Panik & Letak Telefon:'}</strong> {language === 'en' ? 'Calls threatening immediate court arrest or tax jail are 100% fraudulent.' : 'Panggilan ugutan tangkapan segera mahkamah/LHDN 100% adalah penipuan.'}</span>
+                  <span><strong>{isEn ? 'Hang Up Immediately:' : 'Jangan Panik & Letak Telefon:'}</strong> {isEn ? 'Calls threatening immediate court arrest or tax jail are 100% fraudulent.' : 'Panggilan ugutan tangkapan segera mahkamah/LHDN 100% adalah penipuan.'}</span>
                 </li>
               </ul>
 
               <div className="pt-2 flex flex-col sm:flex-row gap-3">
                 <button
                   onClick={handleStart}
-                  className="flex-1 flex items-center justify-center gap-2 px-5 py-3.5 min-h-[48px] rounded-sm font-mono font-bold text-xs uppercase tracking-wider text-[#171914] bg-white hover:bg-[#ECEAE2] border-2 border-[#171914]/20 transition-colors cursor-pointer"
+                  className="flex-1 flex items-center justify-center gap-2 px-5 py-3.5 min-h-[50px] rounded-xl font-bold text-sm text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 transition-colors cursor-pointer"
                 >
                   <RotateCcw className="w-4 h-4" />
                   <span>{t('game.retry')}</span>
@@ -362,7 +392,7 @@ export const CallScamGame: React.FC = () => {
 
                 <Link
                   href="/"
-                  className="flex-1 flex items-center justify-center gap-2 px-5 py-3.5 min-h-[48px] rounded-sm font-mono font-bold text-xs uppercase tracking-wider text-[#171914] bg-white hover:bg-[#ECEAE2] border-2 border-[#171914]/20 transition-colors cursor-pointer"
+                  className="flex-1 flex items-center justify-center gap-2 px-5 py-3.5 min-h-[50px] rounded-xl font-bold text-sm text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 transition-colors cursor-pointer"
                 >
                   <Home className="w-4 h-4" />
                   <span>{t('game.mainMenu')}</span>
@@ -370,10 +400,9 @@ export const CallScamGame: React.FC = () => {
 
                 <Link
                   href="/challenge/apk-malware"
-                  className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 min-h-[48px] rounded-sm font-mono font-bold text-xs uppercase tracking-wider text-[#171914] bg-[#D9FA62] hover:bg-[#CCF050] border-2 border-[#171914] transition-colors shadow-xs text-center"
+                  className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 min-h-[50px] rounded-xl font-bold text-sm text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-sm text-center"
                 >
-                  <span>{language === 'en' ? 'Mission 04: APK Malware' : 'Misi 04: Bahaya APK'}</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <span>{isEn ? 'Mission 04: APK Malware →' : 'Misi 04: Bahaya APK →'}</span>
                 </Link>
               </div>
             </div>
@@ -390,39 +419,29 @@ export const CallScamGame: React.FC = () => {
   const progressPercent = Math.round(((currentCaseIndex + 1) / cases.length) * 100);
 
   return (
-    <div className="w-full space-y-4">
+    <div className="w-full space-y-5">
       {/* Top Bar */}
-      <div className="bg-white border-2 border-[#171914] rounded-sm p-4 shadow-xs">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#171914]/15 font-mono text-xs">
-          <div className="flex flex-wrap items-center gap-3">
-            <Link href="/" className="text-[#7C7E77] hover:text-[#171914] font-bold transition-colors">
-              {t('game.backMenu')}
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 text-xs sm:text-sm">
+          <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+            <Link href="/" className="text-slate-600 hover:text-blue-600 font-bold transition-colors">
+              ← {t('nav.backToMenuFriendly')}
             </Link>
-            <span className="text-[#171914]/20">|</span>
-            <span className="font-bold text-[#171914] bg-[#D9FA62] px-2.5 py-0.5 rounded-xs border border-[#171914]/20">
+            <span className="text-slate-300">|</span>
+            <span className="font-extrabold text-blue-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-100 text-xs">
               {t('game.case')} 0{currentCaseIndex + 1} / 0{cases.length}
             </span>
-            <span className="font-bold text-[#171914] text-xs sm:text-sm">
+            <span className="font-extrabold text-slate-900 text-sm sm:text-base">
               {currentCase.title}
             </span>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Real Case Button */}
-            <button
-              type="button"
-              onClick={() => setShowRealStoryModal(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#FAF9F5] hover:bg-[#ECEAE2] border border-[#171914]/20 rounded-xs cursor-pointer font-mono font-bold text-xs text-[#171914] transition-colors min-h-[36px]"
-            >
-              <BookOpen className="w-3.5 h-3.5 text-[#171914]" />
-              <span className="hidden sm:inline">{t('game.realStoryBtn')}</span>
-            </button>
-
             <button
               type="button"
               onClick={handleStart}
               title={t('game.resetFromStart')}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-[#FAF0E6] border border-[#8A241C]/30 text-[#8A241C] hover:text-[#8A241C] rounded-xs cursor-pointer font-mono font-bold text-xs transition-colors min-h-[36px] shadow-xs"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-red-50 border border-slate-200 hover:border-red-200 text-slate-600 hover:text-red-700 rounded-xl cursor-pointer font-bold text-xs transition-colors min-h-[38px]"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               <span>{t('game.resetFromStart')}</span>
@@ -431,90 +450,96 @@ export const CallScamGame: React.FC = () => {
             <button
               type="button"
               onClick={() => setShowBadges(!showBadges)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#F5F4EE] hover:bg-[#ECEAE2] border border-[#171914]/20 rounded-xs cursor-pointer font-mono font-bold text-xs text-[#171914] min-h-[36px]"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl cursor-pointer font-bold text-xs text-amber-900 min-h-[38px]"
             >
-              <Award className="w-3.5 h-3.5 text-[#171914]" />
-              <span className="hidden sm:inline">{t('game.badges')}</span> ({badges.filter(b => b.isUnlocked).length}/{badges.length})
+              <Award className="w-3.5 h-3.5 text-amber-600" />
+              <span>{t('game.badges')} ({badges.filter(b => b.isUnlocked).length}/{badges.length})</span>
             </button>
 
-            <div className="font-bold text-[#171914] bg-white px-3 py-1.5 border border-[#171914]/20 rounded-xs min-h-[36px] flex items-center">
-              {t('game.score')} <span className="bg-[#D9FA62] px-2 py-0.5 border border-[#171914]/20 ml-1">{Math.round(totalScore)} / 50</span>
+            <div className="font-extrabold text-slate-900 bg-emerald-50 px-3.5 py-1.5 border border-emerald-200 rounded-xl min-h-[38px] flex items-center text-xs sm:text-sm">
+              ⭐ {t('game.score')} <span className="ml-1 text-emerald-800">{Math.round(totalScore)} / 50</span>
             </div>
           </div>
         </div>
 
-        <div className="pt-3 flex items-center gap-3 font-mono text-xs text-[#7C7E77]">
+        {/* Progress track */}
+        <div className="flex items-center gap-3 text-xs text-slate-500 font-medium">
           <span>{t('game.missionProgress')}</span>
-          <div className="flex-1 h-2 bg-[#ECEAE2] rounded-xs overflow-hidden border border-[#171914]/10">
+          <div className="flex-1 h-2.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200/50">
             <div
-              className="h-full bg-[#171914] transition-all duration-300"
+              className="h-full bg-blue-600 rounded-full transition-all duration-300"
               style={{ width: `${progressPercent}%` }}
             />
           </div>
-          <span className="font-bold text-[#171914]">{progressPercent}%</span>
+          <span className="font-bold text-slate-800">{progressPercent}%</span>
         </div>
       </div>
 
-      {showBadges && <BadgesDrawer badges={badges} />}
+      {/* Badges Drawer if toggled */}
+      {showBadges && (
+        <div className="pt-1">
+          <BadgesDrawer badges={badges} />
+        </div>
+      )}
 
       {/* Real Case Modal */}
       <AnimatePresence>
         {showRealStoryModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#171914]/50 backdrop-blur-xs">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white border-2 border-[#171914] rounded-sm max-w-2xl w-full p-6 sm:p-7 shadow-xl text-[#171914] space-y-4 max-h-[90vh] overflow-y-auto"
+              className="bg-white border border-slate-200 rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl text-slate-900 space-y-5 max-h-[90vh] overflow-y-auto"
             >
-              <div className="flex items-center justify-between pb-3 border-b border-[#171914]/15">
-                <div className="flex items-center gap-2">
-                  <span className="bg-[#8A241C] text-white font-mono text-xs font-bold px-2.5 py-1 rounded-xs">
-                    {language === 'en' ? 'REAL CASE IN MALAYSIA' : 'KES SEBENAR DI MALAYSIA'}
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2.5">
+                  <span className="bg-red-100 text-red-800 font-bold text-xs px-3 py-1 rounded-full border border-red-200">
+                    {isEn ? 'VERIFIED POLICE CASE IN MALAYSIA' : 'KES SEBENAR POLIS DI MALAYSIA'}
                   </span>
-                  <span className="text-xs font-mono text-[#7C7E77]">
-                    PDRM & CCID
+                  <span className="text-xs text-slate-500 font-semibold">
+                    Jabatan Siasatan Jenayah Komersil (JSJK PDRM)
                   </span>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowRealStoryModal(false)}
-                  className="p-1 hover:bg-[#ECEAE2] rounded-xs text-[#575953] cursor-pointer"
+                  className="p-1.5 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-700 cursor-pointer transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
               <div>
-                <h3 className="text-xl sm:text-2xl font-black text-[#171914] tracking-tight">
+                <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight leading-snug">
                   {currentCase.realCaseExample?.headline || getRealWorldCallScamStories(language)[0].headline}
                 </h3>
-                <div className="flex flex-wrap items-center gap-3 font-mono text-xs text-[#7C7E77] mt-1">
+                <div className="flex flex-wrap items-center gap-3 text-xs sm:text-sm text-slate-500 mt-2">
                   <span>📍 {currentCase.realCaseExample?.location}</span>
                   <span>•</span>
-                  <span className="text-[#8A241C] font-bold">
-                    {language === 'en' ? 'Financial Loss:' : 'Kerugian:'} {currentCase.realCaseExample?.lossAmount}
+                  <span className="text-red-700 font-extrabold bg-red-50 px-2.5 py-0.5 rounded-full border border-red-200">
+                    {isEn ? 'Financial Loss:' : 'Jumlah Kerugian:'} {currentCase.realCaseExample?.lossAmount}
                   </span>
                 </div>
               </div>
 
-              <div className="p-4 bg-[#FAF9F5] border border-[#171914]/15 rounded-sm space-y-2 text-xs sm:text-sm leading-relaxed text-[#171914]">
-                <strong className="block text-[#171914] font-bold">
-                  {language === 'en' ? 'Incident Breakdown:' : 'Kronologi Kejadian:'}
+              <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2 text-sm leading-relaxed text-slate-800">
+                <strong className="block text-slate-900 font-bold">
+                  {isEn ? 'Incident Breakdown:' : 'Kronologi Kejadian:'}
                 </strong>
                 <p>{currentCase.realCaseExample?.storySnippet}</p>
               </div>
 
-              <div className="p-4 bg-[#FAF0E6] border border-[#8A241C]/30 rounded-sm space-y-2 text-xs sm:text-sm text-[#78271C]">
+              <div className="p-4 bg-red-50 border border-red-200 rounded-2xl space-y-2 text-sm text-red-950">
                 <strong className="block font-bold">
-                  {language === 'en' ? 'How Scammers Coerced the Victim:' : 'Bagaimana Scammer Berjaya Memperdaya Mangsa:'}
+                  {isEn ? 'How Scammers Coerced the Victim:' : 'Bagaimana Scammer Berjaya Memperdaya Mangsa:'}
                 </strong>
                 <p>{currentCase.realCaseExample?.howScamWorked}</p>
               </div>
 
-              <div className="p-4 bg-[#E7F3EB] border border-[#1E4D2B]/30 rounded-sm space-y-1 text-xs sm:text-sm text-[#123E23]">
+              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl space-y-1 text-sm text-emerald-950">
                 <strong className="block font-bold">
-                  {language === 'en' ? '💡 Key Community Takeaway:' : '💡 Pengajaran & Tindakan Komuniti:'}
+                  {isEn ? '💡 Key Community Takeaway:' : '💡 Pengajaran & Tindakan Komuniti:'}
                 </strong>
                 <p>{currentCase.realCaseExample?.preventionTip}</p>
               </div>
@@ -523,7 +548,7 @@ export const CallScamGame: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowRealStoryModal(false)}
-                  className="px-6 py-2.5 bg-[#171914] text-[#D9FA62] hover:bg-[#2A2D25] font-mono font-bold text-xs uppercase rounded-sm cursor-pointer"
+                  className="px-6 py-3 bg-slate-900 text-white hover:bg-slate-800 font-bold text-sm rounded-xl cursor-pointer transition-colors shadow-sm min-h-[46px]"
                 >
                   {t('game.closeModal')}
                 </button>
@@ -537,40 +562,40 @@ export const CallScamGame: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
         {/* LEFT COLUMN: Phone Call Interface & Audio Transcript (Col 1-7) */}
         <div className="lg:col-span-7 flex flex-col space-y-4">
-          <div className="rounded-sm border-2 border-[#171914] bg-white p-5 sm:p-6 shadow-xs flex-1 flex flex-col justify-between space-y-4">
+          <div className="rounded-3xl border border-slate-200 bg-white p-5 sm:p-7 shadow-xs flex-1 flex flex-col justify-between space-y-5">
             <div>
-              <div className="flex items-center justify-between pb-3 mb-3 border-b border-[#171914]/15 font-mono text-xs">
-                <span className="font-bold text-[#171914] uppercase tracking-wider flex items-center gap-1.5">
-                  <PhoneCall className="w-4 h-4 text-[#8A241C]" />
-                  <span>{language === 'en' ? '1. Incoming Call Simulation' : '1. Simulasi Panggilan Masuk'}</span>
+              <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-100 text-xs sm:text-sm">
+                <span className="font-extrabold text-slate-900 flex items-center gap-2">
+                  <PhoneCall className="w-4 h-4 text-red-600" />
+                  <span>{isEn ? '1. Incoming Call Simulation' : '1. Simulasi Panggilan Masuk'}</span>
                 </span>
-                <span className="bg-[#FAF0E6] text-[#8A241C] border border-[#8A241C]/30 px-2 py-0.5 rounded-xs font-bold uppercase text-[11px]">
-                  {language === 'en' ? 'URGENCY: ' : 'TAHAP CEMAS: '}{currentCase.urgencyLevel}
+                <span className="bg-red-50 text-red-700 border border-red-200 px-2.5 py-0.5 rounded-full font-bold text-xs">
+                  {isEn ? 'URGENCY: ' : 'TAHAP CEMAS: '}{currentCase.urgencyLevel}
                 </span>
               </div>
 
               {/* Scenario Context */}
-              <p className="text-xs sm:text-sm text-[#575953] leading-relaxed mb-4">
-                <strong>{language === 'en' ? 'Situation: ' : 'Situasi: '}</strong>{currentCase.scenarioContext}
-              </p>
+              <div className="p-3.5 bg-blue-50/60 border border-blue-100 rounded-2xl mb-4 text-xs sm:text-sm text-slate-700 leading-relaxed">
+                <strong className="text-blue-900 font-bold">{isEn ? 'Situation: ' : 'Situasi: '}</strong>{currentCase.scenarioContext}
+              </div>
 
               {/* Simulated Phone UI Box */}
-              <div className="rounded-sm border-2 border-[#171914] bg-[#0F141C] text-white p-5 space-y-4 shadow-md">
+              <div className="rounded-3xl border-4 border-slate-800 bg-slate-950 text-white p-5 space-y-4 shadow-xl font-sans">
                 {/* Caller details */}
                 <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-full bg-[#8A241C] text-[#D9FA62] flex items-center justify-center font-mono font-bold text-lg animate-pulse">
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-13 h-13 rounded-2xl bg-red-600 text-white flex items-center justify-center font-bold text-lg animate-pulse shadow-md">
                       <PhoneCall className="w-6 h-6" />
                     </div>
                     <div>
-                      <h4 className="font-bold text-base sm:text-lg text-white font-mono">{currentCase.callerIdentity}</h4>
-                      <p className="text-xs text-slate-300 font-mono">{currentCase.claimedAgency}</p>
+                      <h4 className="font-extrabold text-base sm:text-lg text-white">{currentCase.callerIdentity}</h4>
+                      <p className="text-xs text-slate-400">{currentCase.claimedAgency}</p>
                     </div>
                   </div>
-                  <div className="text-right font-mono text-xs">
-                    <span className="text-[#D9FA62] font-bold block">{currentCase.phoneNumber}</span>
-                    <span className="text-slate-400 text-[11px] flex items-center gap-1 justify-end mt-0.5">
-                      <Clock className="w-3 h-3" />
+                  <div className="text-right text-xs">
+                    <span className="text-amber-400 font-bold text-sm block">{currentCase.phoneNumber}</span>
+                    <span className="text-slate-400 text-xs flex items-center gap-1 justify-end mt-0.5">
+                      <Clock className="w-3.5 h-3.5" />
                       <span>{currentCase.callDuration}</span>
                     </span>
                   </div>
@@ -578,22 +603,42 @@ export const CallScamGame: React.FC = () => {
 
                 {/* Call audio waveform & transcript */}
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between font-mono text-xs text-slate-400">
-                    <span className="flex items-center gap-1.5 text-[#D9FA62]">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400 pb-1">
+                    <span className="flex items-center gap-2 text-amber-400 font-semibold">
                       <Volume2 className="w-4 h-4 animate-bounce" />
-                      <span>{language === 'en' ? 'Caller Transcript: ' : 'Transkrip Percakapan Pemanggil:'}</span>
+                      <div className="flex items-center gap-0.5 h-4 px-1.5 py-0.5 bg-amber-500/20 rounded">
+                        {[8, 14, 10, 16, 6].map((h, i) => (
+                          <motion.span
+                            key={i}
+                            animate={{ height: [4, h, 4] }}
+                            transition={{ repeat: Infinity, duration: 0.6 + i * 0.15, ease: 'easeInOut' }}
+                            className="w-1 bg-amber-400 rounded-full inline-block"
+                          />
+                        ))}
+                      </div>
+                      <span>{isEn ? 'Live Call Audio: ' : 'Audio Panggilan Langsung:'}</span>
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => setShowRealStoryModal(true)}
-                      className="text-[11px] uppercase bg-slate-800 hover:bg-slate-700 px-2 py-0.5 rounded-xs text-[#D9FA62] flex items-center gap-1 cursor-pointer transition-colors"
-                    >
-                      <BookOpen className="w-3 h-3" />
-                      <span>{t('game.realStoryBtn')}</span>
-                    </button>
+
+                    <div className="flex items-center gap-2">
+                      <VoiceOverButton
+                        audioSrc={isEn ? `/audio/voice-over/call-scam-${currentCaseIndex + 1}-en.m4a` : `/audio/voice-over/call-scam-${currentCaseIndex + 1}-ms.m4a`}
+                        text={currentCase.audioSimulatedText}
+                        label={isEn ? 'Play Caller Voice' : 'Dengar Panggilan Scammer'}
+                        playingLabel={isEn ? 'Stop Call' : 'Hentikan Panggilan'}
+                        variant="pill"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowRealStoryModal(true)}
+                        className="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-full text-amber-300 font-semibold flex items-center gap-1.5 cursor-pointer transition-colors"
+                      >
+                        <BookOpen className="w-3.5 h-3.5" />
+                        <span>{t('game.realStoryBtn')}</span>
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="p-4 bg-slate-900 border border-slate-700 rounded-sm font-mono text-xs sm:text-sm text-slate-100 leading-relaxed whitespace-pre-line space-y-2">
+                  <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl text-sm sm:text-base text-slate-100 leading-relaxed whitespace-pre-line space-y-2 shadow-inner">
                     {currentCase.audioSimulatedText}
                   </div>
                 </div>
@@ -602,22 +647,22 @@ export const CallScamGame: React.FC = () => {
 
             {/* Prominent SemakMule Tool Button */}
             <div className="pt-2">
-              <div className="p-3 bg-[#171914] text-white rounded-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+              <div className="p-4 bg-slate-900 text-white rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
                 <div className="space-y-0.5">
-                  <span className="font-mono text-xs text-[#D9FA62] font-bold block flex items-center gap-1.5">
+                  <span className="text-xs sm:text-sm text-amber-400 font-bold block flex items-center gap-1.5">
                     <Search className="w-4 h-4" />
-                    <span>{language === 'en' ? 'Investigation Tool: PDRM CCID SemakMule Database' : 'Alat Siasatan: Pangkalan Data CCID SemakMule PDRM'}</span>
+                    <span>{isEn ? 'Investigation Tool: PDRM CCID SemakMule Database' : 'Alat Siasatan: Pangkalan Data CCID SemakMule PDRM'}</span>
                   </span>
-                  <p className="text-[11px] text-slate-300">
-                    {language === 'en' ? 'Check phone number ' : 'Semak nombor telefon pemanggil '}<code className="text-[#D9FA62]">{currentCase.phoneNumber}</code>{language === 'en' ? ' in police fraud records.' : ' dalam rekod jenayah polis.'}
+                  <p className="text-xs text-slate-300">
+                    {isEn ? 'Check caller number ' : 'Semak nombor telefon '}<code className="text-amber-300 font-bold">{currentCase.phoneNumber}</code>{isEn ? ' in police fraud records.' : ' dalam rekod jenayah penipuan polis.'}
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={handleSearchSemakMule}
-                  className="px-4 py-2.5 bg-[#D9FA62] text-[#171914] hover:bg-[#CCF050] font-mono font-bold text-xs uppercase rounded-xs cursor-pointer min-h-[40px] flex items-center justify-center gap-1.5 shrink-0"
+                  className="px-4 py-2 bg-amber-400 text-slate-950 hover:bg-amber-300 font-bold text-xs rounded-xl cursor-pointer min-h-[40px] flex items-center justify-center gap-1.5 shrink-0 transition-colors"
                 >
-                  <span>{language === 'en' ? 'Scan in SemakMule' : 'Imbas di SemakMule'}</span>
+                  <span>{isEn ? 'Scan in SemakMule' : 'Imbas di SemakMule'}</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -627,22 +672,22 @@ export const CallScamGame: React.FC = () => {
                 <motion.div
                   initial={{ opacity: 0, y: 4 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="mt-3 p-4 bg-[#FAF0E6] border-2 border-[#8A241C] rounded-sm space-y-2 text-[#78271C] font-mono text-xs"
+                  className="mt-3 p-4 bg-red-50 border border-red-300 rounded-2xl space-y-2 text-red-950 text-xs sm:text-sm"
                 >
-                  <div className="flex items-center justify-between pb-1.5 border-b border-[#8A241C]/30 font-bold">
-                    <span className="flex items-center gap-1.5">
-                      <ShieldAlert className="w-4 h-4 text-[#8A241C]" />
-                      <span>{language === 'en' ? 'PDRM SEMAKMULE SEARCH RESULT:' : 'HASIL CARIAN CCID SEMAKMULE PDRM:'}</span>
+                  <div className="flex items-center justify-between pb-1.5 border-b border-red-200 font-bold">
+                    <span className="flex items-center gap-1.5 text-red-800">
+                      <ShieldAlert className="w-4 h-4 text-red-600" />
+                      <span>{isEn ? 'PDRM SEMAKMULE SEARCH RESULT:' : 'HASIL CARIAN CCID SEMAKMULE PDRM:'}</span>
                     </span>
-                    <span className="bg-[#8A241C] text-white px-2 py-0.5 rounded-xs text-[10px]">
+                    <span className="bg-red-600 text-white px-2.5 py-0.5 rounded-full text-xs font-extrabold">
                       {currentCase.semakMuleData.policeStatus}
                     </span>
                   </div>
                   <p>
-                    {language === 'en' ? 'Number: ' : 'Nombor: '}<strong>{currentCase.semakMuleData.queryNumber}</strong>{language === 'en' ? ' has ' : ' mempunyai '}<strong>{currentCase.semakMuleData.reportsCount} {language === 'en' ? 'ACTIVE POLICE REPORTS' : 'LAPORAN POLIS'}</strong>!
+                    {isEn ? 'Number: ' : 'Nombor: '}<strong>{currentCase.semakMuleData.queryNumber}</strong>{isEn ? ' has ' : ' mempunyai '}<strong>{currentCase.semakMuleData.reportsCount} {isEn ? 'ACTIVE POLICE REPORTS' : 'LAPORAN POLIS AKTIF'}</strong>!
                   </p>
-                  <p className="text-[11px] text-[#575953]">
-                    {language === 'en' ? 'Category: ' : 'Kategori: '}{currentCase.semakMuleData.lastReportedCategory}. {language === 'en' ? 'Do NOT transfer any money!' : 'Jangan pindahkan sebarang wang!'}
+                  <p className="text-xs text-slate-700">
+                    {isEn ? 'Category: ' : 'Kategori Kes: '}{currentCase.semakMuleData.lastReportedCategory}. {isEn ? 'Do NOT transfer any money!' : 'Jangan sesekali pindahkan sebarang wang!'}
                   </p>
                 </motion.div>
               )}
@@ -650,39 +695,39 @@ export const CallScamGame: React.FC = () => {
           </div>
         </div>
 
-        {/* RIGHT COLUMN: Tactic Checklist & Decisions (Col 8-12) */}
+        {/* RIGHT COLUMN: Tactic Checklist & Decisions */}
         <div className="lg:col-span-5 flex flex-col space-y-4">
-          <div className="rounded-sm border-2 border-[#171914] bg-white p-5 sm:p-6 shadow-xs flex-1 flex flex-col justify-between space-y-5">
+          <div className="rounded-3xl border border-slate-200 bg-white p-5 sm:p-7 shadow-xs flex-1 flex flex-col justify-between space-y-5">
             <div>
-              <div className="flex items-center justify-between pb-3 border-b border-[#171914]/15 font-mono text-xs">
-                <span className="font-bold text-[#171914] uppercase tracking-wider flex items-center gap-1.5">
-                  <ShieldCheck className="w-4 h-4 text-[#171914]" />
-                  <span>{language === 'en' ? '2. Team Analysis & Decisions' : '2. Analisis & Keputusan Pasukan'}</span>
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100 text-xs sm:text-sm">
+                <span className="font-extrabold text-slate-900 flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-blue-600" />
+                  <span>{isEn ? '2. Analysis & Decisions' : '2. Analisis & Keputusan Pasukan'}</span>
                 </span>
-                <span className={`px-2 py-0.5 rounded-xs font-bold text-[11px] ${
-                  isTacticsSubmitted ? 'bg-[#E7F3EB] text-[#123E23]' : 'bg-[#D9FA62] text-[#171914]'
+                <span className={`px-3 py-1 rounded-full font-bold text-xs ${
+                  isTacticsSubmitted ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-blue-50 text-blue-800 border border-blue-200'
                 }`}>
                   {!isTacticsSubmitted ? t('game.step1Badge') : t('game.step2Badge')}
                 </span>
               </div>
             </div>
 
-            {/* Step 1: Detect Tactics or Step 2: Choose Action */}
+            {/* Step 1 or Step 2 */}
             <div className="space-y-4 flex-1">
               {!isTacticsSubmitted ? (
                 <div className="space-y-4">
                   <div>
-                    <h3 className="text-base sm:text-lg font-black text-[#171914] tracking-tight">
-                      {t('game.step1Header')}
+                    <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">
+                      {t('game.step1HeaderFriendly')}
                     </h3>
-                    <p className="text-xs sm:text-sm text-[#575953] mt-1 leading-relaxed">
-                      {language === 'en'
+                    <p className="text-xs sm:text-sm text-slate-600 mt-1.5 leading-relaxed">
+                      {isEn
                         ? 'Based on the caller transcript on the left, mark only suspicious threat tactics:'
-                        : 'Berdasarkan percakapan pemanggil di sebelah kiri, tandakan taktik ugutan / helah penipuan sahaja:'}
+                        : 'Berdasarkan percakapan pemanggil di sebelah kiri, tandakan ayat ugutan atau helah penipuan sahaja:'}
                     </p>
                   </div>
 
-                  <div className="space-y-2.5">
+                  <div className="space-y-3">
                     {currentCase.tactics.map((tactic) => {
                       const isMarked = selectedTacticIds.includes(tactic.id);
 
@@ -691,17 +736,17 @@ export const CallScamGame: React.FC = () => {
                           key={tactic.id}
                           type="button"
                           onClick={() => handleToggleTactic(tactic.id)}
-                          className={`w-full p-4 rounded-sm border-2 text-left transition-all cursor-pointer flex items-center justify-between gap-3 min-h-[52px] ${
+                          className={`w-full p-4 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-center justify-between gap-3 min-h-[56px] shadow-2xs ${
                             isMarked
-                              ? 'bg-[#171914] text-[#D9FA62] border-[#171914] font-bold shadow-xs'
-                              : 'bg-white text-[#171914] border-[#171914]/20 hover:border-[#171914] hover:bg-[#FAF9F5]'
+                              ? 'bg-blue-50 border-blue-600 text-blue-950 font-bold shadow-xs'
+                              : 'bg-white text-slate-800 border-slate-200 hover:border-blue-300 hover:bg-slate-50'
                           }`}
                         >
-                          <span className="font-mono text-xs sm:text-sm leading-snug">
+                          <span className="text-sm sm:text-base leading-snug">
                             {tactic.text}
                           </span>
-                          <span className={`shrink-0 font-mono text-xs font-bold px-2 py-1 rounded-xs border ${
-                            isMarked ? 'bg-[#D9FA62] text-[#171914] border-[#D9FA62]' : 'bg-[#ECEAE2] text-[#575953]'
+                          <span className={`shrink-0 text-xs font-extrabold px-3 py-1 rounded-full border transition-colors ${
+                            isMarked ? 'bg-blue-600 text-white border-blue-600' : 'bg-slate-100 text-slate-600 border-slate-200'
                           }`}>
                             {isMarked ? t('game.marked') : t('game.mark')}
                           </span>
@@ -713,10 +758,10 @@ export const CallScamGame: React.FC = () => {
               ) : (
                 <div className="space-y-4">
                   {/* Review breakdown */}
-                  <div className="p-4 bg-[#FAF9F5] border-2 border-[#171914]/15 rounded-sm space-y-2 font-mono text-xs">
-                    <div className="flex items-center justify-between pb-2 border-b border-[#171914]/10">
-                      <span className="font-bold text-[#171914]">{language === 'en' ? 'Tactics Analysis Outcome:' : 'Hasil Analisis Taktik:'}</span>
-                      <span className="font-bold bg-[#D9FA62] px-2 py-0.5 rounded-xs text-[#171914]">
+                  <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2 text-xs sm:text-sm">
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-200 font-bold text-slate-900">
+                      <span>{isEn ? 'Tactics Analysis Outcome:' : 'Hasil Semakan Taktik:'}</span>
+                      <span className="bg-emerald-100 text-emerald-900 px-2.5 py-0.5 rounded-full text-xs">
                         +{tacticsScore} / 6 {t('game.pts')}
                       </span>
                     </div>
@@ -724,17 +769,17 @@ export const CallScamGame: React.FC = () => {
                       const isTicked = selectedTacticIds.includes(tactic.id);
                       if (isTicked && tactic.isTrap) {
                         return (
-                          <div key={tactic.id} className="p-2 bg-[#E7F3EB] border border-[#1E4D2B]/30 rounded-xs text-[#123E23]">
-                            <strong>✓ {language === 'en' ? 'Accurately Spotted: ' : 'Tepat Dikesan: '}</strong> {tactic.text}
-                            <p className="text-[11px] text-[#575953] mt-0.5">{tactic.explanation}</p>
+                          <div key={tactic.id} className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-950">
+                            <strong>✓ {isEn ? 'Accurately Spotted: ' : 'Tepat Dikesan: '}</strong> {tactic.text}
+                            <p className="text-xs text-slate-700 mt-0.5">{tactic.explanation}</p>
                           </div>
                         );
                       }
                       if (isTicked && !tactic.isTrap) {
                         return (
-                          <div key={tactic.id} className="p-2 bg-[#FAF0E6] border border-[#8A241C]/30 rounded-xs text-[#78271C]">
-                            <strong>✕ {language === 'en' ? 'False Alarm: ' : 'Tersilap Tanda: '}</strong> {tactic.text}
-                            <p className="text-[11px] text-[#575953] mt-0.5">{tactic.explanation}</p>
+                          <div key={tactic.id} className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-950">
+                            <strong>✕ {isEn ? 'False Alarm: ' : 'Tersilap Tanda: '}</strong> {tactic.text}
+                            <p className="text-xs text-slate-700 mt-0.5">{tactic.explanation}</p>
                           </div>
                         );
                       }
@@ -743,10 +788,10 @@ export const CallScamGame: React.FC = () => {
                   </div>
 
                   <div>
-                    <h3 className="text-base sm:text-lg font-black text-[#171914] tracking-tight">
-                      {t('game.step2Header')}
+                    <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">
+                      {t('game.step2HeaderFriendly')}
                     </h3>
-                    <p className="text-xs sm:text-sm text-[#575953] mt-1">
+                    <p className="text-xs sm:text-sm text-slate-600 mt-1">
                       {t('game.step2Sub')}
                     </p>
                   </div>
@@ -754,21 +799,6 @@ export const CallScamGame: React.FC = () => {
                   <div className="space-y-2.5">
                     {currentCase.actions.map(act => {
                       const isSelected = selectedActionId === act.id;
-                      let btnStyles = 'bg-white border-[#171914]/20 hover:border-[#171914] text-[#171914]';
-
-                      if (isSelected) {
-                        btnStyles = 'bg-[#F5F4EE] border-2 border-[#171914] shadow-xs';
-                      }
-
-                      if (isActionSubmitted) {
-                        if (act.isSafe) {
-                          btnStyles = 'bg-[#E7F3EB] border-2 border-[#1E4D2B] text-[#123E23]';
-                        } else if (isSelected && !act.isSafe) {
-                          btnStyles = 'bg-[#FAF0E6] border-2 border-[#8A241C] text-[#78271C]';
-                        } else {
-                          btnStyles = 'bg-[#ECEAE2]/40 border-[#171914]/10 text-[#82847C]';
-                        }
-                      }
 
                       return (
                         <button
@@ -776,15 +806,23 @@ export const CallScamGame: React.FC = () => {
                           type="button"
                           disabled={isActionSubmitted}
                           onClick={() => handleSelectAction(act.id)}
-                          className={`w-full p-4 rounded-sm border-2 text-left transition-colors cursor-pointer flex flex-col justify-between min-h-[58px] ${btnStyles}`}
+                          className={`w-full p-4 rounded-2xl border-2 text-left transition-all min-h-[60px] shadow-2xs ${
+                            isSelected
+                              ? 'bg-blue-50 border-blue-600 text-blue-950 shadow-xs'
+                              : 'bg-white text-slate-800 border-slate-200 hover:border-blue-300 hover:bg-slate-50'
+                          } ${isActionSubmitted ? 'cursor-default' : 'cursor-pointer'}`}
                         >
-                          <span className="font-bold text-sm block">{act.title}</span>
-                          <span className="text-xs text-[#575953] mt-0.5 block">{act.description}</span>
-                          {isSelected && !isActionSubmitted && (
-                            <span className="mt-2 font-mono text-xs font-bold text-[#171914] bg-[#D9FA62] px-2 py-0.5 rounded-xs self-start">
-                              {t('game.yourChoice')}
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="space-y-1">
+                              <span className="font-extrabold text-sm sm:text-base block">{act.title}</span>
+                              <span className="text-xs sm:text-sm text-slate-600 leading-relaxed block">{act.description}</span>
+                            </div>
+                            <span className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5 ${
+                              isSelected ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300'
+                            }`}>
+                              {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                             </span>
-                          )}
+                          </div>
                         </button>
                       );
                     })}
@@ -795,27 +833,25 @@ export const CallScamGame: React.FC = () => {
                     <motion.div
                       initial={{ opacity: 0, y: 4 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className={`p-4 rounded-sm border-l-4 ${
+                      className={`p-4 rounded-2xl border-2 space-y-1.5 ${
                         activeAction.isSafe
-                          ? 'border-l-[#1E4D2B] bg-[#E7F3EB] border border-[#1E4D2B]/30 text-[#123E23]'
-                          : 'border-l-[#8A241C] bg-[#FAF0E6] border border-[#8A241C]/30 text-[#78271C]'
+                          ? 'bg-emerald-50 border-emerald-300 text-emerald-950'
+                          : 'bg-red-50 border-red-300 text-red-950'
                       }`}
                     >
-                      <div className="flex items-start gap-2.5">
+                      <div className="flex items-center gap-2 font-black text-sm sm:text-base">
                         {activeAction.isSafe ? (
-                          <CheckCircle2 className="w-5 h-5 text-[#1E4D2B] shrink-0 mt-0.5" />
+                          <CheckCircle2 className="w-5 h-5 text-emerald-600" />
                         ) : (
-                          <AlertTriangle className="w-5 h-5 text-[#8A241C] shrink-0 mt-0.5" />
+                          <AlertTriangle className="w-5 h-5 text-red-600" />
                         )}
-                        <div className="space-y-1">
-                          <span className="font-mono text-xs uppercase font-bold tracking-wider block">
-                            {activeAction.isSafe ? (language === 'en' ? 'Safe Action! (+6.5 Pts)' : 'Tindakan Tepat! (+6.5 Mata)') : (language === 'en' ? 'Risk Warning' : 'Amaran Risiko')}
-                          </span>
-                          <p className="text-xs sm:text-sm leading-relaxed text-[#171914]">
-                            {activeAction.consequence}
-                          </p>
-                        </div>
+                        <span>
+                          {activeAction.isSafe ? (isEn ? 'Safe Action! (+6.5 Pts)' : 'Tindakan Tepat! (+6.5 Mata)') : (isEn ? 'Risk Warning' : 'Amaran Risiko')}
+                        </span>
                       </div>
+                      <p className="text-xs sm:text-sm leading-relaxed">
+                        {activeAction.consequence}
+                      </p>
                     </motion.div>
                   )}
                 </div>
@@ -823,45 +859,42 @@ export const CallScamGame: React.FC = () => {
             </div>
 
             {/* Bottom Actions */}
-            <div className="pt-4 border-t border-[#171914]/15">
+            <div className="pt-4 border-t border-slate-100">
               {!isTacticsSubmitted ? (
                 <button
                   type="button"
-                  disabled={selectedTacticIds.length === 0}
                   onClick={handleSubmitTactics}
-                  className={`w-full py-4 px-6 min-h-[50px] rounded-sm font-mono font-bold text-xs sm:text-sm uppercase tracking-wider transition-colors flex items-center justify-center gap-2 ${
-                    selectedTacticIds.length > 0
-                      ? 'bg-[#D9FA62] text-[#171914] hover:bg-[#CCF050] border-2 border-[#171914] cursor-pointer shadow-xs'
-                      : 'bg-[#ECEAE2] text-[#82847C] cursor-not-allowed border border-[#171914]/10'
-                  }`}
+                  className="w-full py-4 px-6 min-h-[52px] rounded-2xl font-bold text-base text-white bg-blue-600 hover:bg-blue-700 transition-all cursor-pointer shadow-md hover:shadow-lg flex items-center justify-center gap-2"
                 >
                   <span>{t('game.submitStep1')}</span>
+                  <ArrowRight className="w-5 h-5" />
                 </button>
               ) : !isActionSubmitted ? (
                 <button
                   type="button"
                   disabled={!selectedActionId}
                   onClick={handleSubmitAction}
-                  className={`w-full py-4 px-6 min-h-[50px] rounded-sm font-mono font-bold text-xs sm:text-sm uppercase tracking-wider transition-colors flex items-center justify-center gap-2 ${
+                  className={`w-full py-4 px-6 min-h-[52px] rounded-2xl font-bold text-base flex items-center justify-center gap-2 transition-all ${
                     selectedActionId
-                      ? 'bg-[#171914] text-[#D9FA62] hover:bg-[#2A2D25] border-2 border-[#171914] cursor-pointer shadow-xs'
-                      : 'bg-[#ECEAE2] text-[#82847C] cursor-not-allowed border border-[#171914]/10'
+                      ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer shadow-md hover:shadow-lg'
+                      : 'bg-slate-200 text-slate-400 cursor-not-allowed'
                   }`}
                 >
+                  <Check className="w-5 h-5" />
                   <span>{t('game.submitStep2')}</span>
                 </button>
               ) : (
                 <button
                   type="button"
                   onClick={handleNextCase}
-                  className="w-full py-4 px-6 min-h-[50px] rounded-sm font-mono font-bold text-xs sm:text-sm uppercase tracking-wider text-[#171914] bg-[#D9FA62] hover:bg-[#CCF050] border-2 border-[#171914] transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                  className="w-full py-4 px-6 min-h-[52px] rounded-2xl font-bold text-base text-white bg-blue-600 hover:bg-blue-700 transition-all cursor-pointer shadow-md hover:shadow-lg flex items-center justify-center gap-2"
                 >
                   <span>
-                    {currentCaseIndex + 1 === cases.length
-                      ? t('game.viewFinalReport')
-                      : `${t('game.nextScenario')} (${t('game.case')} 0${currentCaseIndex + 2})`}
+                    {currentCaseIndex + 1 < cases.length
+                      ? `${t('game.nextScenario')} (${currentCaseIndex + 2}/${cases.length}) →`
+                      : t('game.viewFinalReport')}
                   </span>
-                  <ArrowRight className="w-4 h-4" />
+                  <ArrowRight className="w-5 h-5" />
                 </button>
               )}
             </div>
@@ -871,5 +904,3 @@ export const CallScamGame: React.FC = () => {
     </div>
   );
 };
-
-

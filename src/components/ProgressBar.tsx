@@ -17,35 +17,34 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
   maxScore
 }) => {
   const percentage = Math.round(((currentQuestionIndex + 1) / totalQuestions) * 100);
-  const formattedCurrent = String(currentQuestionIndex + 1).padStart(2, '0');
-  const formattedTotal = String(totalQuestions).padStart(2, '0');
+  const formattedCurrent = currentQuestionIndex + 1;
 
   return (
-    <div className="w-full bg-white border border-[#171914]/15 rounded-sm p-4 sm:p-5 shadow-xs">
-      <div className="flex items-center justify-between gap-4 mb-3 font-mono text-xs">
+    <div className="w-full bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-3 text-sm">
         {/* Step indicator */}
         <div className="flex items-center gap-2">
-          <span className="font-bold text-[#171914] bg-[#ECEAE2] px-2 py-0.5 rounded-xs">
-            SOALAN {formattedCurrent} / {formattedTotal}
+          <span className="font-bold text-blue-700 bg-blue-50 px-3 py-1 rounded-lg border border-blue-200">
+            Soalan {formattedCurrent} daripada {totalQuestions}
           </span>
-          <span className="text-[#82847C] hidden sm:inline">
-            [{percentage}% Lengkap]
+          <span className="text-slate-500 font-medium hidden sm:inline">
+            ({percentage}% selesai)
           </span>
         </div>
 
         {/* Current challenge score */}
-        <div className="flex items-center gap-1.5 font-bold text-[#171914]">
-          <span className="text-[#82847C] font-normal uppercase text-[10px] tracking-wider">Mata Cabaran:</span>
-          <span className="bg-[#D9FA62] px-2 py-0.5 rounded-xs border border-[#171914]/20">
+        <div className="flex items-center gap-2 font-bold text-slate-800">
+          <span className="text-slate-500 font-medium text-xs">Mata Cabaran:</span>
+          <span className="bg-amber-100 text-amber-900 px-3 py-1 rounded-lg border border-amber-300">
             {currentScore} / {maxScore}
           </span>
         </div>
       </div>
 
       {/* Progress Bar Track */}
-      <div className="h-2 w-full bg-[#ECEAE2] rounded-xs overflow-hidden border border-[#171914]/10">
+      <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden border border-slate-200">
         <motion.div
-          className="h-full bg-[#171914]"
+          className="h-full bg-linear-to-r from-blue-600 to-indigo-600 rounded-full"
           initial={{ width: 0 }}
           animate={{ width: `${percentage}%` }}
           transition={{ duration: 0.3, ease: 'easeInOut' }}

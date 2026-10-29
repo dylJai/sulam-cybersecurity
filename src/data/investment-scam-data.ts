@@ -1,6 +1,8 @@
 import { ChallengeMeta } from '@/types/challenge';
 import { RealWorldScamStory } from './call-scam-data';
 
+export type RealWorldInvestmentStory = RealWorldScamStory;
+
 export interface InvestmentScamCase {
   id: string;
   title: string;

@@ -3,6 +3,8 @@
 import React, { useState } from 'react';
 import { Smartphone, ShieldAlert, CheckCircle2, RotateCcw } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
+import { playPopSound, playSuccessChime, playWarningTone, triggerCelebration } from '@/lib/sound';
+import { VoiceOverButton } from '@/components/common/VoiceOverButton';
 
 interface TwoFactorPhoneSimulatorProps {
   onSuccess: () => void;
@@ -14,132 +16,149 @@ export const TwoFactorPhoneSimulator: React.FC<TwoFactorPhoneSimulatorProps> = (
   const isEn = language === 'en';
 
   const handleDeny = () => {
+    playSuccessChime();
+    triggerCelebration();
     setDecision('blocked');
     onSuccess();
   };
 
   const handleApprove = () => {
+    playWarningTone();
     setDecision('compromised');
   };
 
   const handleRetry = () => {
+    playPopSound();
     setDecision('pending');
   };
 
   return (
-    <div className="rounded-sm border-2 border-[#171914] bg-white p-5 sm:p-7 shadow-xs space-y-5">
+    <div className="rounded-2xl border border-slate-200 bg-white p-6 sm:p-7 shadow-sm space-y-5">
       {/* Title */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#171914]/15 font-mono text-xs">
-        <div className="flex items-center gap-2">
-          <Smartphone className="w-4 h-4 text-[#171914]" />
-          <span className="font-bold uppercase tracking-wider text-[#171914]">
-            {isEn ? 'Smartphone 2FA Push Notification Simulator' : 'Simulator Pengesahan 2FA Telefon Pintar'}
-          </span>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
+            <Smartphone className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="font-extrabold text-base sm:text-lg text-slate-900">
+              {isEn ? 'Smartphone 2FA Notification Simulator' : 'Simulator Notifikasi 2FA Telefon Pintar'}
+            </h3>
+            <p className="text-xs sm:text-sm text-slate-500">
+              {isEn ? 'Experience how Two-Factor Authentication blocks intruders' : 'Alami bagaimana Pengesahan Dua Faktor menyelamatkan akaun anda'}
+            </p>
+          </div>
         </div>
-        <span className="text-[#8A241C] font-bold bg-[#FAF0E6] px-2 py-0.5 rounded-xs">
-          {isEn ? 'UNAUTHORIZED BREACH ATTEMPT DETECTED' : 'PERCUBAAN PENCEROBOHAN DIKESAN'}
+        <span className="text-red-700 bg-red-50 border border-red-200 px-3 py-1 rounded-full text-xs font-bold self-start sm:self-auto">
+          {isEn ? 'UNAUTHORIZED ATTEMPT' : 'CUBAAN PENCEROBOHAN'}
         </span>
       </div>
 
-      <div className="text-xs sm:text-sm text-[#575953] leading-relaxed">
+      <div className="text-sm sm:text-base text-slate-600 leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-100">
         {isEn ? (
           <>
-            A cybercriminal obtained Pak Ali&apos;s password and is now attempting to sign in. Fortunately, Pak Ali activated <strong>Two-Factor Authentication (2FA)</strong>! Look at the prompt that popped up on his smartphone screen below:
+            A scammer guessed Pak Ali&apos;s password and is attempting to log into his account from another device. Fortunately, Pak Ali turned on <strong>Two-Factor Authentication (2FA)</strong>! Look at the prompt that arrived on his phone screen below:
           </>
         ) : (
           <>
-            Seorang penjenayah siber berjaya meneka kata laluan Pak Ali dan kini cuba log masuk. Nasib baik Pak Ali telah mengaktifkan <strong>Pengesahan Dua Faktor (2FA)</strong>! Perhatikan notifikasi yang masuk ke telefon pintar beliau di bawah:
+            Penjenayah siber berjaya mencuri kata laluan Pak Ali dan cuba log masuk. Mujurlah Pak Ali telah menghidupkan <strong>Pengesahan 2 Faktor (2FA)</strong>! Perhatikan notifikasi keselamatan yang muncul di skrin telefon beliau di bawah:
           </>
         )}
       </div>
 
       {/* Simulated Smartphone Frame */}
-      <div className="max-w-md mx-auto rounded-xl border-2 border-[#171914] bg-[#090D16] text-white p-4 shadow-lg space-y-4 font-sans">
+      <div className="max-w-md mx-auto rounded-3xl border-4 border-slate-800 bg-slate-950 text-white p-5 shadow-xl space-y-4 font-sans">
         {/* Phone Top Status */}
-        <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono px-1">
+        <div className="flex items-center justify-between text-xs text-slate-400 font-medium px-2">
           <span>10:45 AM</span>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-2">
             <span>5G</span>
             <span>89% 🔋</span>
           </div>
         </div>
 
         {/* 2FA Push Alert Card */}
-        <div className="bg-slate-900 border border-slate-700 rounded-lg p-4 space-y-3 shadow-md">
-          <div className="flex items-center gap-2 text-rose-400 text-xs font-bold font-mono">
-            <ShieldAlert className="w-4 h-4" />
-            <span>{isEn ? 'ACCOUNT SECURITY ALERT' : 'AMARAN KESELAMATAN AKAUN'}</span>
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-3.5 shadow-lg">
+          <div className="flex items-center justify-between gap-2 pb-1 border-b border-slate-800">
+            <div className="flex items-center gap-2 text-rose-400 text-xs font-bold">
+              <ShieldAlert className="w-4 h-4" />
+              <span>{isEn ? 'ACCOUNT SECURITY ALERT' : 'AMARAN KESELAMATAN AKAUN'}</span>
+            </div>
+            <VoiceOverButton
+              text={isEn
+                ? 'Account security alert! Unrecognized sign-in attempt for ali.kampung@email.com from a Windows PC with foreign IP. Matched password. Is this you trying to sign in?'
+                : 'Amaran keselamatan akaun! Percubaan log masuk tidak dikenali untuk ali.kampung@email.com daripada peranti Windows PC dengan alamat IP luar negara. Kata laluan padan dan tepat. Adakah ini anda yang sedang cuba log masuk?'}
+              variant="badge"
+            />
           </div>
 
-          <div className="space-y-1 text-xs">
-            <div className="text-slate-100 font-bold">
+          <div className="space-y-2 text-xs sm:text-sm">
+            <div className="text-white font-extrabold text-sm sm:text-base">
               {isEn ? 'Unrecognized Sign-In Attempt' : 'Percubaan Log Masuk Tidak Dikenali'}
             </div>
-            <div className="text-slate-300 text-[11px] font-mono leading-relaxed bg-slate-950 p-2.5 rounded border border-slate-800 space-y-0.5">
-              <div>{isEn ? 'Account:' : 'Akaun:'} <strong>ali.kampung@email.com</strong></div>
-              <div>{isEn ? 'Device:' : 'Peranti:'} <strong>Windows PC (Chrome)</strong></div>
-              <div>{isEn ? 'Location:' : 'Lokasi:'} <span className="text-rose-400 font-bold">{isEn ? 'Foreign IP (185.220.101.5)' : 'IP Asing (185.220.101.5)'}</span></div>
-              <div>{isEn ? 'Password:' : 'Kata Laluan:'} <span className="text-emerald-400 font-bold">{isEn ? 'Matched & Correct' : 'Padan & Betul'}</span></div>
+            <div className="text-slate-300 text-xs leading-relaxed bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1">
+              <div>{isEn ? 'Account:' : 'Akaun:'} <strong className="text-white">ali.kampung@email.com</strong></div>
+              <div>{isEn ? 'Device:' : 'Peranti:'} <strong className="text-white">Windows PC (Chrome)</strong></div>
+              <div>{isEn ? 'Location:' : 'Lokasi:'} <span className="text-rose-400 font-bold">{isEn ? 'Foreign IP (185.220.101.5)' : 'IP Luar Negara (185.220.101.5)'}</span></div>
+              <div>{isEn ? 'Password:' : 'Kata Laluan:'} <span className="text-emerald-400 font-bold">{isEn ? 'Matched & Correct' : 'Padan & Tepat'}</span></div>
             </div>
-            <div className="text-slate-200 text-xs pt-1 font-medium">
-              {isEn ? 'Are you currently trying to sign in?' : 'Adakah ini anda yang sedang cuba log masuk?'}
+            <div className="text-slate-200 text-sm font-semibold pt-1">
+              {isEn ? 'Is this you trying to sign in?' : 'Adakah ini anda yang sedang cuba log masuk?'}
             </div>
           </div>
 
           {/* Interactive Decision Buttons */}
           {decision === 'pending' && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
               <button
                 type="button"
                 onClick={handleDeny}
-                className="py-4 px-4 rounded-sm font-mono font-extrabold text-sm uppercase bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white transition-colors cursor-pointer text-center min-h-[52px] shadow-sm flex items-center justify-center gap-2 border-2 border-rose-400"
+                className="py-3.5 px-4 rounded-xl font-bold text-sm bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white transition-all cursor-pointer text-center min-h-[48px] shadow-sm flex items-center justify-center gap-1.5"
               >
-                <span>{isEn ? '✕ DENY & BLOCK' : '✕ TOLAK & SEKAT'}</span>
+                <span>{isEn ? '✕ DENY & BLOCK' : '✕ BUKAN SAYA (SEKAT)'}</span>
               </button>
               <button
                 type="button"
                 onClick={handleApprove}
-                className="py-4 px-4 rounded-sm font-mono font-bold text-sm uppercase bg-slate-800 hover:bg-slate-700 active:bg-slate-900 text-slate-200 transition-colors cursor-pointer text-center min-h-[52px] border-2 border-slate-600 flex items-center justify-center gap-2"
+                className="py-3.5 px-4 rounded-xl font-semibold text-xs sm:text-sm bg-slate-800 hover:bg-slate-700 text-slate-300 transition-all cursor-pointer text-center min-h-[48px] border border-slate-700"
               >
-                <span>{isEn ? 'YES, IT IS ME' : 'YA, INI SAYA'}</span>
+                <span>{isEn ? '✓ Yes, Allow Sign-In' : '✓ Ya, Benarkan Log Masuk'}</span>
               </button>
             </div>
           )}
 
-          {/* Blocked Confirmation State */}
           {decision === 'blocked' && (
-            <div className="p-3 bg-emerald-950/80 border border-emerald-500/50 rounded-sm space-y-2 text-xs">
-              <div className="flex items-center gap-2 text-emerald-400 font-bold">
-                <CheckCircle2 className="w-4 h-4 shrink-0" />
-                <span>{isEn ? 'Access Blocked Successfully!' : 'Pencerobohan Berjaya Disekat!'}</span>
+            <div className="p-3.5 bg-emerald-950 border border-emerald-600/50 rounded-xl space-y-1.5 animate-in fade-in">
+              <div className="flex items-center gap-2 text-emerald-300 font-bold text-sm">
+                <CheckCircle2 className="w-5 h-5" />
+                <span>{isEn ? 'INTRUDER BLOCKED INSTANTLY!' : 'PENCEROBOH BERJAYA DISEKAT!'}</span>
               </div>
-              <p className="text-emerald-200 text-[11px] leading-relaxed">
+              <p className="text-xs text-emerald-200/90 leading-relaxed">
                 {isEn
-                  ? 'Even though the hacker possessed your password, 2FA completely prevented unauthorized access.'
-                  : 'Walaupun penjenayah mempunyai kata laluan anda, mereka tetap disekat kerana tidak memegang telefon fizikal anda.'}
+                  ? 'Even though the intruder had your password, 2FA required your phone confirmation. Your account remains 100% safe!'
+                  : 'Walaupun penjenayah mempunyai kata laluan anda, mereka tetap disekat kerana tidak memiliki telefon anda. Akaun kekal selamat!'}
               </p>
             </div>
           )}
 
-          {/* Compromised State */}
           {decision === 'compromised' && (
-            <div className="p-3 bg-rose-950/80 border border-rose-500/50 rounded-sm space-y-2 text-xs">
-              <div className="flex items-center gap-2 text-rose-400 font-bold">
-                <ShieldAlert className="w-4 h-4 shrink-0" />
-                <span>{isEn ? 'Account Compromised!' : 'Akaun Telah Dicerobohi!'}</span>
+            <div className="p-3.5 bg-rose-950 border border-rose-600/50 rounded-xl space-y-2 animate-in fade-in">
+              <div className="flex items-center gap-2 text-rose-300 font-bold text-sm">
+                <ShieldAlert className="w-5 h-5" />
+                <span>{isEn ? 'DANGER: YOU ALLOWED THE HACKER IN!' : 'BAHAYA: ANDA BENARKAN PENGGODAM MASUK!'}</span>
               </div>
-              <p className="text-rose-200 text-[11px] leading-relaxed">
+              <p className="text-xs text-rose-200/90 leading-relaxed">
                 {isEn
-                  ? 'You approved an unrecognized login attempt! The hacker was granted full access to your email.'
-                  : 'Anda menekan kelulusan bagi percubaan yang bukan daripada anda! Penjenayah kini memiliki akses penuh.'}
+                  ? 'Never press "Allow" unless you are the one signing in right now!'
+                  : 'Jangan sesekali tekan "Benarkan" jika anda tidak sedang membuat log masuk di komputer tersebut!'}
               </p>
               <button
                 type="button"
                 onClick={handleRetry}
-                className="w-full py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xs font-mono font-bold text-xs uppercase cursor-pointer flex items-center justify-center gap-1.5"
+                className="mt-1 px-3 py-1.5 bg-white text-rose-900 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
-                <span>{isEn ? 'Try Again (Deny Breach)' : 'Cuba Semula (Tolak Pencerobohan)'}</span>
+                <span>{isEn ? 'Try Again' : 'Cuba Semula'}</span>
               </button>
             </div>
           )}

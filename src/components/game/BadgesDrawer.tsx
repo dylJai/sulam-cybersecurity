@@ -1,8 +1,10 @@
 'use client';
 
 import React from 'react';
-import { Award } from 'lucide-react';
+import { Award, Lock, Sparkles } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { useLanguage } from '@/context/LanguageContext';
+import { playPopSound, playSuccessChime } from '@/lib/sound';
 
 export interface BadgeItem {
   id: string;
@@ -19,43 +21,75 @@ interface BadgesDrawerProps {
 export const BadgesDrawer: React.FC<BadgesDrawerProps> = ({ badges }) => {
   const { language } = useLanguage();
   const unlockedCount = badges.filter(b => b.isUnlocked).length;
+  const isEn = language === 'en';
 
   return (
-    <div className="bg-white border border-[#171914]/15 rounded-sm p-4 space-y-3 shadow-xs">
-      <div className="flex items-center justify-between font-mono text-xs">
-        <div className="flex items-center gap-2">
-          <Award className="w-4 h-4 text-[#171914]" />
-          <span className="font-bold uppercase tracking-wider text-[#171914]">
-            {language === 'en' ? 'Station Investigation Badges' : 'Lencana Siasatan Stesen'}
-          </span>
+    <motion.div
+      initial={{ opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2 }}
+      className="bg-white border border-slate-200/90 rounded-3xl p-5 sm:p-6 space-y-4 shadow-sm"
+    >
+      <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center">
+            <Award className="w-5 h-5" />
+          </div>
+          <div>
+            <h4 className="font-extrabold text-sm sm:text-base text-slate-900">
+              {isEn ? 'Station Achievement Badges' : 'Lencana Pencapaian Stesen'}
+            </h4>
+            <p className="text-xs text-slate-500">
+              {isEn ? 'Unlocked as your team completes key discoveries' : 'Dibuka apabila pasukan anda membuat penemuan penting'}
+            </p>
+          </div>
         </div>
-        <span className="font-bold text-[#171914] bg-[#ECEAE2] px-2 py-0.5 rounded-xs">
-          {unlockedCount} / {badges.length} {language === 'en' ? 'Unlocked' : 'Dibuka'}
+        <span className="font-extrabold text-xs sm:text-sm text-blue-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
+          {unlockedCount} / {badges.length} {isEn ? 'Unlocked' : 'Dibuka'}
         </span>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {badges.map(badge => (
-          <div
+          <motion.button
             key={badge.id}
-            className={`p-2.5 rounded-xs border text-xs transition-colors flex items-center gap-2.5 ${
+            type="button"
+            whileHover={badge.isUnlocked ? { scale: 1.02 } : {}}
+            whileTap={badge.isUnlocked ? { scale: 0.97 } : {}}
+            onClick={() => {
+              if (badge.isUnlocked) playSuccessChime();
+              else playPopSound();
+            }}
+            className={`p-3.5 rounded-2xl border text-left text-xs sm:text-sm transition-all flex items-start gap-3 cursor-pointer ${
               badge.isUnlocked
-                ? 'bg-[#E7F3EB] border-[#1E4D2B]/30 text-[#123E23]'
-                : 'bg-[#FAF9F5] border-[#171914]/10 text-[#82847C] opacity-60'
+                ? 'bg-emerald-50/70 border-emerald-200 text-emerald-950 shadow-2xs hover:border-emerald-400'
+                : 'bg-slate-50 border-slate-200/80 text-slate-400 opacity-70'
             }`}
           >
-            <span className="text-xl shrink-0">{badge.icon}</span>
-            <div className="min-w-0">
-              <span className="font-bold block truncate font-mono text-[11px]">
-                {badge.name}
-              </span>
-              <span className="text-[10px] text-[#575953] block truncate">
-                {badge.isUnlocked ? (language === 'en' ? '✓ Unlocked' : '✓ Dibuka') : (language === 'en' ? 'Locked' : 'Terkunci')}
+            <span className="text-2xl shrink-0 mt-0.5 filter drop-shadow-2xs">{badge.icon}</span>
+            <div className="min-w-0 flex-1 space-y-0.5">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-slate-900 truncate">
+                  {badge.name}
+                </span>
+                {badge.isUnlocked ? (
+                  <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                ) : (
+                  <Lock className="w-3 h-3 text-slate-400 shrink-0" />
+                )}
+              </div>
+              <p className="text-xs text-slate-600 line-clamp-2">
+                {badge.description}
+              </p>
+              <span className={`inline-block text-[11px] font-bold pt-0.5 ${
+                badge.isUnlocked ? 'text-emerald-700' : 'text-slate-400'
+              }`}>
+                {badge.isUnlocked ? (isEn ? '✓ Unlocked' : '✓ Dibuka') : (isEn ? 'Locked' : 'Terkunci')}
               </span>
             </div>
-          </div>
+          </motion.button>
         ))}
       </div>
-    </div>
+    </motion.div>
   );
 };

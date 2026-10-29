@@ -104,24 +104,24 @@ export const ChallengeEngine: React.FC<ChallengeEngineProps> = ({ meta, question
       <AnimatePresence mode="wait">
         <motion.div
           key={currentQuestion.id}
-          initial={{ opacity: 0, y: 6 }}
+          initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -6 }}
+          exit={{ opacity: 0, y: -8 }}
           transition={{ duration: 0.2 }}
-          className="rounded-sm border border-[#171914]/20 bg-white p-5 sm:p-7 shadow-xs space-y-6"
+          className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm space-y-6"
         >
           {/* Question Title & Scenario Context */}
           <div>
-            <div className="flex items-center gap-2 font-mono text-xs text-[#7C7E77] uppercase tracking-wider mb-1">
+            <div className="flex items-center gap-2 text-xs font-bold text-blue-700 uppercase tracking-wider mb-2">
               <span>{meta.title}</span>
-              <span>/</span>
-              <span>Soalan 0{currentIndex + 1}</span>
+              <span>•</span>
+              <span>Soalan {currentIndex + 1} daripada {questions.length}</span>
             </div>
-            <h2 className="text-xl sm:text-2xl font-extrabold text-[#171914] tracking-tight">
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
               {currentQuestion.title}
             </h2>
             {currentQuestion.scenarioContext && (
-              <p className="text-xs sm:text-sm text-[#575953] mt-2 leading-relaxed">
+              <p className="text-sm sm:text-base text-slate-600 mt-2 leading-relaxed">
                 {currentQuestion.scenarioContext}
               </p>
             )}
@@ -144,28 +144,28 @@ export const ChallengeEngine: React.FC<ChallengeEngineProps> = ({ meta, question
 
               {/* Question Text */}
               <div className="pt-2">
-                <h4 className="text-base font-bold text-[#171914] mb-3 flex items-center gap-2">
-                  <HelpCircle className="w-4 h-4 text-[#7C7E77]" />
+                <h4 className="text-base sm:text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                  <HelpCircle className="w-5 h-5 text-blue-600 shrink-0" />
                   <span>{currentQuestion.questionText}</span>
                 </h4>
 
                 {/* Multiple Choice Options */}
-                <div className="space-y-2.5">
+                <div className="space-y-3">
                   {currentQuestion.options.map((option) => {
                     const isSelected = selectedOptionId === option.id;
-                    let optionStyles = 'border-[#171914]/20 bg-white hover:border-[#171914] text-[#171914]';
+                    let optionStyles = 'border-slate-200 bg-white hover:border-blue-400 hover:bg-slate-50 text-slate-800';
 
                     if (isSelected) {
-                      optionStyles = 'border-2 border-[#171914] bg-[#F5F4EE] text-[#171914] shadow-xs';
+                      optionStyles = 'border-2 border-blue-600 bg-blue-50/50 text-blue-950 shadow-sm';
                     }
 
                     if (isSubmitted) {
                       if (option.isCorrect) {
-                        optionStyles = 'border-2 border-[#1E4D2B] bg-[#E7F3EB] text-[#123E23]';
+                        optionStyles = 'border-2 border-emerald-600 bg-emerald-50 text-emerald-950';
                       } else if (isSelected && !option.isCorrect) {
-                        optionStyles = 'border-2 border-[#8A241C] bg-[#FAF0E6] text-[#78271C]';
+                        optionStyles = 'border-2 border-rose-500 bg-rose-50 text-rose-950';
                       } else {
-                        optionStyles = 'border-[#171914]/10 bg-[#ECEAE2]/40 text-[#82847C]';
+                        optionStyles = 'border-slate-100 bg-slate-50 text-slate-400';
                       }
                     }
 
@@ -175,18 +175,18 @@ export const ChallengeEngine: React.FC<ChallengeEngineProps> = ({ meta, question
                         type="button"
                         disabled={isSubmitted}
                         onClick={() => handleSelectOption(option.id)}
-                        className={`w-full p-3.5 rounded-sm border text-left transition-colors flex items-start gap-3 cursor-pointer ${optionStyles}`}
+                        className={`w-full p-4 rounded-2xl border text-left transition-all flex items-start gap-3.5 cursor-pointer min-h-[56px] ${optionStyles}`}
                       >
                         <span
-                          className={`w-6 h-6 rounded-xs flex items-center justify-center font-mono font-bold text-xs shrink-0 mt-0.5 ${
+                          className={`w-7 h-7 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 mt-0.5 ${
                             isSelected
-                              ? 'bg-[#171914] text-[#D9FA62]'
-                              : 'bg-[#ECEAE2] text-[#171914]'
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-slate-100 text-slate-700'
                           }`}
                         >
                           {option.id}
                         </span>
-                        <span className="text-sm leading-relaxed">{option.text}</span>
+                        <span className="text-sm sm:text-base leading-relaxed font-medium">{option.text}</span>
                       </button>
                     );
                   })}
@@ -216,27 +216,27 @@ export const ChallengeEngine: React.FC<ChallengeEngineProps> = ({ meta, question
           {/* Feedback Area after Submission */}
           {isSubmitted && (
             <motion.div
-              initial={{ opacity: 0, y: 4 }}
+              initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
-              className={`p-4 rounded-sm border-l-4 ${
+              className={`p-5 rounded-2xl border ${
                 isCorrectAnswer
-                  ? 'border-l-[#1E4D2B] bg-[#E7F3EB] border border-[#1E4D2B]/20 text-[#123E23]'
-                  : 'border-l-[#8A241C] bg-[#FAF0E6] border border-[#8A241C]/20 text-[#78271C]'
+                  ? 'border-emerald-200 bg-emerald-50 text-emerald-950'
+                  : 'border-rose-200 bg-rose-50 text-rose-950'
               }`}
             >
-              <div className="flex items-start gap-3">
-                <div className={`w-6 h-6 rounded-xs flex items-center justify-center shrink-0 mt-0.5 ${
-                  isCorrectAnswer ? 'bg-[#1E4D2B] text-white' : 'bg-[#8A241C] text-white'
+              <div className="flex items-start gap-3.5">
+                <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
+                  isCorrectAnswer ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
                 }`}>
-                  {isCorrectAnswer ? <Check className="w-3.5 h-3.5" /> : <X className="w-3.5 h-3.5" />}
+                  {isCorrectAnswer ? <Check className="w-5 h-5" /> : <X className="w-5 h-5" />}
                 </div>
-                <div className="space-y-1">
-                  <div className="font-bold text-sm">
-                    {isCorrectAnswer ? 'Tepat Sekali! (+10 Mata)' : 'Kurang Tepat, Tetapi Pembelajaran Yang Bagus.'}
+                <div className="space-y-1.5">
+                  <div className="font-bold text-base">
+                    {isCorrectAnswer ? 'Tepat Sekali! (+10 Mata)' : 'Kurang Tepat, Tetapi Peluang Pembelajaran Berharga.'}
                   </div>
-                  <div className="text-xs sm:text-sm leading-relaxed text-[#575953]">
-                    <span className="font-mono text-[10px] uppercase font-bold text-[#171914] block mb-0.5">
-                      Penerangan Keselamatan Siber:
+                  <div className="text-sm leading-relaxed text-slate-700">
+                    <span className="text-xs uppercase font-bold text-slate-900 block mb-1">
+                      💡 Penerangan Keselamatan Siber:
                     </span>
                     <p>{currentQuestion.explanation}</p>
                   </div>
@@ -246,10 +246,10 @@ export const ChallengeEngine: React.FC<ChallengeEngineProps> = ({ meta, question
           )}
 
           {/* Action Footer: Submit or Next */}
-          <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-[#171914]/10">
-            <span className="font-mono text-xs text-[#7C7E77]">
+          <div className="pt-4 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-slate-100">
+            <span className="text-xs sm:text-sm text-slate-500 font-medium">
               {!isSubmitted
-                ? 'Bincang bersama pasukan sebelum menghantar.'
+                ? 'Bincang bersama pasukan sebelum menghantar jawapan.'
                 : 'Fahami penerangan sebelum ke soalan seterusnya.'}
             </span>
 
@@ -259,10 +259,10 @@ export const ChallengeEngine: React.FC<ChallengeEngineProps> = ({ meta, question
                   type="button"
                   disabled={!selectedOptionId}
                   onClick={handleSubmitAnswer}
-                  className={`w-full sm:w-auto px-6 py-2.5 rounded-sm font-mono font-bold text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-2 ${
+                  className={`w-full sm:w-auto px-7 py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 active:scale-[0.985] ${
                     selectedOptionId
-                      ? 'bg-[#171914] hover:bg-[#2A2D25] text-[#D9FA62] border border-[#171914] cursor-pointer'
-                      : 'bg-[#ECEAE2] text-[#82847C] cursor-not-allowed border border-[#171914]/10'
+                      ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm cursor-pointer'
+                      : 'bg-slate-100 text-slate-400 cursor-not-allowed'
                   }`}
                 >
                   <span>Hantar Jawapan</span>
@@ -271,12 +271,12 @@ export const ChallengeEngine: React.FC<ChallengeEngineProps> = ({ meta, question
                 <button
                   type="button"
                   onClick={handleNextQuestion}
-                  className="w-full sm:w-auto px-6 py-2.5 rounded-sm font-mono font-bold text-xs uppercase tracking-wider text-[#171914] bg-[#D9FA62] hover:bg-[#CCF050] border border-[#171914] transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                  className="w-full sm:w-auto px-7 py-3 rounded-xl font-bold text-sm text-white bg-blue-600 hover:bg-blue-700 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm active:scale-[0.985]"
                 >
                   <span>
                     {currentIndex + 1 < questions.length ? 'Soalan Seterusnya' : 'Lihat Keputusan'}
                   </span>
-                  <ArrowRight className="w-3.5 h-3.5" />
+                  <ArrowRight className="w-4 h-4" />
                 </button>
               )}
             </div>

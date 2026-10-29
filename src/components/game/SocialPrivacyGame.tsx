@@ -4,19 +4,19 @@ import React, { useState } from 'react';
 import { getSocialPrivacyCases, SocialPrivacyCase } from '@/data/social-privacy-data';
 import { BadgesDrawer, BadgeItem } from '@/components/game/BadgesDrawer';
 import { useLanguage } from '@/context/LanguageContext';
+import { playPopSound, playSuccessChime, playWarningTone, triggerCelebration } from '@/lib/sound';
 import { saveChallengeResult } from '@/lib/storage';
 import {
   UserCheck,
-  RotateCcw,
   ShieldAlert,
   ShieldCheck,
   AlertTriangle,
   ArrowRight,
   CheckCircle2,
   Check,
+  RotateCcw,
   Home,
   Award,
-  KeyRound,
   Share2,
   Lock,
   Globe,
@@ -25,10 +25,13 @@ import {
   Key,
   GraduationCap,
   Volume2,
-  Play
+  Play,
+  Square
 } from 'lucide-react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import { VoiceOverButton } from '@/components/common/VoiceOverButton';
+import { voiceOverManager } from '@/lib/voice-over';
 
 export const SocialPrivacyGame: React.FC = () => {
   const { language, t } = useLanguage();
@@ -46,6 +49,44 @@ export const SocialPrivacyGame: React.FC = () => {
   const [showSafeWordTool, setShowSafeWordTool] = useState<boolean>(false);
   const [safeWordTested, setSafeWordTested] = useState<boolean>(false);
   const [activePhotoTab, setActivePhotoTab] = useState<string>('img-boarding-pass');
+  const [isVoiceNotePlaying, setIsVoiceNotePlaying] = useState<boolean>(false);
+  const [voiceNoteCurrentTime, setVoiceNoteCurrentTime] = useState<string>('0:00');
+  const [voiceNoteDuration, setVoiceNoteDuration] = useState<string>('0:18');
+
+  React.useEffect(() => {
+    return () => {
+      voiceOverManager.stopAll();
+      setIsVoiceNotePlaying(false);
+    };
+  }, [currentCaseIndex]);
+
+  const handleToggleVoiceNote = () => {
+    playPopSound();
+    if (isVoiceNotePlaying) {
+      voiceOverManager.stopAll();
+      setIsVoiceNotePlaying(false);
+    } else {
+      const audioUrl = isEn ? '/audio/voice-over/ai-clone-en.m4a' : '/audio/voice-over/ai-clone-ms.m4a';
+      voiceOverManager.play({
+        audioSrc: audioUrl,
+        text: currentCase.postContent.text,
+        lang: language,
+        onStart: () => setIsVoiceNotePlaying(true),
+        onEnd: () => {
+          setIsVoiceNotePlaying(false);
+          setVoiceNoteCurrentTime('0:00');
+        },
+        onProgress: (cur, dur) => {
+          const curSec = Math.floor(cur);
+          setVoiceNoteCurrentTime(`0:${curSec < 10 ? '0' : ''}${curSec}`);
+          if (dur) {
+            const durSec = Math.floor(dur);
+            setVoiceNoteDuration(`0:${durSec < 10 ? '0' : ''}${durSec}`);
+          }
+        }
+      });
+    }
+  };
 
   // Cumulative performance
   const [totalLeaksFound, setTotalLeaksFound] = useState<number>(0);
@@ -109,12 +150,14 @@ export const SocialPrivacyGame: React.FC = () => {
 
   const handleToggleLeak = (id: string) => {
     if (isLeaksSubmitted) return;
+    playPopSound();
     setSelectedLeakIds(prev =>
-      prev.includes(id) ? prev.filter(l => l !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
     );
   };
 
   const handleTestSafeWord = () => {
+    playSuccessChime();
     setShowSafeWordTool(true);
     setSafeWordTested(true);
   };
@@ -123,49 +166,60 @@ export const SocialPrivacyGame: React.FC = () => {
     if (isLeaksSubmitted) return;
     setIsLeaksSubmitted(true);
 
-    const vulnerabilities = currentCase.leakItems.filter(l => l.isVulnerability);
-    const benign = currentCase.leakItems.filter(l => !l.isVulnerability);
+    let score = 0;
+    let correctlyIdentified = 0;
 
-    const correctTicked = selectedLeakIds.filter(id =>
-      vulnerabilities.some(v => v.id === id)
-    ).length;
+    currentCase.leakItems.forEach(item => {
+      const isSelected = selectedLeakIds.includes(item.id);
+      if (item.isVulnerability && isSelected) {
+        score += 4;
+        correctlyIdentified += 1;
+      } else if (!item.isVulnerability && isSelected) {
+        score = Math.max(0, score - 2);
+      }
+    });
 
-    const falseAlarms = selectedLeakIds.filter(id =>
-      benign.some(v => v.id === id)
-    ).length;
+    if (correctlyIdentified > 0) {
+      playSuccessChime();
+    } else {
+      playWarningTone();
+    }
 
-    const correctBenignIgnored = benign.length - falseAlarms;
-    const totalCorrect = correctTicked + correctBenignIgnored;
-    const points = Math.max(0, Math.min(12, Math.round((totalCorrect / currentCase.leakItems.length) * 12)));
-
-    setLeakScore(points);
-    setTotalLeaksFound(prev => prev + correctTicked);
-    setTotalScore(prev => prev + points);
+    const finalScore = Math.min(12, score);
+    setLeakScore(finalScore);
+    setTotalLeaksFound(prev => prev + correctlyIdentified);
+    setTotalScore(prev => prev + finalScore);
   };
 
-  const handleSelectAction = (id: string) => {
+  const handleSelectAction = (actionId: string) => {
     if (isActionSubmitted) return;
-    setSelectedActionId(id);
+    playPopSound();
+    setSelectedActionId(actionId);
   };
 
   const handleSubmitAction = () => {
     if (!selectedActionId || isActionSubmitted) return;
     setIsActionSubmitted(true);
 
-    const chosen = currentCase.actions.find(a => a.id === selectedActionId);
-    if (chosen?.isSafe) {
+    const chosenAction = currentCase.actions.find(a => a.id === selectedActionId);
+    if (chosenAction?.isSafe) {
+      playSuccessChime();
       setCorrectActionDecisions(prev => prev + 1);
-      setTotalScore(prev => prev + 13); // 2 cases: (12+13)*2 = 50 pts
+      setTotalScore(prev => prev + 13);
+    } else {
+      playWarningTone();
     }
   };
 
   const handleNextCase = () => {
+    playPopSound();
     if (currentCaseIndex + 1 < cases.length) {
       setCurrentCaseIndex(prev => prev + 1);
       resetCaseState();
     } else {
       const finalScore = Math.min(50, Math.round(totalScore));
       saveChallengeResult('social-privacy', finalScore, 50);
+      triggerCelebration();
       setStage('results');
     }
   };
@@ -179,94 +233,98 @@ export const SocialPrivacyGame: React.FC = () => {
         <div>
           <Link
             href="/"
-            className="inline-flex items-center gap-2 font-mono text-xs sm:text-sm text-[#7C7E77] hover:text-[#171914] transition-colors"
+            className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors py-1"
           >
-            ← [{t('game.backMenu')}]
+            ← {t('nav.backToMenuFriendly')}
           </Link>
         </div>
 
-        <div className="rounded-sm border-2 border-[#171914] bg-white p-6 sm:p-8 shadow-xs">
+        <div className="rounded-3xl border border-slate-200/90 bg-white p-6 sm:p-10 shadow-sm space-y-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             <div className="lg:col-span-7 space-y-5">
-              <div className="flex items-center gap-2 font-mono text-xs">
-                <span className="font-bold text-[#171914] bg-[#D9FA62] px-2.5 py-1 rounded-xs border border-[#171914]/20">
+              <div className="flex items-center gap-3">
+                <span className="font-extrabold text-blue-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-100 text-xs">
                   {isEn ? 'MISSION 06' : 'MISI 06'}
                 </span>
-                <span className="text-[#7C7E77] uppercase font-bold">
-                  {isEn ? 'TIME: 5-7 MINS • MAX: 50 PTS' : 'MASA: 5-7 MINIT • MAKSIMUM: 50 MATA'}
+                <span className="text-slate-500 font-semibold text-xs sm:text-sm">
+                  {isEn ? '⏱️ 5-7 Mins • 50 Points' : '⏱️ 5-7 Minit • 50 Mata'}
                 </span>
               </div>
 
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#171914] tracking-tight">
-                {isEn ? 'Social Media Privacy & AI Clone Detector' : 'Privasi Media Sosial & Pengesan Klon AI'}
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight leading-snug">
+                {t('m6.title')}
               </h1>
 
-              <p className="text-base sm:text-lg text-[#575953] leading-relaxed">
+              <p className="text-base sm:text-lg text-slate-600 leading-relaxed">
                 {isEn
-                  ? '“Posting flight boarding passes, house keys, or kids in school uniforms lets criminals grab passport details and target your empty house. Today, AI technology can also clone your family members’ voice to scam parents. Learn how to audit photos before sharing and establish a Family Safe Word.”'
-                  : '“Memuat naik gambar pas masuk penerbangan, kunci rumah, atau anak berseragam sekolah memudahkan penjenayah mencuri maklumat pasport dan menyasarkan rumah anda. Kini, teknologi kecerdasan buatan (AI) juga mampu meniru suara ahli keluarga untuk menipu ibu bapa. Pelajari cara mengaudit foto hantaran dan amalkan Kata Laluan Rahsia Keluarga.”'}
+                  ? 'Oversharing vacation photos, boarding pass barcodes, and children’s school badges on public Facebook accounts puts your home and loved ones at risk. Syndicates also use AI to clone children’s voices from short public videos. Learn how to audit posts and establish a Family Secret Safe Word.'
+                  : 'Memuat naik gambar pas masuk penerbangan, kunci rumah, dan lencana sekolah anak di akaun media sosial awam mendedahkan keluarga kepada risiko pecah rumah dan penculikan palsu. Sindiket kini juga menggunakan AI untuk meniru suara anak. Ketahui cara mengaudit hantaran dan menetapkan Kata Laluan Rahsia Keluarga.'}
               </p>
 
-              <div className="p-4 bg-[#F5F4EE] border border-[#171914]/15 rounded-sm space-y-2 text-xs sm:text-sm">
-                <span className="font-mono font-bold uppercase text-[#171914] block">
-                  {isEn ? '3 Community Privacy Guidelines:' : '3 Garis Panduan Privasi Komuniti:'}
+              <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+                <span className="font-extrabold text-sm sm:text-base text-slate-900 block">
+                  {isEn ? '📋 3 Core Steps in This Mission:' : '📋 3 Langkah Utama Menjaga Privasi & Menangkis Klon AI:'}
                 </span>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[#575953]">
-                  <div className="p-2.5 bg-white border border-[#171914]/10 rounded-xs">
-                    <strong>{isEn ? '1. Hide Barcodes & Addresses' : '1. Tutup Kod Bar & Alamat'}</strong>
-                    <p className="text-xs mt-0.5">
-                      {isEn
-                        ? 'Never post flight tickets or announce that your house is empty.'
-                        : 'Jangan muat naik foto tiket kapal terbang atau umumkan rumah tidak berpenghuni.'}
-                    </p>
+                <div className="space-y-2 text-sm sm:text-base text-slate-700 leading-relaxed">
+                  <div className="flex items-start gap-2.5">
+                    <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center shrink-0 mt-0.5 text-xs">
+                      1
+                    </span>
+                    <span>
+                      <strong>{isEn ? 'Audit Boarding Pass Barcodes:' : 'Audit Kod Bar Tiket Penerbangan:'}</strong>{' '}
+                      {isEn ? 'A boarding pass barcode contains passenger passport numbers and flight schedules.' : 'Kod bar tiket kapal terbang mengandungi nombor pasport dan jadual rumah kosong anda.'}
+                    </span>
                   </div>
-                  <div className="p-2.5 bg-white border border-[#171914]/10 rounded-xs">
-                    <strong>{isEn ? '2. Family Safe Word' : '2. Kata Rahsia Keluarga'}</strong>
-                    <p className="text-xs mt-0.5">
-                      {isEn
-                        ? 'One secret family code word to shut down emergency AI voice clone calls.'
-                        : 'Satu perkataan sulit keluarga untuk mematikan panggilan penipuan klon suara AI.'}
-                    </p>
+                  <div className="flex items-start gap-2.5">
+                    <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center shrink-0 mt-0.5 text-xs">
+                      2
+                    </span>
+                    <span>
+                      <strong>{isEn ? 'Detect AI Voice Clone Notes:' : 'Kesan Suara Tiruan AI:'}</strong>{' '}
+                      {isEn ? 'AI requires only 3 seconds of audio from TikTok to synthesize realistic voices.' : 'Teknologi AI moden hanya memerlukan 3 saat audio TikTok untuk meniru suara anak anda.'}
+                    </span>
                   </div>
-                  <div className="p-2.5 bg-white border border-[#171914]/10 rounded-xs">
-                    <strong>{isEn ? '3. Lock Profile Settings' : '3. Kunci Tetapan Profil'}</strong>
-                    <p className="text-xs mt-0.5">
-                      {isEn
-                        ? 'Change Facebook post audience from "Public" to "Friends Only".'
-                        : 'Tukar tetapan akaun Facebook daripada “Awam” kepada “Rakan Sahaja”.'}
-                    </p>
+                  <div className="flex items-start gap-2.5">
+                    <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center shrink-0 mt-0.5 text-xs">
+                      3
+                    </span>
+                    <span>
+                      <strong>{isEn ? 'Adopt Family Secret Safe Word:' : 'Amalkan Kata Rahsia Keluarga:'}</strong>{' '}
+                      {isEn ? 'Establish one secret code word known only to your immediate family to neutralize AI scams.' : 'Cipta satu perkataan sulit keluarga (contoh: nama kuih kegemaran) untuk menumpaskan penipu AI.'}
+                    </span>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="lg:col-span-5 bg-[#FAF9F5] border-2 border-[#171914]/20 rounded-sm p-6 space-y-5">
-              <span className="font-mono text-xs font-bold uppercase tracking-wider text-[#171914] block pb-2 border-b border-[#171914]/15">
-                {isEn ? 'Station Interactive Tools:' : 'Alat Interaktif Stesen:'}
+            {/* Right side: Tools & Start CTA */}
+            <div className="lg:col-span-5 bg-blue-50/60 border border-blue-100 rounded-3xl p-6 sm:p-7 space-y-5">
+              <span className="text-sm font-extrabold text-blue-900 block pb-2 border-b border-blue-200/60">
+                {isEn ? 'Community Defense Protocols:' : 'Protokol Pertahanan Stesen:'}
               </span>
 
-              <div className="space-y-3 text-xs sm:text-sm text-[#575953]">
-                <div className="p-3 bg-white border border-[#171914]/15 rounded-xs space-y-1">
-                  <div className="flex items-center gap-2 font-bold text-[#171914]">
-                    <Share2 className="w-4 h-4 text-[#8A241C]" />
-                    <span>{isEn ? 'Social Post Photo Audit' : 'Audit Foto Hantaran Media Sosial'}</span>
+              <div className="space-y-3.5 text-sm text-slate-700">
+                <div className="p-4 bg-white border border-blue-100 rounded-2xl space-y-1 shadow-2xs">
+                  <div className="flex items-center gap-2 font-bold text-slate-900">
+                    <Lock className="w-4 h-4 text-blue-600" />
+                    <span>{isEn ? 'Family Secret Safe Word Protocol' : 'Protokol Kata Rahsia Keluarga'}</span>
                   </div>
-                  <p>
+                  <p className="text-xs sm:text-sm text-slate-600">
                     {isEn
-                      ? 'Inspect real visual examples of boarding passes, house keys, and school badges.'
-                      : 'Lihat contoh gambar pas masuk kapal terbang, kunci rumah, dan lencana sekolah secara visual.'}
+                      ? 'Establish a private secret keyword to immediately verify any emergency calls requesting money.'
+                      : 'Kunci keselamatan rahsia untuk mengesahkan sebarang panggilan kecemasan yang mendakwa anak meminta wang.'}
                   </p>
                 </div>
 
-                <div className="p-3 bg-white border border-[#171914]/15 rounded-xs space-y-1">
-                  <div className="flex items-center gap-2 font-bold text-[#171914]">
-                    <KeyRound className="w-4 h-4 text-[#1E4D2B]" />
-                    <span>{isEn ? 'Family Safe Word Protocol Simulator' : 'Simulator Protokol Kata Rahsia Keluarga'}</span>
+                <div className="p-4 bg-white border border-blue-100 rounded-2xl space-y-1 shadow-2xs">
+                  <div className="flex items-center gap-2 font-bold text-slate-900">
+                    <Award className="w-4 h-4 text-amber-500" />
+                    <span>{isEn ? 'AI Deepfake Shield Badges' : 'Lencana Kalis Klon AI'}</span>
                   </div>
-                  <p>
+                  <p className="text-xs sm:text-sm text-slate-600">
                     {isEn
-                      ? 'Experience how a family secret word disarms AI voice cloning instantly.'
-                      : 'Ketahui bagaimana perkataan rahsia keluarga menyekat penipuan klon suara AI sekelip mata.'}
+                      ? 'Unlock 3 special badges including Community Privacy Eye and AI Deepfake Shield.'
+                      : 'Kumpul 3 lencana pencapaian termasuk Mata Privasi dan Kalis Klon AI.'}
                   </p>
                 </div>
               </div>
@@ -274,10 +332,10 @@ export const SocialPrivacyGame: React.FC = () => {
               <div className="pt-2">
                 <button
                   onClick={handleStart}
-                  className="w-full py-4 px-6 min-h-[54px] rounded-sm font-mono font-bold text-sm uppercase tracking-wider text-[#171914] bg-[#D9FA62] hover:bg-[#CCF050] border-2 border-[#171914] transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                  className="w-full py-4 px-6 min-h-[56px] rounded-2xl font-bold text-base sm:text-lg text-white bg-blue-600 hover:bg-blue-700 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md hover:shadow-lg"
                 >
-                  <span>{isEn ? 'Start Privacy Audit & AI Detector' : 'Mulakan Audit Privasi & Pengesan AI'}</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <span>{isEn ? 'Start Social Privacy Mission' : 'Mulakan Misi Privasi & Klon AI'}</span>
+                  <ArrowRight className="w-5 h-5" />
                 </button>
               </div>
             </div>
@@ -295,75 +353,58 @@ export const SocialPrivacyGame: React.FC = () => {
       <div className="w-full space-y-6">
         <BadgesDrawer badges={badges} />
 
-        <div className="rounded-sm border-2 border-[#171914] bg-white p-6 sm:p-8 shadow-xs">
+        <div className="rounded-3xl border border-slate-200/90 bg-white p-6 sm:p-10 shadow-sm space-y-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             <div className="lg:col-span-6 space-y-6">
-              <div className="flex items-center justify-between pb-3 border-b border-[#171914]/15 font-mono text-xs">
-                <span className="font-bold uppercase tracking-wider text-[#171914] bg-[#D9FA62] px-2.5 py-1 rounded-xs border border-[#171914]/20">
-                  {isEn ? 'MISSION 06 COMPLETED REPORT' : 'LAPORAN MISI 06 SELESAI'}
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100 text-xs sm:text-sm">
+                <span className="font-extrabold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+                  {isEn ? 'MISSION 06 REPORT COMPLETE' : 'LAPORAN MISI 06 SELESAI'}
                 </span>
-                <span className="text-[#7C7E77]">
-                  {isEn ? 'PRIVACY & AI VOICE CLONES' : 'PRIVASI & KLON SUARA AI'}
-                </span>
+                <span className="text-slate-500 font-bold">{isEn ? 'SOCIAL PRIVACY & AI' : 'PRIVASI & KLON SUARA AI'}</span>
               </div>
 
               <div>
-                <h2 className="text-3xl sm:text-4xl font-black text-[#171914] tracking-tight">
-                  {isEn ? 'Family Identity Secured!' : 'Identiti Keluarga Terpelihara!'}
+                <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
+                  {isEn ? '🎉 Digital Privacy & AI Shield Ready!' : '🎉 Privasi Keluarga & Perisai AI Sedia!'}
                 </h2>
-                <p className="text-sm sm:text-base text-[#575953] mt-2 leading-relaxed">
+                <p className="text-base text-slate-600 mt-2.5 leading-relaxed">
                   {isEn
-                    ? 'Your team successfully identified oversharing risks, protected physical home safety, and mastered defense tactics against AI voice clones.'
-                    : 'Pasukan anda berjaya mengenal pasti bahaya perkongsian gambar berlebihan, melindungi keselamatan rumah, dan menguasai teknik menangkis klon suara AI.'}
+                    ? 'Your team successfully identified oversharing dangers, audited boarding pass barcodes, and practiced the Family Secret Safe Word.'
+                    : 'Pasukan anda telah selesai mengesan pendedahan maklumat sensitif, mengaudit kod bar tiket, dan mengamalkan protokol Kata Rahsia Keluarga.'}
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 border-y border-[#171914]/15 py-4">
-                <div className="p-3 bg-[#FAF9F5] border border-[#171914]/10 rounded-xs">
-                  <span className="font-mono text-[10px] uppercase text-[#7C7E77] block font-bold">
-                    {isEn ? 'Scenarios Investigated' : 'Senario Disiasat'}
-                  </span>
-                  <span className="font-mono text-2xl font-black text-[#171914] mt-1 block">
-                    {cases.length} / {cases.length} {isEn ? 'Cases' : 'Kes'}
-                  </span>
+              <div className="grid grid-cols-2 gap-3.5 border-y border-slate-100 py-4">
+                <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-2xl">
+                  <span className="text-xs uppercase text-slate-500 block font-bold">{t('results.scenariosTested')}</span>
+                  <span className="text-2xl sm:text-3xl font-black text-slate-900 mt-1 block">2 / 2</span>
                 </div>
-                <div className="p-3 bg-[#FAF9F5] border border-[#171914]/10 rounded-xs">
-                  <span className="font-mono text-[10px] uppercase text-[#7C7E77] block font-bold">
-                    {isEn ? 'Leaks Detected' : 'Kebocoran Dikesan'}
-                  </span>
-                  <span className="font-mono text-2xl font-black text-[#171914] mt-1 block">
-                    {totalLeaksFound} {isEn ? 'Leaks' : 'Kebocoran'}
-                  </span>
+                <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-2xl">
+                  <span className="text-xs uppercase text-slate-500 block font-bold">{isEn ? 'Privacy Leaks Found' : 'Kebocoran Dikesan'}</span>
+                  <span className="text-2xl sm:text-3xl font-black text-slate-900 mt-1 block">{totalLeaksFound}</span>
                 </div>
-                <div className="p-3 bg-[#FAF9F5] border border-[#171914]/10 rounded-xs">
-                  <span className="font-mono text-[10px] uppercase text-[#7C7E77] block font-bold">
-                    {isEn ? 'Safe Decisions' : 'Keputusan Selamat'}
-                  </span>
-                  <span className="font-mono text-2xl font-black text-[#171914] mt-1 block">
-                    {correctActionDecisions} / {cases.length}
-                  </span>
+                <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-2xl">
+                  <span className="text-xs uppercase text-slate-500 block font-bold">{t('results.safeDecisions')}</span>
+                  <span className="text-2xl sm:text-3xl font-black text-slate-900 mt-1 block">{correctActionDecisions} / 2</span>
                 </div>
-                <div className="p-3 bg-[#E7F3EB] border border-[#1E4D2B]/20 rounded-xs">
-                  <span className="font-mono text-[10px] uppercase text-[#123E23] block font-bold">
-                    {isEn ? 'Total Score' : 'Jumlah Mata'}
-                  </span>
-                  <span className="font-mono text-2xl font-black text-[#123E23] mt-1 block">
-                    {Math.min(50, Math.round(totalScore))}{' '}
-                    <span className="text-xs font-normal text-[#123E23]/70">/ 50</span>
+                <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl">
+                  <span className="text-xs uppercase text-emerald-800 block font-bold">{t('results.totalScore')}</span>
+                  <span className="text-2xl sm:text-3xl font-black text-emerald-900 mt-1 block">
+                    {Math.min(50, Math.round(totalScore))} <span className="text-sm font-normal text-emerald-700">/ 50 Mata</span>
                   </span>
                 </div>
               </div>
             </div>
 
-            <div className="lg:col-span-6 bg-[#FAF9F5] border-2 border-[#171914]/20 rounded-sm p-6 space-y-6">
-              <span className="font-mono text-xs font-bold uppercase tracking-wider text-[#171914] block pb-2 border-b border-[#171914]/15">
+            <div className="lg:col-span-6 bg-slate-50 border border-slate-200 rounded-3xl p-6 sm:p-7 space-y-6">
+              <span className="text-sm font-extrabold uppercase tracking-wider text-slate-900 block pb-2 border-b border-slate-200">
                 {isEn ? 'Digital Community Privacy Principles:' : 'Prinsip Privasi Komuniti Digital:'}
               </span>
 
-              <ul className="space-y-3 text-xs sm:text-sm text-[#575953]">
-                <li className="flex items-start gap-2.5">
-                  <span className="w-5 h-5 rounded-xs bg-[#171914] text-[#D9FA62] flex items-center justify-center shrink-0 mt-0.5">
-                    <Check className="w-3.5 h-3.5" />
+              <ul className="space-y-3.5 text-sm sm:text-base text-slate-700">
+                <li className="flex items-start gap-3">
+                  <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
+                    <Check className="w-4 h-4" />
                   </span>
                   <span>
                     <strong>{isEn ? 'Share Photos After Returning:' : 'Kongsi Foto Selepas Pulang:'}</strong>{' '}
@@ -372,9 +413,9 @@ export const SocialPrivacyGame: React.FC = () => {
                       : 'Muat naik gambar percutian hanya selepas anda dan keluarga selamat tiba di rumah semula.'}
                   </span>
                 </li>
-                <li className="flex items-start gap-2.5">
-                  <span className="w-5 h-5 rounded-xs bg-[#171914] text-[#D9FA62] flex items-center justify-center shrink-0 mt-0.5">
-                    <Check className="w-3.5 h-3.5" />
+                <li className="flex items-start gap-3">
+                  <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
+                    <Check className="w-4 h-4" />
                   </span>
                   <span>
                     <strong>{isEn ? 'Practice Family Safe Word:' : 'Amalkan Kata Laluan Rahsia Keluarga:'}</strong>{' '}
@@ -383,9 +424,9 @@ export const SocialPrivacyGame: React.FC = () => {
                       : 'Cipta satu perkataan sulit keluarga (contoh: nama kuih kegemaran) untuk mengesahkan sebarang panggilan kecemasan anak.'}
                   </span>
                 </li>
-                <li className="flex items-start gap-2.5">
-                  <span className="w-5 h-5 rounded-xs bg-[#171914] text-[#D9FA62] flex items-center justify-center shrink-0 mt-0.5">
-                    <Check className="w-3.5 h-3.5" />
+                <li className="flex items-start gap-3">
+                  <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
+                    <Check className="w-4 h-4" />
                   </span>
                   <span>
                     <strong>{isEn ? 'Protect Children’s Voice & Faces:' : 'Lindungi Wajah & Suara Kanak-kanak:'}</strong>{' '}
@@ -399,18 +440,18 @@ export const SocialPrivacyGame: React.FC = () => {
               <div className="pt-2 flex flex-col sm:flex-row gap-3">
                 <button
                   onClick={handleStart}
-                  className="flex-1 flex items-center justify-center gap-2 px-5 py-3.5 min-h-[48px] rounded-sm font-mono font-bold text-xs uppercase tracking-wider text-[#171914] bg-white hover:bg-[#ECEAE2] border-2 border-[#171914]/20 transition-colors cursor-pointer"
+                  className="flex-1 flex items-center justify-center gap-2 px-5 py-3.5 min-h-[50px] rounded-xl font-bold text-sm text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 transition-colors cursor-pointer"
                 >
                   <RotateCcw className="w-4 h-4" />
-                  <span>{isEn ? 'Repeat Investigation' : 'Ulang Siasatan'}</span>
+                  <span>{isEn ? 'Repeat Mission' : 'Ulang Misi'}</span>
                 </button>
 
                 <Link
                   href="/"
-                  className="flex-1 flex items-center justify-center gap-2 px-5 py-3.5 min-h-[48px] rounded-sm font-mono font-bold text-xs uppercase tracking-wider text-[#171914] bg-[#D9FA62] hover:bg-[#CCF050] border-2 border-[#171914] transition-colors shadow-xs text-center"
+                  className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 min-h-[50px] rounded-xl font-bold text-sm text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-sm text-center"
                 >
                   <Home className="w-4 h-4" />
-                  <span>{t('game.backHome')}</span>
+                  <span>{isEn ? 'Return to Home Menu' : 'Kembali ke Menu Utama'}</span>
                 </Link>
               </div>
             </div>
@@ -427,19 +468,19 @@ export const SocialPrivacyGame: React.FC = () => {
   const progressPercent = Math.round(((currentCaseIndex + 1) / cases.length) * 100);
 
   return (
-    <div className="w-full space-y-4">
+    <div className="w-full space-y-5">
       {/* Top Bar */}
-      <div className="bg-white border-2 border-[#171914] rounded-sm p-4 shadow-xs">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#171914]/15 font-mono text-xs">
-          <div className="flex flex-wrap items-center gap-3">
-            <Link href="/" className="text-[#7C7E77] hover:text-[#171914] font-bold transition-colors">
-              ← [{t('game.backMenu')}]
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 text-xs sm:text-sm">
+          <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+            <Link href="/" className="text-slate-600 hover:text-blue-600 font-bold transition-colors">
+              ← {t('nav.backToMenuFriendly')}
             </Link>
-            <span className="text-[#171914]/20">|</span>
-            <span className="font-bold text-[#171914] bg-[#D9FA62] px-2.5 py-0.5 rounded-xs border border-[#171914]/20">
+            <span className="text-slate-300">|</span>
+            <span className="font-extrabold text-blue-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-100 text-xs">
               {t('game.case')} 0{currentCaseIndex + 1} / 0{cases.length}
             </span>
-            <span className="font-bold text-[#171914] text-xs sm:text-sm">
+            <span className="font-extrabold text-slate-900 text-sm sm:text-base">
               {currentCase.title}
             </span>
           </div>
@@ -448,8 +489,8 @@ export const SocialPrivacyGame: React.FC = () => {
             <button
               type="button"
               onClick={handleStart}
-              title={isEn ? 'Restart from Case 1' : 'Mulakan Semula Dari Kes 1'}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-[#FAF0E6] border border-[#8A241C]/30 text-[#8A241C] hover:text-[#8A241C] rounded-xs cursor-pointer font-mono font-bold text-xs transition-colors min-h-[36px] shadow-xs"
+              title={t('game.resetFromStart')}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-red-50 border border-slate-200 hover:border-red-200 text-slate-600 hover:text-red-700 rounded-xl cursor-pointer font-bold text-xs transition-colors min-h-[38px]"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               <span>{t('game.resetFromStart')}</span>
@@ -458,27 +499,28 @@ export const SocialPrivacyGame: React.FC = () => {
             <button
               type="button"
               onClick={() => setShowBadges(!showBadges)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#F5F4EE] hover:bg-[#ECEAE2] border border-[#171914]/20 rounded-xs cursor-pointer font-mono font-bold text-xs text-[#171914] min-h-[36px]"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl cursor-pointer font-bold text-xs text-amber-900 min-h-[38px]"
             >
-              <Award className="w-3.5 h-3.5 text-[#171914]" />
-              <span className="hidden sm:inline">{t('game.badges')}</span> ({badges.filter(b => b.isUnlocked).length}/{badges.length})
+              <Award className="w-3.5 h-3.5 text-amber-600" />
+              <span>{t('game.badges')} ({badges.filter(b => b.isUnlocked).length}/{badges.length})</span>
             </button>
 
-            <div className="font-bold text-[#171914] bg-white px-3 py-1.5 border border-[#171914]/20 rounded-xs min-h-[36px] flex items-center">
-              {t('game.score')}: <span className="bg-[#D9FA62] px-2 py-0.5 border border-[#171914]/20 ml-1">{Math.round(totalScore)} / 50</span>
+            <div className="font-extrabold text-slate-900 bg-emerald-50 px-3.5 py-1.5 border border-emerald-200 rounded-xl min-h-[38px] flex items-center text-xs sm:text-sm">
+              ⭐ {t('game.score')} <span className="ml-1 text-emerald-800">{Math.round(totalScore)} / 50</span>
             </div>
           </div>
         </div>
 
-        <div className="pt-3 flex items-center gap-3 font-mono text-xs text-[#7C7E77]">
-          <span>{t('game.missionProgress')}:</span>
-          <div className="flex-1 h-2 bg-[#ECEAE2] rounded-xs overflow-hidden border border-[#171914]/10">
+        {/* Progress track */}
+        <div className="flex items-center gap-3 text-xs text-slate-500 font-medium">
+          <span>{t('game.missionProgress')}</span>
+          <div className="flex-1 h-2.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200/50">
             <div
-              className="h-full bg-[#171914] transition-all duration-300"
+              className="h-full bg-blue-600 rounded-full transition-all duration-300"
               style={{ width: `${progressPercent}%` }}
             />
           </div>
-          <span className="font-bold text-[#171914]">{progressPercent}%</span>
+          <span className="font-bold text-slate-800">{progressPercent}%</span>
         </div>
       </div>
 
@@ -486,53 +528,60 @@ export const SocialPrivacyGame: React.FC = () => {
 
       {/* Main 2-Column Split */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-        {/* LEFT COLUMN: Facebook Post with Example Pictures OR WhatsApp Voice Note (Col 1-7) */}
+        {/* LEFT COLUMN: Facebook Post / WhatsApp Voice Note */}
         <div className="lg:col-span-7 flex flex-col space-y-4">
-          <div className="rounded-sm border-2 border-[#171914] bg-white p-5 sm:p-6 shadow-xs flex-1 flex flex-col justify-between space-y-4">
+          <div className="rounded-3xl border border-slate-200 bg-white p-5 sm:p-7 shadow-xs flex-1 flex flex-col justify-between space-y-5">
             <div className="space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-[#171914]/15 font-mono text-xs">
-                <span className="font-bold text-[#171914] uppercase tracking-wider flex items-center gap-1.5">
-                  <Share2 className="w-4 h-4 text-[#171914]" />
-                  <span>{isEn ? '1. Examine Post & Photo Evidence' : '1. Teliti Hantaran & Foto Contoh'}</span>
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100 text-xs sm:text-sm">
+                <span className="font-extrabold text-slate-900 flex items-center gap-2">
+                  <UserCheck className="w-4 h-4 text-blue-600" />
+                  <span>{isEn ? '1. Inspect Social Post & Evidence' : '1. Teliti Hantaran & Bahan Bukti'}</span>
                 </span>
-                <span className="bg-[#FAF0E6] text-[#8A241C] border border-[#8A241C]/30 px-2 py-0.5 rounded-xs font-bold uppercase text-[11px]">
+                <span className="bg-red-50 text-red-700 border border-red-200 px-2.5 py-0.5 rounded-full font-bold text-xs">
                   {currentCase.category}
                 </span>
               </div>
 
               {/* Profile Card Header */}
-              <div className="p-3 bg-[#FAF9F5] border border-[#171914]/20 rounded-sm flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-full bg-[#1877F2] text-white flex items-center justify-center font-mono font-bold text-sm">
+              <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-base shadow-sm">
                     f
                   </div>
                   <div>
-                    <span className="font-bold text-sm text-[#171914] block">{currentCase.profileOwner}</span>
-                    <span className="text-[11px] text-[#7C7E77] font-mono flex items-center gap-1">
-                      <Globe className="w-3 h-3 text-[#1877F2]" />
-                      <span>{isEn ? 'Status:' : 'Status:'} {currentCase.postContent.privacySetting}</span>
+                    <span className="font-bold text-sm sm:text-base text-slate-900 block">{currentCase.profileOwner}</span>
+                    <span className="text-xs text-slate-500 flex items-center gap-1 font-medium">
+                      <Globe className="w-3.5 h-3.5 text-blue-600" />
+                      <span>{isEn ? 'Privacy:' : 'Tetapan Privasi:'} <strong className="text-slate-700">{currentCase.postContent.privacySetting}</strong></span>
                     </span>
                   </div>
                 </div>
-                <span className="text-[10px] font-mono text-[#7C7E77] bg-white px-2 py-1 border border-[#171914]/15 rounded-xs">
-                  {isEn ? '2 HOURS AGO' : '2 JAM LEPAS'}
-                </span>
+                <div className="flex items-center gap-2">
+                  <VoiceOverButton
+                    text={currentCase.postContent.text}
+                    label={isEn ? 'Listen to Post' : 'Dengar Hantaran'}
+                    variant="badge"
+                  />
+                  <span className="text-xs text-slate-500 bg-white px-2.5 py-1 border border-slate-200 rounded-full font-medium">
+                    {isEn ? '2 Hours Ago' : '2 Jam Lepas'}
+                  </span>
+                </div>
               </div>
 
               {/* Post Text */}
-              <div className="p-4 bg-white border-2 border-[#171914]/20 rounded-sm space-y-3 font-sans text-xs sm:text-sm text-[#171914] leading-relaxed">
+              <div className="p-4 bg-white border border-slate-200 rounded-2xl text-sm sm:text-base text-slate-800 leading-relaxed shadow-2xs">
                 <p className="whitespace-pre-line font-medium">{currentCase.postContent.text}</p>
               </div>
 
               {/* CASE 1: RICH VISUAL EXAMPLE PICTURES */}
               {currentCase.id === 'soc-01' && currentCase.postContent.exampleImages && (
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono text-xs font-bold text-[#171914] uppercase tracking-wider flex items-center gap-1.5">
-                      <span>{isEn ? '📸 Example Photos Uploaded By Salmah:' : '📸 Gambar Contoh Yang Dimuat Naik Kak Salmah:'}</span>
+                  <div className="flex items-center justify-between text-xs sm:text-sm">
+                    <span className="font-extrabold text-slate-900 flex items-center gap-1.5">
+                      <span>📸 {isEn ? 'Example Photos Uploaded By Salmah:' : 'Gambar Contoh Yang Dimuat Naik:'}</span>
                     </span>
-                    <span className="text-[10px] font-mono text-[#7C7E77]">
-                      {isEn ? 'CLICK TO VIEW PHOTO' : 'KLIK UNTUK LIHAT FOTO'}
+                    <span className="text-xs text-slate-500 font-medium">
+                      {isEn ? 'Click each photo to inspect' : 'Klik foto untuk teliti'}
                     </span>
                   </div>
 
@@ -541,113 +590,121 @@ export const SocialPrivacyGame: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setActivePhotoTab('img-boarding-pass')}
-                      className={`p-2.5 rounded-xs border-2 text-left transition-all cursor-pointer flex flex-col items-center gap-1 ${
+                      className={`p-3 rounded-2xl border-2 text-left transition-all cursor-pointer flex flex-col items-center gap-1 min-h-[64px] ${
                         activePhotoTab === 'img-boarding-pass'
-                          ? 'bg-[#171914] text-[#D9FA62] border-[#171914] font-bold shadow-xs'
-                          : 'bg-white text-[#171914] border-[#171914]/20 hover:border-[#171914]'
+                          ? 'bg-blue-50 text-blue-900 border-blue-600 font-bold shadow-xs'
+                          : 'bg-white text-slate-700 border-slate-200 hover:border-blue-300'
                       }`}
                     >
-                      <Plane className="w-4 h-4" />
-                      <span className="font-mono text-[11px] text-center leading-tight">
-                        {isEn ? 'Photo 1: Flight Ticket' : 'Foto 1: Tiket Kapal'}
+                      <Plane className="w-4 h-4 text-blue-600" />
+                      <span className="text-xs text-center leading-tight">
+                        {isEn ? '1. Flight Ticket' : '1. Tiket Kapal'}
                       </span>
                     </button>
 
                     <button
                       type="button"
                       onClick={() => setActivePhotoTab('img-keys')}
-                      className={`p-2.5 rounded-xs border-2 text-left transition-all cursor-pointer flex flex-col items-center gap-1 ${
+                      className={`p-3 rounded-2xl border-2 text-left transition-all cursor-pointer flex flex-col items-center gap-1 min-h-[64px] ${
                         activePhotoTab === 'img-keys'
-                          ? 'bg-[#171914] text-[#D9FA62] border-[#171914] font-bold shadow-xs'
-                          : 'bg-white text-[#171914] border-[#171914]/20 hover:border-[#171914]'
+                          ? 'bg-blue-50 text-blue-900 border-blue-600 font-bold shadow-xs'
+                          : 'bg-white text-slate-700 border-slate-200 hover:border-blue-300'
                       }`}
                     >
-                      <Key className="w-4 h-4" />
-                      <span className="font-mono text-[11px] text-center leading-tight">
-                        {isEn ? 'Photo 2: House Keys' : 'Foto 2: Kunci Rumah'}
+                      <Key className="w-4 h-4 text-amber-600" />
+                      <span className="text-xs text-center leading-tight">
+                        {isEn ? '2. House Keys' : '2. Kunci Rumah'}
                       </span>
                     </button>
 
                     <button
                       type="button"
                       onClick={() => setActivePhotoTab('img-badge')}
-                      className={`p-2.5 rounded-xs border-2 text-left transition-all cursor-pointer flex flex-col items-center gap-1 ${
+                      className={`p-3 rounded-2xl border-2 text-left transition-all cursor-pointer flex flex-col items-center gap-1 min-h-[64px] ${
                         activePhotoTab === 'img-badge'
-                          ? 'bg-[#171914] text-[#D9FA62] border-[#171914] font-bold shadow-xs'
-                          : 'bg-white text-[#171914] border-[#171914]/20 hover:border-[#171914]'
+                          ? 'bg-blue-50 text-blue-900 border-blue-600 font-bold shadow-xs'
+                          : 'bg-white text-slate-700 border-slate-200 hover:border-blue-300'
                       }`}
                     >
-                      <GraduationCap className="w-4 h-4" />
-                      <span className="font-mono text-[11px] text-center leading-tight">
-                        {isEn ? 'Photo 3: School Badge' : 'Foto 3: Lencana Anak'}
+                      <GraduationCap className="w-4 h-4 text-emerald-600" />
+                      <span className="text-xs text-center leading-tight">
+                        {isEn ? '3. School Badge' : '3. Lencana Anak'}
                       </span>
                     </button>
                   </div>
 
                   {/* ACTIVE PHOTO PREVIEW CARD */}
-                  <div className="rounded-sm border-2 border-[#171914] overflow-hidden shadow-sm bg-white">
+                  <div className="rounded-2xl border border-slate-200 overflow-hidden shadow-xs bg-white">
                     {activePhotoTab === 'img-boarding-pass' && (
-                      <div className="p-4 space-y-3 bg-[#FCFAF5]">
-                        <div className="flex items-center justify-between pb-2 border-b border-[#171914]/15">
-                          <div className="flex items-center gap-2">
-                            <span className="w-3 h-3 rounded-full bg-[#8A241C]" />
-                            <span className="font-mono font-bold text-xs uppercase text-[#171914]">
-                              {isEn ? 'FLIGHT BOARDING PASS' : 'PAS MASUK PENERBANGAN / BOARDING PASS'}
-                            </span>
-                          </div>
-                          <span className="bg-[#FAF0E6] text-[#8A241C] border border-[#8A241C]/30 px-2 py-0.5 rounded-xs font-mono font-bold text-[10px]">
+                      <div className="p-4 sm:p-5 space-y-3 bg-slate-50/70">
+                        <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+                          <span className="font-extrabold text-xs sm:text-sm uppercase text-slate-900">
+                            {isEn ? 'FLIGHT BOARDING PASS' : 'PAS MASUK PENERBANGAN / BOARDING PASS'}
+                          </span>
+                          <span className="bg-red-50 text-red-700 border border-red-200 px-2.5 py-0.5 rounded-full font-bold text-xs">
                             {isEn ? '⚠️ BARCODE HAZARD' : '⚠️ AMARAN KOD BAR'}
                           </span>
                         </div>
 
+                        {/* Generated Real Photo Preview */}
+                        <div className="rounded-2xl overflow-hidden border border-slate-200 mb-3 bg-slate-900 shadow-sm relative group">
+                          <img
+                            src="/images/social-privacy/boarding-pass.png"
+                            alt="Boarding Pass Leak"
+                            className="w-full h-48 sm:h-56 object-cover group-hover:scale-102 transition-transform duration-300"
+                          />
+                          <div className="absolute top-3 left-3 bg-black/75 backdrop-blur-md text-white text-[11px] font-bold px-2.5 py-1 rounded-lg border border-white/20 flex items-center gap-1.5">
+                            <span>📷 {isEn ? 'Uploaded Photo: Boarding Pass' : 'Foto Dimuat Naik: Pas Masuk'}</span>
+                          </div>
+                        </div>
+
                         {/* Visual Boarding Pass Card */}
-                        <div className="p-4 bg-white border border-[#171914]/20 rounded-xs space-y-3 font-mono text-xs shadow-xs">
-                          <div className="flex items-center justify-between border-b border-dashed border-[#171914]/20 pb-2">
+                        <div className="p-4 bg-white border border-slate-200 rounded-xl space-y-3 text-xs sm:text-sm shadow-2xs">
+                          <div className="flex items-center justify-between border-b border-dashed border-slate-200 pb-2">
                             <div>
-                              <span className="text-[10px] text-[#7C7E77] block">{isEn ? 'PASSENGER:' : 'PENUMPANG:'}</span>
-                              <strong className="text-sm text-[#171914]">SALMAH / AHMAD MRS</strong>
+                              <span className="text-xs text-slate-500 block">{isEn ? 'PASSENGER:' : 'PENUMPANG:'}</span>
+                              <strong className="text-sm sm:text-base text-slate-900">SALMAH / AHMAD MRS</strong>
                             </div>
                             <div className="text-right">
-                              <span className="text-[10px] text-[#7C7E77] block">{isEn ? 'FLIGHT:' : 'PENERBANGAN:'}</span>
-                              <strong className="text-sm text-[#171914]">MH 002</strong>
+                              <span className="text-xs text-slate-500 block">{isEn ? 'FLIGHT:' : 'PENERBANGAN:'}</span>
+                              <strong className="text-sm sm:text-base text-slate-900">MH 002</strong>
                             </div>
                           </div>
 
                           <div className="grid grid-cols-3 gap-2 py-1">
                             <div>
-                              <span className="text-[10px] text-[#7C7E77] block">{isEn ? 'FROM:' : 'DARI:'}</span>
-                              <strong className="text-xs text-[#171914]">KUL (KLIA)</strong>
+                              <span className="text-xs text-slate-500 block">{isEn ? 'FROM:' : 'DARI:'}</span>
+                              <strong className="text-xs sm:text-sm text-slate-900">KUL (KLIA)</strong>
                             </div>
                             <div>
-                              <span className="text-[10px] text-[#7C7E77] block">{isEn ? 'TO:' : 'KE:'}</span>
-                              <strong className="text-xs text-[#171914]">LHR (London)</strong>
+                              <span className="text-xs text-slate-500 block">{isEn ? 'TO:' : 'KE:'}</span>
+                              <strong className="text-xs sm:text-sm text-slate-900">LHR (London)</strong>
                             </div>
                             <div>
-                              <span className="text-[10px] text-[#7C7E77] block">{isEn ? 'SEAT:' : 'TEMPAT DUDUK:'}</span>
-                              <strong className="text-xs text-[#171914]">{isEn ? '14A (Window)' : '14A (Tingkap)'}</strong>
+                              <span className="text-xs text-slate-500 block">{isEn ? 'SEAT:' : 'TEMPAT DUDUK:'}</span>
+                              <strong className="text-xs sm:text-sm text-slate-900">{isEn ? '14A (Window)' : '14A (Tingkap)'}</strong>
                             </div>
                           </div>
 
-                          {/* Authentic Barcode Graphic Representation */}
-                          <div className="pt-2 border-t border-[#171914]/15 space-y-1.5">
-                            <div className="flex items-center justify-between">
-                              <span className="text-[10px] text-[#7C7E77]">{isEn ? 'BOOKING CODE (PNR):' : 'KOD TEMPAHAN (PNR):'} <strong>K7X9LQ</strong></span>
-                              <span className="text-[10px] font-bold text-[#8A241C]">{isEn ? 'SCAN HAZARD!' : 'BAHAYA IMBASAN!'}</span>
+                          {/* Barcode Graphic */}
+                          <div className="pt-2 border-t border-slate-200 space-y-2">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-slate-500">{isEn ? 'BOOKING CODE (PNR):' : 'KOD TEMPAHAN (PNR):'} <strong>K7X9LQ</strong></span>
+                              <span className="font-bold text-red-600">{isEn ? 'SCAN HAZARD!' : 'BAHAYA IMBASAN!'}</span>
                             </div>
-                            <div className="h-10 bg-white border border-slate-300 rounded-xs p-1 flex items-center justify-center gap-0.5">
-                              {/* SVG-like Barcode Lines */}
+                            <div className="h-10 bg-slate-100 border border-slate-300 rounded-lg p-1.5 flex items-center justify-center gap-1">
                               {[3,1,4,2,1,3,2,4,1,2,3,1,4,2,1,3,2,1,4,3,2,1,3,1,4,2,3,1,2,4,1,3,2,1,4].map((w, idx) => (
                                 <div
                                   key={idx}
-                                  className="h-full bg-slate-900"
+                                  className="h-full bg-slate-900 rounded-xs"
                                   style={{ width: `${w * 2}px` }}
                                 />
                               ))}
                             </div>
-                            <span className="text-[10px] font-bold text-[#8A241C] block text-center bg-[#FAF0E6] py-1 border border-[#8A241C]/30 rounded-xs">
+                            <span className="text-xs font-bold text-red-700 block text-center bg-red-50 p-2 border border-red-200 rounded-xl leading-relaxed">
                               {isEn
-                                ? '⚠️ This barcode holds Passport No., Phone No. & booking details that criminals can scan!'
-                                : '⚠️ Kod bar ini mengandungi No. Pasport, No. Telefon & data tiket yang boleh dicuri orang asing!'}
+                                ? '⚠️ Anyone can scan this barcode to retrieve your passport number and home departure itinerary!'
+                                : '⚠️ Sesiapa sahaja di internet boleh mengimbas kod bar ini untuk membaca nombor pasport dan jadual rumah kosong anda!'}
                             </span>
                           </div>
                         </div>
@@ -655,86 +712,100 @@ export const SocialPrivacyGame: React.FC = () => {
                     )}
 
                     {activePhotoTab === 'img-keys' && (
-                      <div className="p-4 space-y-3 bg-[#FCFAF5]">
-                        <div className="flex items-center justify-between pb-2 border-b border-[#171914]/15">
-                          <div className="flex items-center gap-2">
-                            <Key className="w-4 h-4 text-[#8A241C]" />
-                            <span className="font-mono font-bold text-xs uppercase text-[#171914]">
-                              {isEn ? 'HOUSE KEYS & ADDRESS TAG' : 'FOTO KUNCI RUMAH & TAG ALAMAT'}
-                            </span>
-                          </div>
-                          <span className="bg-[#FAF0E6] text-[#8A241C] border border-[#8A241C]/30 px-2 py-0.5 rounded-xs font-mono font-bold text-[10px]">
-                            {isEn ? '⚠️ VACANT HOUSE ADDRESS' : '⚠️ ALAMAT RUMAH KOSONG'}
+                      <div className="p-4 sm:p-5 space-y-3 bg-slate-50/70">
+                        <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+                          <span className="font-extrabold text-xs sm:text-sm uppercase text-slate-900">
+                            {isEn ? 'HOUSE KEYS & ADDRESS TAG' : 'FOTO KUNCI RUMAH & TAG ALAMAT'}
+                          </span>
+                          <span className="bg-red-50 text-red-700 border border-red-200 px-2.5 py-0.5 rounded-full font-bold text-xs">
+                            {isEn ? '⚠️ VACANT HOUSE' : '⚠️ ALAMAT RUMAH KOSONG'}
                           </span>
                         </div>
 
-                        {/* Visual House Key Card */}
-                        <div className="p-5 bg-white border border-[#171914]/20 rounded-xs space-y-3 font-mono text-xs shadow-xs">
+                        <div className="rounded-2xl overflow-hidden border border-slate-200 mb-3 bg-slate-900 shadow-sm relative group">
+                          <img
+                            src="/images/social-privacy/house-keys.png"
+                            alt="House Keys Leak"
+                            className="w-full h-48 sm:h-56 object-cover group-hover:scale-102 transition-transform duration-300"
+                          />
+                          <div className="absolute top-3 left-3 bg-black/75 backdrop-blur-md text-white text-[11px] font-bold px-2.5 py-1 rounded-lg border border-white/20 flex items-center gap-1.5">
+                            <span>📷 {isEn ? 'Uploaded Photo: House Keys & Tag' : 'Foto Dimuat Naik: Kunci & Tag Alamat'}</span>
+                          </div>
+                        </div>
+
+                        <div className="p-5 bg-white border border-slate-200 rounded-xl space-y-3 text-xs sm:text-sm shadow-2xs">
                           <div className="flex items-center gap-4">
-                            <div className="w-16 h-16 rounded-full bg-[#FAF0E6] border-2 border-[#8A241C] flex items-center justify-center text-2xl shadow-xs">
+                            <div className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-3xl shadow-2xs">
                               🔑
                             </div>
                             <div className="space-y-1">
-                              <span className="text-[10px] text-[#7C7E77] uppercase block font-bold">
+                              <span className="text-xs text-slate-500 uppercase block font-bold">
                                 {isEn ? 'Keychain Tag Reads:' : 'Tag Gantungan Kunci Tertera:'}
                               </span>
-                              <strong className="text-sm sm:text-base text-[#8A241C] block">
+                              <strong className="text-sm sm:text-base text-red-700 block">
                                 &ldquo;No. 12, Jalan Melati 4, Taman Melati&rdquo;
                               </strong>
-                              <span className="text-[11px] text-[#575953] block">
-                                {isEn ? 'Status: House left completely vacant for 14 straight days.' : 'Status: Rumah tidak berpenghuni selama 14 hari penuh.'}
+                              <span className="text-xs text-slate-600 block">
+                                {isEn ? 'Status: House left vacant for 14 days.' : 'Status: Rumah tidak berpenghuni selama 14 hari penuh.'}
                               </span>
                             </div>
                           </div>
 
-                          <div className="p-2.5 bg-[#FAF0E6] border border-[#8A241C]/30 rounded-xs text-[#78271C] text-xs">
-                            <strong>{isEn ? 'Physical Safety Hazard:' : 'Bahaya Keselamatan Fizikal:'}</strong>{' '}
+                          <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-950 text-xs sm:text-sm leading-relaxed">
+                            <strong>{isEn ? 'Physical Safety Risk:' : 'Bahaya Keselamatan Fizikal:'}</strong>{' '}
                             {isEn
-                              ? 'Broadcasting your home address and announcing it is empty invites burglaries!'
-                              : 'Memberitahu lokasi alamat rumah dan mengumumkan ia kosong secara awam menjemput penjenayah pecah rumah!'}
+                              ? 'Announcing your vacant home address publicly invites burglaries while you are away.'
+                              : 'Mengumumkan alamat rumah dan memberitahu ia kosong secara awam menjemput penjenayah pecah rumah!'}
                           </div>
                         </div>
                       </div>
                     )}
 
                     {activePhotoTab === 'img-badge' && (
-                      <div className="p-4 space-y-3 bg-[#FCFAF5]">
-                        <div className="flex items-center justify-between pb-2 border-b border-[#171914]/15">
-                          <div className="flex items-center gap-2">
-                            <GraduationCap className="w-4 h-4 text-[#8A241C]" />
-                            <span className="font-mono font-bold text-xs uppercase text-[#171914]">
-                              {isEn ? 'CHILD IN SCHOOL UNIFORM' : 'FOTO ANAK BERPAKAIAN SERAGAM SEKOLAH'}
-                            </span>
-                          </div>
-                          <span className="bg-[#FAF0E6] text-[#8A241C] border border-[#8A241C]/30 px-2 py-0.5 rounded-xs font-mono font-bold text-[10px]">
-                            {isEn ? '⚠️ SCHOOL BADGE EXPOSED' : '⚠️ LENCANA SEKOLAH TERDEDAH'}
+                      <div className="p-4 sm:p-5 space-y-3 bg-slate-50/70">
+                        <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+                          <span className="font-extrabold text-xs sm:text-sm uppercase text-slate-900">
+                            {isEn ? 'CHILD IN SCHOOL UNIFORM' : 'FOTO ANAK BERPAKAIAN SERAGAM'}
+                          </span>
+                          <span className="bg-red-50 text-red-700 border border-red-200 px-2.5 py-0.5 rounded-full font-bold text-xs">
+                            {isEn ? '⚠️ SCHOOL BADGE' : '⚠️ LENCANA SEKOLAH TERDEDAH'}
                           </span>
                         </div>
 
-                        {/* Visual School Uniform Card */}
-                        <div className="p-5 bg-white border border-[#171914]/20 rounded-xs space-y-3 font-mono text-xs shadow-xs">
+                        <div className="rounded-2xl overflow-hidden border border-slate-200 mb-3 bg-slate-900 shadow-sm relative group">
+                          <img
+                            src="/images/social-privacy/school-badge.png"
+                            alt="School Badge Leak"
+                            className="w-full h-48 sm:h-56 object-cover group-hover:scale-102 transition-transform duration-300"
+                          />
+                          <div className="absolute top-3 left-3 bg-black/75 backdrop-blur-md text-white text-[11px] font-bold px-2.5 py-1 rounded-lg border border-white/20 flex items-center gap-1.5">
+                            <span>📷 {isEn ? 'Uploaded Photo: School Uniform & Badge' : 'Foto Dimuat Naik: Pakaian Seragam & Lencana'}</span>
+                          </div>
+                        </div>
+
+                        <div className="p-5 bg-white border border-slate-200 rounded-xl space-y-3 text-xs sm:text-sm shadow-2xs">
                           <div className="flex items-center gap-4">
-                            <div className="w-16 h-16 rounded-full bg-[#E7F3EB] border-2 border-[#1E4D2B] flex items-center justify-center text-2xl shadow-xs">
+                            <div className="w-16 h-16 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-3xl shadow-2xs">
                               🎒
                             </div>
                             <div className="space-y-1">
-                              <span className="text-[10px] text-[#7C7E77] uppercase block font-bold">
+                              <span className="text-xs text-slate-500 uppercase block font-bold">
                                 {isEn ? 'Badge & Nametag:' : 'Lencana & Tanda Nama:'}
                               </span>
-                              <strong className="text-sm sm:text-base text-[#171914] block">
+                              <strong className="text-sm sm:text-base text-slate-900 block">
                                 SK TAMAN MELATI • FARHAN ({isEn ? 'YEAR 4' : 'TAHUN 4'})
                               </strong>
-                              <span className="text-[11px] text-[#575953] block">
-                                {isEn ? 'Shows the exact school location your child attends daily.' : 'Menunjukkan lokasi sekolah anak pergi setiap pagi.'}
+                              <span className="text-xs text-slate-600 block">
+                                {isEn ? 'Shows the exact school location your child attends daily.' : 'Mendedahkan sekolah tempat anak pergi setiap pagi.'}
                               </span>
                             </div>
                           </div>
 
-                          <div className="p-2.5 bg-[#FAF0E6] border border-[#8A241C]/30 rounded-xs text-[#78271C] text-xs">
-                            <strong>{isEn ? 'Child Safety Hazard:' : 'Bahaya Keselamatan Anak:'}</strong>{' '}
+                          <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-950 text-xs sm:text-sm leading-relaxed">
+                            <strong>{isEn ? 'Child Safety Risk:' : 'Bahaya Keselamatan Anak:'}</strong>{' '}
                             {isEn
-                              ? 'Enables extortionists to stage fake kidnapping calls by citing your child’s name and school accurately.'
-                              : 'Memudahkan sindiket penipuan membuat panggilan penculikan palsu dengan menyebut nama anak dan nama sekolahnya dengan tepat.'}
+                              ? 'Enables scammers to stage fake kidnapping calls by citing your child’s school name accurately.'
+                              : 'Memudahkan penipu membuat panggilan penculikan palsu dengan menyebut nama sekolah anak dengan tepat.'}
                           </div>
                         </div>
                       </div>
@@ -745,179 +816,234 @@ export const SocialPrivacyGame: React.FC = () => {
 
               {/* CASE 2: REALISTIC WHATSAPP AUDIO VOICE MEMO UI */}
               {currentCase.id === 'soc-02' && (
-                <div className="space-y-3">
-                  <span className="font-mono text-xs font-bold text-[#171914] uppercase tracking-wider block">
-                    {isEn ? 'WhatsApp Audio Voice Memo Simulation (AI Clone):' : 'Simulasi Pemain Mesej Suara WhatsApp (Klon AI):'}
+                <div className="space-y-4">
+                  <span className="text-xs sm:text-sm font-extrabold text-slate-900 block">
+                    {isEn ? 'WhatsApp Audio Voice Memo Simulation (AI Clone):' : 'Simulasi Mesej Suara WhatsApp (Klon AI):'}
                   </span>
 
-                  <div className="p-4 bg-[#0F141C] text-white rounded-sm border-2 border-[#171914] space-y-3 shadow-md">
-                    <div className="flex items-center justify-between pb-2 border-b border-slate-800 text-[11px] font-mono text-slate-400">
-                      <span className="flex items-center gap-1.5 text-emerald-400">
-                        <Volume2 className="w-4 h-4" />
-                        <span>{isEn ? 'WhatsApp Voice Note Received' : 'Mesej Suara WhatsApp Diterima'}</span>
+                  <div className="p-5 bg-slate-950 text-white rounded-3xl border-2 border-slate-800 space-y-4 shadow-xl">
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-800 text-xs text-slate-400">
+                      <span className="flex items-center gap-1.5 text-emerald-400 font-bold">
+                        <Volume2 className={`w-4 h-4 ${isVoiceNotePlaying ? 'animate-bounce' : ''}`} />
+                        <span>{isEn ? 'Voice Note Received (Farhan)' : 'Mesej Suara Diterima (Farhan)'}</span>
                       </span>
-                      <span>0:38 / 0:38</span>
+                      <span className="font-mono text-emerald-300 font-bold">
+                        {isVoiceNotePlaying ? `${voiceNoteCurrentTime} / ${voiceNoteDuration}` : voiceNoteDuration}
+                      </span>
                     </div>
 
                     {/* WhatsApp Voice Note Bubble */}
-                    <div className="p-3 bg-[#1F2C34] border border-[#2A3942] rounded-md flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-emerald-500 text-slate-900 flex items-center justify-center shrink-0 cursor-pointer shadow-xs">
-                        <Play className="w-5 h-5 fill-slate-900 ml-0.5" />
-                      </div>
+                    <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl flex items-center gap-3.5">
+                      <button
+                        type="button"
+                        onClick={handleToggleVoiceNote}
+                        aria-label={isVoiceNotePlaying ? (isEn ? 'Pause voice note' : 'Hentikan nota suara') : (isEn ? 'Play AI voice clone audio' : 'Mainkan audio klon AI')}
+                        className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 cursor-pointer shadow-md transition-all active:scale-95 ${
+                          isVoiceNotePlaying
+                            ? 'bg-rose-500 hover:bg-rose-600 text-white shadow-rose-900/50'
+                            : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-emerald-950/50'
+                        }`}
+                      >
+                        {isVoiceNotePlaying ? (
+                          <Square className="w-5 h-5 fill-white text-white" />
+                        ) : (
+                          <Play className="w-6 h-6 fill-slate-950 ml-0.5" />
+                        )}
+                      </button>
 
                       {/* Sound Wave Animation Visualizer */}
-                      <div className="flex-1 flex items-center gap-0.5 h-6">
+                      <div className="flex-1 flex items-center gap-1 h-8">
                         {[4,8,14,10,18,12,6,16,22,18,8,12,20,15,10,24,18,14,8,16,12,6,14,18,10,6,12,8].map((h, i) => (
-                          <div
+                          <motion.div
                             key={i}
-                            className={`w-1 rounded-full ${i < 18 ? 'bg-emerald-400' : 'bg-slate-600'}`}
+                            animate={isVoiceNotePlaying ? { height: [4, h, 6, Math.max(4, h * 0.7), 4] } : { height: h }}
+                            transition={isVoiceNotePlaying ? { repeat: Infinity, duration: 0.7 + (i % 5) * 0.12, ease: 'easeInOut' } : undefined}
+                            className={`w-1 rounded-full transition-colors ${
+                              isVoiceNotePlaying
+                                ? 'bg-emerald-400'
+                                : i < 18
+                                ? 'bg-emerald-500'
+                                : 'bg-slate-600'
+                            }`}
                             style={{ height: `${h}px` }}
                           />
                         ))}
                       </div>
 
-                      <div className="w-7 h-7 rounded-full bg-slate-700 text-[10px] flex items-center justify-center font-bold text-slate-300">
-                        👦
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-mono text-slate-400">
+                          {isVoiceNotePlaying ? voiceNoteCurrentTime : voiceNoteDuration}
+                        </span>
+                        <div className="w-8 h-8 rounded-full bg-slate-800 text-xs flex items-center justify-center font-bold text-slate-300">
+                          👦
+                        </div>
                       </div>
                     </div>
 
                     {/* AI Deepfake Detection Spectrum Card */}
-                    <div className="p-3 bg-slate-900 border border-slate-800 rounded-xs space-y-1 font-mono text-xs">
-                      <div className="flex items-center justify-between text-[11px]">
+                    <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl space-y-1.5 text-xs sm:text-sm">
+                      <div className="flex items-center justify-between">
                         <span className="text-amber-400 font-bold">
                           {isEn ? '🔬 Voice Spectrum Analysis:' : '🔬 Analisis Spektrum Suara:'}
                         </span>
-                        <span className="text-[#FA8072] font-bold">
-                          {isEn ? '95% AI CLONE' : '95% KLON AI'}
+                        <span className="text-rose-400 font-extrabold bg-rose-950/80 px-2 py-0.5 rounded-full border border-rose-800">
+                          {isEn ? '95% AI SYNTHESIS' : '95% SUARA KLON AI'}
                         </span>
                       </div>
-                      <p className="text-slate-300 text-[11px] leading-relaxed">
+                      <p className="text-slate-300 text-xs leading-relaxed">
                         {isEn
-                          ? 'Caller’s voice was synthesized using AI based on a 5-second public TikTok video clip of your child.'
-                          : 'Suara pemanggil dijana menggunakan teknologi AI berasaskan rakaman video TikTok anak anda selama 5 saat.'}
+                          ? 'Caller’s voice was generated using AI based on a 5-second public TikTok video clip of your child.'
+                          : 'Suara pemanggil dijana menggunakan teknologi AI berasaskan rakaman video TikTok anak anda selama beberapa saat.'}
                       </p>
                     </div>
                   </div>
+
+                  {/* AI Voice Cloning Attack Flowchart / Infographic */}
+                  {currentCase.postContent.aiVoiceIllustrationUrl && (
+                    <div className="rounded-2xl border border-slate-200 overflow-hidden shadow-xs bg-white p-4 space-y-3">
+                      <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                        <span className="font-extrabold text-xs sm:text-sm text-slate-900 flex items-center gap-1.5">
+                          <span>🤖 {isEn ? 'Anatomy of an AI Voice Clone Scam:' : 'Anatomi Jenayah Klon Suara AI:'}</span>
+                        </span>
+                        <span className="bg-amber-50 text-amber-800 border border-amber-200 px-2.5 py-0.5 rounded-full font-bold text-xs">
+                          {isEn ? 'Deepfake Education' : 'Pendidikan Deepfake'}
+                        </span>
+                      </div>
+
+                      <div className="rounded-xl overflow-hidden border border-slate-200 bg-slate-950 shadow-inner">
+                        <img
+                          src={currentCase.postContent.aiVoiceIllustrationUrl}
+                          alt={isEn ? 'AI Voice Cloning Scam Infographic' : 'Infografik Penipuan Klon Suara AI'}
+                          className="w-full h-auto object-cover max-h-[300px]"
+                        />
+                      </div>
+
+                      <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-700 space-y-1">
+                        <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                          <span>💡 {isEn ? 'How Scammers Do It:' : 'Bagaimana Penjenayah Melakukannya:'}</span>
+                        </div>
+                        <p className="text-xs leading-relaxed">
+                          {isEn
+                            ? 'Scammers scrape public social media videos (TikTok / Reels / YouTube) for 3-5 seconds of clean voice audio, train a neural voice synthesizer in seconds, and call family members pretending to be in distress.'
+                            : 'Penjenayah memuat turun video awam di media sosial (TikTok / Reels / YouTube) untuk mengambil sampel suara 3-5 saat, melatih sistem suara AI dalam beberapa saat, lalu menghubungi ibu bapa kononnya dalam kecemasan.'}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
 
-            {/* Family Safe Word Tool Action */}
-            <div className="pt-2">
-              <div className="p-3 bg-[#171914] text-white rounded-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
-                <div className="space-y-0.5">
-                  <span className="font-mono text-xs text-[#D9FA62] font-bold block flex items-center gap-1.5">
-                    <KeyRound className="w-4 h-4" />
-                    <span>
-                      {isEn
-                        ? 'Defense Tool: Family Safe Word Protocol'
-                        : 'Alat Pertahanan: Protokol Kata Rahsia Keluarga (*Family Safe Word*)'}
+            {/* Safe Word Tool Action (Only for Case 2 AI Voice Clone) */}
+            {currentCase.id === 'soc-02' && (
+              <div className="pt-2">
+                <div className="p-4 bg-slate-900 text-white rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+                  <div className="space-y-0.5">
+                    <span className="text-xs sm:text-sm text-amber-400 font-bold block flex items-center gap-1.5">
+                      <Lock className="w-4 h-4" />
+                      <span>{isEn ? 'Protocol: Family Secret Safe Word Test' : 'Protokol: Ujian Kata Laluan Rahsia Keluarga'}</span>
                     </span>
-                  </span>
-                  <p className="text-[11px] text-slate-300">
-                    {isEn
-                      ? 'Learn how to test suspected AI voice callers with a secret family word.'
-                      : 'Ketahui cara menguji pemanggil klon AI dengan perkataan rahsia keluarga.'}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleTestSafeWord}
-                  className="px-4 py-2.5 bg-[#D9FA62] text-[#171914] hover:bg-[#CCF050] font-mono font-bold text-xs uppercase rounded-xs cursor-pointer min-h-[40px] flex items-center justify-center gap-1.5 shrink-0"
-                >
-                  <span>{isEn ? 'Test AI Safe Word' : 'Uji Kata Rahsia AI'}</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-
-              {/* Safe Word Tool Explanation if clicked */}
-              {showSafeWordTool && (
-                <motion.div
-                  initial={{ opacity: 0, y: 4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mt-3 p-4 bg-[#E7F3EB] border-2 border-[#1E4D2B] rounded-sm space-y-2 text-[#123E23] font-mono text-xs"
-                >
-                  <div className="flex items-center justify-between pb-1.5 border-b border-[#1E4D2B]/30 font-bold">
-                    <span className="flex items-center gap-1.5">
-                      <Lock className="w-4 h-4 text-[#1E4D2B]" />
-                      <span>{isEn ? 'HOW A SECRET SAFE WORD DEFEATS AI:' : 'BAGAIMANA KATA RAHSIA MENUMPASKAN AI:'}</span>
-                    </span>
-                    <span className="bg-[#1E4D2B] text-white px-2 py-0.5 rounded-xs text-[10px]">
-                      {isEn ? 'BULLETPROOF SHIELD' : 'PERISAI KEBAL'}
-                    </span>
+                    <p className="text-xs text-slate-300">
+                      {isEn ? 'Ask caller the pre-agreed family safe word to verify identity.' : 'Minta pemanggil menyebut perkataan sulit keluarga untuk mematikan klon AI.'}
+                    </p>
                   </div>
-                  <p>
-                    {isEn
-                      ? 'AI voice clones can mimic tone and speech 100%, but AI DOES NOT KNOW the private code word set only between you and your child (e.g. “Onde-Onde”).'
-                      : 'Klon suara AI boleh meniru nada percakapan 100% tepat, tetapi AI TIDAK TAHU kata laluan rahsia yang hanya anda dan anak anda tetapkan di rumah (cth: “Onde-Onde”).'}
-                  </p>
-                  <p className="text-[11px] text-[#575953]">
-                    {isEn
-                      ? 'When a panicked caller fails to provide the safe word, you immediately know it is an AI clone scam!'
-                      : 'Bila pemanggil cemas gagal menjawab kata laluan rahsia, anda pasti ia adalah penipuan klon AI!'}
-                  </p>
-                </motion.div>
-              )}
-            </div>
+                  <button
+                    type="button"
+                    onClick={handleTestSafeWord}
+                    className="px-4 py-2 bg-amber-400 text-slate-950 hover:bg-amber-300 font-bold text-xs rounded-xl cursor-pointer min-h-[40px] flex items-center justify-center gap-1.5 shrink-0 transition-colors"
+                  >
+                    <span>{isEn ? 'Test Safe Word' : 'Uji Kata Rahsia'}</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                {/* Safe Word Result Box if clicked */}
+                {showSafeWordTool && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mt-3 p-4 bg-emerald-50 border border-emerald-300 rounded-2xl space-y-2 text-emerald-950 text-xs sm:text-sm"
+                  >
+                    <div className="flex items-center justify-between pb-1.5 border-b border-emerald-200 font-bold">
+                      <span className="flex items-center gap-1.5 text-emerald-800">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                        <span>{isEn ? 'SAFE WORD CHALLENGE RESULT:' : 'HASIL UJIAN KATA RAHSIA KELUARGA:'}</span>
+                      </span>
+                      <span className="bg-emerald-600 text-white px-2.5 py-0.5 rounded-full text-xs font-extrabold">
+                        {isEn ? 'SCAMMER BLOCKED' : 'PENIPU GAGAL MENJAWAB'}
+                      </span>
+                    </div>
+                    <p className="font-bold">
+                      {isEn
+                        ? 'When asked for the family safe word ("Karipap-Rangup"), the caller panicked and abruptly hung up!'
+                        : 'Apabila diminta menyebut kata rahsia keluarga ("Karipap-Rangup"), pemanggil gagap dan terus memutuskan talian!'}
+                    </p>
+                    <p className="text-xs text-slate-700">
+                      {isEn
+                        ? 'AI deepfakes cannot guess private family codes that are never posted online.'
+                        : 'Klon AI tidak boleh meneka perkataan peribadi yang tidak pernah dimuat naik ke internet.'}
+                    </p>
+                  </motion.div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* RIGHT COLUMN: Privacy Leak Checklist & Decisions (Col 8-12) */}
+        {/* RIGHT COLUMN: Leak Checklist & Actions */}
         <div className="lg:col-span-5 flex flex-col space-y-4">
-          <div className="rounded-sm border-2 border-[#171914] bg-white p-5 sm:p-6 shadow-xs flex-1 flex flex-col justify-between space-y-5">
+          <div className="rounded-3xl border border-slate-200 bg-white p-5 sm:p-7 shadow-xs flex-1 flex flex-col justify-between space-y-5">
             <div>
-              <div className="flex items-center justify-between pb-3 border-b border-[#171914]/15 font-mono text-xs">
-                <span className="font-bold text-[#171914] uppercase tracking-wider flex items-center gap-1.5">
-                  <ShieldCheck className="w-4 h-4 text-[#171914]" />
-                  <span>{isEn ? '2. Leak Analysis & Actions' : '2. Analisis Kebocoran & Tindakan'}</span>
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100 text-xs sm:text-sm">
+                <span className="font-extrabold text-slate-900 flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-blue-600" />
+                  <span>{isEn ? '2. Privacy Analysis & Decisions' : '2. Analisis Privasi & Tindakan'}</span>
                 </span>
-                <span className={`px-2 py-0.5 rounded-xs font-bold text-[11px] ${
-                  isLeaksSubmitted ? 'bg-[#E7F3EB] text-[#123E23]' : 'bg-[#D9FA62] text-[#171914]'
+                <span className={`px-3 py-1 rounded-full font-bold text-xs ${
+                  isLeaksSubmitted ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-blue-50 text-blue-800 border border-blue-200'
                 }`}>
-                  {!isLeaksSubmitted
-                    ? (isEn ? 'STEP 1: DETECT LEAKS' : 'LANGKAH 1: KESAN KEBOCORAN')
-                    : (isEn ? 'STEP 2: TAKE ACTION' : 'LANGKAH 2: BERTINDAK')}
+                  {!isLeaksSubmitted ? t('game.step1Badge') : t('game.step2Badge')}
                 </span>
               </div>
             </div>
 
-            {/* Step 1: Detect Leaks or Step 2: Choose Action */}
+            {/* Step 1 or Step 2 */}
             <div className="space-y-4 flex-1">
               {!isLeaksSubmitted ? (
                 <div className="space-y-4">
                   <div>
-                    <h3 className="text-base sm:text-lg font-black text-[#171914] tracking-tight">
-                      {isEn ? 'Step 1: Mark Dangerous Exposures' : 'Langkah 1: Tandakan Pendedahan Berbahaya'}
+                    <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">
+                      {isEn ? 'Step 1: Mark Dangerous Privacy Leaks' : 'Langkah 1: Tandakan Kebocoran Maklumat Bahaya'}
                     </h3>
-                    <p className="text-xs sm:text-sm text-[#575953] mt-1 leading-relaxed">
+                    <p className="text-xs sm:text-sm text-slate-600 mt-1.5 leading-relaxed">
                       {isEn
-                        ? 'Based on the post and photo evidence on the left, check ONLY items that ENDANGER SAFETY:'
-                        : 'Berdasarkan hantaran dan foto di sebelah kiri, tandakan maklumat yang MEMBAHAYAKAN KESELAMATAN sahaja:'}
+                        ? 'Based on the evidence on the left, mark only the dangerous vulnerabilities:'
+                        : 'Berdasarkan bukti di sebelah kiri, tandakan bahagian yang mendedahkan maklumat bahaya:'}
                     </p>
                   </div>
 
-                  <div className="space-y-2.5">
-                    {currentCase.leakItems.map((leak) => {
-                      const isMarked = selectedLeakIds.includes(leak.id);
+                  <div className="space-y-3">
+                    {currentCase.leakItems.map((item) => {
+                      const isMarked = selectedLeakIds.includes(item.id);
 
                       return (
                         <button
-                          key={leak.id}
+                          key={item.id}
                           type="button"
-                          onClick={() => handleToggleLeak(leak.id)}
-                          className={`w-full p-4 rounded-sm border-2 text-left transition-all cursor-pointer flex items-center justify-between gap-3 min-h-[52px] ${
+                          onClick={() => handleToggleLeak(item.id)}
+                          className={`w-full p-4 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-center justify-between gap-3 min-h-[56px] shadow-2xs ${
                             isMarked
-                              ? 'bg-[#171914] text-[#D9FA62] border-[#171914] font-bold shadow-xs'
-                              : 'bg-white text-[#171914] border-[#171914]/20 hover:border-[#171914] hover:bg-[#FAF9F5]'
+                              ? 'bg-blue-50 border-blue-600 text-blue-950 font-bold shadow-xs'
+                              : 'bg-white text-slate-800 border-slate-200 hover:border-blue-300 hover:bg-slate-50'
                           }`}
                         >
-                          <span className="font-mono text-xs sm:text-sm leading-snug">
-                            {leak.label}
+                          <span className="text-sm sm:text-base leading-snug">
+                            {item.label}
                           </span>
-                          <span className={`shrink-0 font-mono text-xs font-bold px-2 py-1 rounded-xs border ${
-                            isMarked ? 'bg-[#D9FA62] text-[#171914] border-[#D9FA62]' : 'bg-[#ECEAE2] text-[#575953]'
+                          <span className={`shrink-0 text-xs font-extrabold px-3 py-1 rounded-full border transition-colors ${
+                            isMarked ? 'bg-blue-600 text-white border-blue-600' : 'bg-slate-100 text-slate-600 border-slate-200'
                           }`}>
-                            {isMarked ? (isEn ? '✓ MARKED' : '✓ DITANDAKAN') : (isEn ? '+ MARK' : '+ TANDAKAN')}
+                            {isMarked ? t('game.marked') : t('game.mark')}
                           </span>
                         </button>
                       );
@@ -927,29 +1053,28 @@ export const SocialPrivacyGame: React.FC = () => {
               ) : (
                 <div className="space-y-4">
                   {/* Review breakdown */}
-                  <div className="p-4 bg-[#FAF9F5] border-2 border-[#171914]/15 rounded-sm space-y-2 font-mono text-xs">
-                    <div className="flex items-center justify-between pb-2 border-b border-[#171914]/10">
-                      <span className="font-bold text-[#171914]">
-                        {isEn ? 'Privacy Audit Outcome:' : 'Hasil Audit Privasi:'}
-                      </span>
-                      <span className="font-bold bg-[#D9FA62] px-2 py-0.5 rounded-xs text-[#171914]">
-                        +{leakScore} / 12 {isEn ? 'Points' : 'Mata'}
+                  <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2 text-xs sm:text-sm">
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-200 font-bold text-slate-900">
+                      <span>{isEn ? 'Privacy Audit Findings:' : 'Hasil Audit Privasi:'}</span>
+                      <span className="bg-emerald-100 text-emerald-900 px-2.5 py-0.5 rounded-full text-xs">
+                        +{leakScore} / 12 {t('game.pts')}
                       </span>
                     </div>
-                    {currentCase.leakItems.map(l => {
-                      const isTicked = selectedLeakIds.includes(l.id);
-                      if (isTicked && l.isVulnerability) {
+                    {currentCase.leakItems.map(item => {
+                      const isTicked = selectedLeakIds.includes(item.id);
+                      if (isTicked && item.isVulnerability) {
                         return (
-                          <div key={l.id} className="p-2 bg-[#E7F3EB] border border-[#1E4D2B]/30 rounded-xs text-[#123E23]">
-                            <strong>{isEn ? '✓ Correctly Detected:' : '✓ Tepat Dikesan:'}</strong> {l.label}
-                            <p className="text-[11px] text-[#575953] mt-0.5">{l.explanation}</p>
+                          <div key={item.id} className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-950">
+                            <strong>✓ {isEn ? 'Vulnerability Spotted: ' : 'Kebocoran Dikesan: '}</strong> {item.label}
+                            <p className="text-xs text-slate-700 mt-0.5">{item.explanation}</p>
                           </div>
                         );
                       }
-                      if (isTicked && !l.isVulnerability) {
+                      if (isTicked && !item.isVulnerability) {
                         return (
-                          <div key={l.id} className="p-2 bg-[#FAF0E6] border border-[#8A241C]/30 rounded-xs text-[#78271C]">
-                            <strong>{isEn ? '✕ False Alarm:' : '✕ Tersilap Tanda:'}</strong> {l.label} {isEn ? '(This is harmless public text, not sensitive data)' : '(Ini ucapan umum, bukan data sensitif)'}
+                          <div key={item.id} className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-950">
+                            <strong>✕ {isEn ? 'False Alarm: ' : 'Tersilap Tanda: '}</strong> {item.label}
+                            <p className="text-xs text-slate-700 mt-0.5">{item.explanation}</p>
                           </div>
                         );
                       }
@@ -958,34 +1083,17 @@ export const SocialPrivacyGame: React.FC = () => {
                   </div>
 
                   <div>
-                    <h3 className="text-base sm:text-lg font-black text-[#171914] tracking-tight">
-                      {isEn ? 'Step 2: What is the Safest Course of Action?' : 'Langkah 2: Apakah Tindakan Paling Selamat?'}
+                    <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">
+                      {t('game.step2HeaderFriendly')}
                     </h3>
-                    <p className="text-xs sm:text-sm text-[#575953] mt-1">
-                      {isEn
-                        ? 'Select the best action to protect your family safety:'
-                        : 'Pilih keputusan tindakan terbaik untuk melindungi keselamatan keluarga:'}
+                    <p className="text-xs sm:text-sm text-slate-600 mt-1">
+                      {t('game.step2Sub')}
                     </p>
                   </div>
 
                   <div className="space-y-2.5">
                     {currentCase.actions.map(act => {
                       const isSelected = selectedActionId === act.id;
-                      let btnStyles = 'bg-white border-[#171914]/20 hover:border-[#171914] text-[#171914]';
-
-                      if (isSelected) {
-                        btnStyles = 'bg-[#F5F4EE] border-2 border-[#171914] shadow-xs';
-                      }
-
-                      if (isActionSubmitted) {
-                        if (act.isSafe) {
-                          btnStyles = 'bg-[#E7F3EB] border-2 border-[#1E4D2B] text-[#123E23]';
-                        } else if (isSelected && !act.isSafe) {
-                          btnStyles = 'bg-[#FAF0E6] border-2 border-[#8A241C] text-[#78271C]';
-                        } else {
-                          btnStyles = 'bg-[#ECEAE2]/40 border-[#171914]/10 text-[#82847C]';
-                        }
-                      }
 
                       return (
                         <button
@@ -993,15 +1101,23 @@ export const SocialPrivacyGame: React.FC = () => {
                           type="button"
                           disabled={isActionSubmitted}
                           onClick={() => handleSelectAction(act.id)}
-                          className={`w-full p-4 rounded-sm border-2 text-left transition-colors cursor-pointer flex flex-col justify-between min-h-[58px] ${btnStyles}`}
+                          className={`w-full p-4 rounded-2xl border-2 text-left transition-all min-h-[60px] shadow-2xs ${
+                            isSelected
+                              ? 'bg-blue-50 border-blue-600 text-blue-950 shadow-xs'
+                              : 'bg-white text-slate-800 border-slate-200 hover:border-blue-300 hover:bg-slate-50'
+                          } ${isActionSubmitted ? 'cursor-default' : 'cursor-pointer'}`}
                         >
-                          <span className="font-bold text-sm block">{act.title}</span>
-                          <span className="text-xs text-[#575953] mt-0.5 block">{act.description}</span>
-                          {isSelected && !isActionSubmitted && (
-                            <span className="mt-2 font-mono text-xs font-bold text-[#171914] bg-[#D9FA62] px-2 py-0.5 rounded-xs self-start">
-                              {t('game.yourChoice')}
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="space-y-1">
+                              <span className="font-extrabold text-sm sm:text-base block">{act.title}</span>
+                              <span className="text-xs sm:text-sm text-slate-600 leading-relaxed block">{act.description}</span>
+                            </div>
+                            <span className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5 ${
+                              isSelected ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300'
+                            }`}>
+                              {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                             </span>
-                          )}
+                          </div>
                         </button>
                       );
                     })}
@@ -1012,29 +1128,25 @@ export const SocialPrivacyGame: React.FC = () => {
                     <motion.div
                       initial={{ opacity: 0, y: 4 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className={`p-4 rounded-sm border-l-4 ${
+                      className={`p-4 rounded-2xl border-2 space-y-1.5 ${
                         activeAction.isSafe
-                          ? 'border-l-[#1E4D2B] bg-[#E7F3EB] border border-[#1E4D2B]/30 text-[#123E23]'
-                          : 'border-l-[#8A241C] bg-[#FAF0E6] border border-[#8A241C]/30 text-[#78271C]'
+                          ? 'bg-emerald-50 border-emerald-300 text-emerald-950'
+                          : 'bg-red-50 border-red-300 text-red-950'
                       }`}
                     >
-                      <div className="flex items-start gap-2.5">
+                      <div className="flex items-center gap-2 font-black text-sm sm:text-base">
                         {activeAction.isSafe ? (
-                          <CheckCircle2 className="w-5 h-5 text-[#1E4D2B] shrink-0 mt-0.5" />
+                          <CheckCircle2 className="w-5 h-5 text-emerald-600" />
                         ) : (
-                          <AlertTriangle className="w-5 h-5 text-[#8A241C] shrink-0 mt-0.5" />
+                          <AlertTriangle className="w-5 h-5 text-red-600" />
                         )}
-                        <div className="space-y-1">
-                          <span className="font-mono text-xs uppercase font-bold tracking-wider block">
-                            {activeAction.isSafe
-                              ? (isEn ? 'Correct Action! (+13 Points)' : 'Tindakan Tepat! (+13 Mata)')
-                              : (isEn ? 'Risk Warning' : 'Amaran Risiko')}
-                          </span>
-                          <p className="text-xs sm:text-sm leading-relaxed text-[#171914]">
-                            {activeAction.consequence}
-                          </p>
-                        </div>
+                        <span>
+                          {activeAction.isSafe ? (isEn ? 'Safe Action! (+13 Pts)' : 'Tindakan Tepat! (+13 Mata)') : (isEn ? 'Risk Warning' : 'Amaran Risiko')}
+                        </span>
                       </div>
+                      <p className="text-xs sm:text-sm leading-relaxed">
+                        {activeAction.consequence}
+                      </p>
                     </motion.div>
                   )}
                 </div>
@@ -1042,45 +1154,42 @@ export const SocialPrivacyGame: React.FC = () => {
             </div>
 
             {/* Bottom Actions */}
-            <div className="pt-4 border-t border-[#171914]/15">
+            <div className="pt-4 border-t border-slate-100">
               {!isLeaksSubmitted ? (
                 <button
                   type="button"
-                  disabled={selectedLeakIds.length === 0}
                   onClick={handleSubmitLeaks}
-                  className={`w-full py-4 px-6 min-h-[50px] rounded-sm font-mono font-bold text-xs sm:text-sm uppercase tracking-wider transition-colors flex items-center justify-center gap-2 ${
-                    selectedLeakIds.length > 0
-                      ? 'bg-[#D9FA62] text-[#171914] hover:bg-[#CCF050] border-2 border-[#171914] cursor-pointer shadow-xs'
-                      : 'bg-[#ECEAE2] text-[#82847C] cursor-not-allowed border border-[#171914]/10'
-                  }`}
+                  className="w-full py-4 px-6 min-h-[52px] rounded-2xl font-bold text-base text-white bg-blue-600 hover:bg-blue-700 transition-all cursor-pointer shadow-md hover:shadow-lg flex items-center justify-center gap-2"
                 >
-                  <span>{isEn ? 'Confirm Detected Leaks & Proceed to Step 2 →' : 'Sahkan Kebocoran Dikesan & Ke Langkah 2 →'}</span>
+                  <span>{t('game.submitStep1')}</span>
+                  <ArrowRight className="w-5 h-5" />
                 </button>
               ) : !isActionSubmitted ? (
                 <button
                   type="button"
                   disabled={!selectedActionId}
                   onClick={handleSubmitAction}
-                  className={`w-full py-4 px-6 min-h-[50px] rounded-sm font-mono font-bold text-xs sm:text-sm uppercase tracking-wider transition-colors flex items-center justify-center gap-2 ${
+                  className={`w-full py-4 px-6 min-h-[52px] rounded-2xl font-bold text-base flex items-center justify-center gap-2 transition-all ${
                     selectedActionId
-                      ? 'bg-[#171914] text-[#D9FA62] hover:bg-[#2A2D25] border-2 border-[#171914] cursor-pointer shadow-xs'
-                      : 'bg-[#ECEAE2] text-[#82847C] cursor-not-allowed border border-[#171914]/10'
+                      ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer shadow-md hover:shadow-lg'
+                      : 'bg-slate-200 text-slate-400 cursor-not-allowed'
                   }`}
                 >
+                  <Check className="w-5 h-5" />
                   <span>{t('game.submitStep2')}</span>
                 </button>
               ) : (
                 <button
                   type="button"
                   onClick={handleNextCase}
-                  className="w-full py-4 px-6 min-h-[50px] rounded-sm font-mono font-bold text-xs sm:text-sm uppercase tracking-wider text-[#171914] bg-[#D9FA62] hover:bg-[#CCF050] border-2 border-[#171914] transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                  className="w-full py-4 px-6 min-h-[52px] rounded-2xl font-bold text-base text-white bg-blue-600 hover:bg-blue-700 transition-all cursor-pointer shadow-md hover:shadow-lg flex items-center justify-center gap-2"
                 >
                   <span>
-                    {currentCaseIndex + 1 === cases.length
-                      ? (isEn ? 'View Mission 06 Completed Report' : 'Lihat Laporan Misi 06 Selesai')
-                      : (isEn ? `Next Scenario (Case 0${currentCaseIndex + 2})` : `Senario Seterusnya (Kes 0${currentCaseIndex + 2})`)}
+                    {currentCaseIndex + 1 < cases.length
+                      ? `${t('game.nextScenario')} (${currentCaseIndex + 2}/${cases.length}) →`
+                      : t('game.viewFinalReport')}
                   </span>
-                  <ArrowRight className="w-4 h-4" />
+                  <ArrowRight className="w-5 h-5" />
                 </button>
               )}
             </div>

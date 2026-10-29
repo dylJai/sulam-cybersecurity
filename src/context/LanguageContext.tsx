@@ -3,10 +3,13 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 export type Language = 'bm' | 'en';
+export type FontSize = 'normal' | 'large' | 'xlarge';
 
 interface LanguageContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
+  fontSize: FontSize;
+  setFontSize: (size: FontSize) => void;
   t: (key: string) => string;
 }
 
@@ -110,6 +113,15 @@ const translations: Record<Language, Record<string, string>> = {
     'results.cluesFound': 'Tanda Dikesan',
     'results.safeDecisions': 'Keputusan Selamat',
     'results.totalScore': 'Jumlah Mata',
+
+    // Font Size & Accessibility
+    'header.fontSize': 'Saiz Tulisan',
+    'header.fontNormal': 'Biasa',
+    'header.fontLarge': 'Besar',
+    'header.fontXLarge': 'Sangat Besar',
+    'nav.backToMenuFriendly': 'Kembali ke Menu Utama',
+    'footer.callNow': 'Hubungi 997 Sekarang',
+    'footer.callFree': 'Panggilan Percuma',
 
     // Footer
     'footer.initiative': 'CyberSafe Community — Inisiatif Keselamatan Siber Komuniti',
@@ -218,6 +230,15 @@ const translations: Record<Language, Record<string, string>> = {
     'results.safeDecisions': 'Safe Decisions',
     'results.totalScore': 'Total Score',
 
+    // Font Size & Accessibility
+    'header.fontSize': 'Text Size',
+    'header.fontNormal': 'Normal',
+    'header.fontLarge': 'Large',
+    'header.fontXLarge': 'Extra Large',
+    'nav.backToMenuFriendly': 'Back to Main Menu',
+    'footer.callNow': 'Call 997 Now',
+    'footer.callFree': 'Toll-Free National Helpline',
+
     // Footer
     'footer.initiative': 'CyberSafe Community — Community Cybersecurity Initiative',
     'footer.subtext': 'Interactive laptop learning modules designed for community halls, villages & schools.',
@@ -230,17 +251,26 @@ const translations: Record<Language, Record<string, string>> = {
 const LanguageContext = createContext<LanguageContextType>({
   language: 'bm',
   setLanguage: () => {},
+  fontSize: 'normal',
+  setFontSize: () => {},
   t: (key: string) => key
 });
 
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [language, setLanguageState] = useState<Language>('bm');
+  const [fontSize, setFontSizeState] = useState<FontSize>('normal');
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('cybersafe_lang') as Language | null;
-      if (saved === 'bm' || saved === 'en') {
-        setLanguageState(saved);
+      const savedLang = localStorage.getItem('cybersafe_lang') as Language | null;
+      if (savedLang === 'bm' || savedLang === 'en') {
+        setLanguageState(savedLang);
+      }
+      const savedSize = localStorage.getItem('cybersafe_font_size') as FontSize | null;
+      if (savedSize === 'normal' || savedSize === 'large' || savedSize === 'xlarge') {
+        setFontSizeState(savedSize);
+        document.documentElement.classList.remove('font-size-normal', 'font-size-large', 'font-size-xlarge');
+        document.documentElement.classList.add(`font-size-${savedSize}`);
       }
     }
   }, []);
@@ -252,12 +282,21 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
+  const setFontSize = (size: FontSize) => {
+    setFontSizeState(size);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('cybersafe_font_size', size);
+      document.documentElement.classList.remove('font-size-normal', 'font-size-large', 'font-size-xlarge');
+      document.documentElement.classList.add(`font-size-${size}`);
+    }
+  };
+
   const t = (key: string): string => {
     return translations[language][key] || translations.bm[key] || key;
   };
 
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, t }}>
+    <LanguageContext.Provider value={{ language, setLanguage, fontSize, setFontSize, t }}>
       {children}
     </LanguageContext.Provider>
   );

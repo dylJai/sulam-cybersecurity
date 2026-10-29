@@ -6,6 +6,7 @@ import { LinkScannerModal, LinkScanData } from '@/components/game/LinkScannerMod
 import { BadgesDrawer, BadgeItem } from '@/components/game/BadgesDrawer';
 import { saveChallengeResult } from '@/lib/storage';
 import { useLanguage } from '@/context/LanguageContext';
+import { playPopSound, playSuccessChime, playWarningTone, triggerCelebration } from '@/lib/sound';
 import {
   ArrowRight,
   RotateCcw,
@@ -17,10 +18,16 @@ import {
   Globe,
   Paperclip,
   CheckCircle2,
-  Award
+  Award,
+  Sparkles,
+  Info,
+  Mail,
+  MessageSquare
 } from 'lucide-react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import { VoiceOverButton } from '@/components/common/VoiceOverButton';
+import { voiceOverManager } from '@/lib/voice-over';
 
 export const InvestigationGame: React.FC = () => {
   const { language, t } = useLanguage();
@@ -44,6 +51,12 @@ export const InvestigationGame: React.FC = () => {
   const [correctActionDecisions, setCorrectActionDecisions] = useState<number>(0);
   const [totalScore, setTotalScore] = useState<number>(0);
   const [scannerUsed, setScannerUsed] = useState<boolean>(false);
+
+  React.useEffect(() => {
+    return () => {
+      voiceOverManager.stopAll();
+    };
+  }, [currentCaseIndex, stage]);
 
   const cases = getInvestigationCases(language);
   const currentCase = cases[currentCaseIndex] || cases[0];
@@ -102,36 +115,29 @@ export const InvestigationGame: React.FC = () => {
 
   const handleToggleClue = (clueId: string) => {
     if (isFindingsSubmitted) return;
+    playPopSound();
     setSelectedClueIds(prev =>
       prev.includes(clueId) ? prev.filter(id => id !== clueId) : [...prev, clueId]
     );
   };
 
   const handleOpenScanner = (url: string) => {
+    playPopSound();
     setScannerUsed(true);
-    const isPos = url.includes('pos');
-    const isTenaga = url.includes('tenaga');
-
     setActiveScanData({
       url,
-      protocol: url.startsWith('https') ? 'https' : 'http',
-      domain: isPos ? 'pos-redeliver-pay.cc' : isTenaga ? 'tenaga-quickpay.xyz' : 'ewallet-claim-2025.com',
-      country: isPos ? (isEn ? 'Cocos Islands (.cc)' : 'Kepulauan Cocos (.cc)') : isTenaga ? (isEn ? 'Offshore Server (.xyz)' : 'Pelayan Luar Pesisir (.xyz)') : (isEn ? 'Unknown Server' : 'Pelayan Tidak Diketahui'),
-      riskScore: 98,
+      protocol: url.startsWith('https://') ? 'https' : 'http',
+      domain: url.replace(/^https?:\/\//, '').split('/')[0],
+      country: 'Kuala Lumpur / Offshore Hosting',
+      riskScore: 92,
       verdict: isEn
-        ? 'Fraudulent cloned website specifically designed to harvest victim debit card and online banking credentials.'
-        : 'Laman web palsu yang direka khas untuk mencuri kad debit & maklumat perbankan internet mangsa.',
-      redFlags: isEn
-        ? [
-            'Domain does not match legitimate agencies or registered companies in Malaysia',
-            'Invalid or missing SSL security certificate (insecure plain HTTP connection)',
-            'Domain was registered less than 14 days ago by anonymous registrant'
-          ]
-        : [
-            'Domain tidak sepadan dengan agensi atau syarikat rasmi di Malaysia',
-            'Penyulitan SSL tidak sah atau menggunakan sambungan HTTP tidak selamat',
-            'Laman web baru didaftarkan kurang daripada 14 hari yang lalu'
-          ]
+        ? 'MALICIOUS PHISHING DOMAIN: Registered less than 48 hours ago to spoof official agencies.'
+        : 'DOMAIN PENIPUAN BERBAHAYA: Baru didaftarkan kurang 48 jam lalu untuk meniru agensi rasmi.',
+      redFlags: [
+        isEn ? 'Non-standard domain extension (.xyz / .cc)' : 'Sambungan domain ganjil (.xyz / .cc)',
+        isEn ? 'Domain mimics official brand name with typo' : 'Meniru nama jenama rasmi dengan sedikit ejaan berbeza',
+        isEn ? 'Hidden redirect to credential-stealing login form' : 'Pautan tersembunyi yang mencuri kata laluan'
+      ]
     });
   };
 
@@ -139,37 +145,36 @@ export const InvestigationGame: React.FC = () => {
     if (isFindingsSubmitted) return;
     setIsFindingsSubmitted(true);
 
-    const totalCluesInCase = currentCase.clues.length;
-    const suspiciousClues = currentCase.clues.filter(c => c.isSuspicious);
-    const benignClues = currentCase.clues.filter(c => !c.isSuspicious);
+    const actualClueCount = currentCase.clues.filter(c => c.isSuspicious).length;
+    setTotalPossibleClues(prev => prev + actualClueCount);
 
-    // Number of real threats spotted
-    const correctSuspiciousFound = selectedClueIds.filter(id =>
-      suspiciousClues.some(c => c.id === id)
-    ).length;
+    let scoreForThisStep = 0;
+    let foundCorrectCount = 0;
 
-    // Number of harmless text mistakenly marked
-    const falseAlarmsMarked = selectedClueIds.filter(id =>
-      benignClues.some(c => c.id === id)
-    ).length;
+    currentCase.clues.forEach(clue => {
+      const isSelected = selectedClueIds.includes(clue.id);
+      if (clue.isSuspicious && isSelected) {
+        scoreForThisStep += 2.5;
+        foundCorrectCount += 1;
+      } else if (!clue.isSuspicious && isSelected) {
+        scoreForThisStep = Math.max(0, scoreForThisStep - 1);
+      }
+    });
 
-    // Number of harmless text correctly ignored
-    const correctBenignIgnored = benignClues.length - falseAlarmsMarked;
+    if (foundCorrectCount > 0) {
+      playSuccessChime();
+    } else {
+      playWarningTone();
+    }
 
-    // Total correct decisions
-    const totalCorrectDecisions = correctSuspiciousFound + correctBenignIgnored;
-
-    // Up to 5 points for clue investigation
-    const cluePoints = Math.max(0, Math.min(5, Math.round((totalCorrectDecisions / totalCluesInCase) * 5)));
-
-    setCaseClueScore(cluePoints);
-    setTotalCluesFound(prev => prev + correctSuspiciousFound);
-    setTotalPossibleClues(prev => prev + suspiciousClues.length);
-    setTotalScore(prev => prev + cluePoints);
+    setCaseClueScore(Math.round(scoreForThisStep));
+    setTotalCluesFound(prev => prev + foundCorrectCount);
+    setTotalScore(prev => prev + Math.round(scoreForThisStep));
   };
 
   const handleSelectAction = (actionId: string) => {
     if (isActionSubmitted) return;
+    playPopSound();
     setSelectedActionId(actionId);
   };
 
@@ -179,29 +184,33 @@ export const InvestigationGame: React.FC = () => {
 
     const chosenAction = currentCase.actions.find(a => a.id === selectedActionId);
     if (chosenAction?.isSafe) {
+      playSuccessChime();
       setCorrectActionDecisions(prev => prev + 1);
-      setTotalScore(prev => prev + 5); // 5 points for safe action
+      setTotalScore(prev => prev + 5);
+    } else {
+      playWarningTone();
     }
   };
 
   const handleNextCase = () => {
+    playPopSound();
     if (currentCaseIndex + 1 < cases.length) {
       setCurrentCaseIndex(prev => prev + 1);
       resetCaseState();
     } else {
       const finalScore = Math.min(50, totalScore);
       saveChallengeResult('phishing', finalScore, 50);
+      triggerCelebration();
       setStage('results');
     }
   };
 
-  // Check if case contains a link for scanner
   const linkClue = currentCase?.clues.find(
     c => c.targetText.startsWith('http') || c.targetText.includes('.xyz') || c.targetText.includes('.cc')
   );
 
   /* =========================================================================
-     STAGE 1: MISSION BRIEFING (SPLIT VIEW)
+     STAGE 1: MISSION BRIEFING
      ========================================================================= */
   if (stage === 'briefing') {
     return (
@@ -209,84 +218,99 @@ export const InvestigationGame: React.FC = () => {
         <div>
           <Link
             href="/"
-            className="inline-flex items-center gap-2 font-mono text-xs sm:text-sm text-[#7C7E77] hover:text-[#171914] transition-colors"
+            className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors py-1"
           >
-            {t('nav.backToMenu')}
+            ← {t('nav.backToMenuFriendly')}
           </Link>
         </div>
 
-        <div className="rounded-sm border-2 border-[#171914] bg-white p-6 sm:p-8 shadow-xs">
+        <div className="rounded-3xl border border-slate-200/90 bg-white p-6 sm:p-10 shadow-sm space-y-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             {/* Left side: Context & Scenario */}
             <div className="lg:col-span-7 space-y-5">
-              <div className="flex items-center gap-2 font-mono text-xs">
-                <span className="font-bold text-[#171914] bg-[#D9FA62] px-2.5 py-1 rounded-xs border border-[#171914]/20">
+              <div className="flex items-center gap-3">
+                <span className="font-extrabold text-blue-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-100 text-xs">
                   {isEn ? 'MISSION 01' : 'MISI 01'}
                 </span>
-                <span className="text-[#7C7E77] uppercase font-bold">
-                  {isEn ? 'TIME: 5-7 MINS • MAX: 50 POINTS' : 'MASA: 5-7 MINIT • MAKSIMUM: 50 MATA'}
+                <span className="text-slate-500 font-semibold text-xs sm:text-sm">
+                  {isEn ? '⏱️ 5-7 Mins • 50 Points' : '⏱️ 5-7 Minit • 50 Mata'}
                 </span>
               </div>
 
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#171914] tracking-tight">
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight leading-snug">
                 {t('m1.title')}
               </h1>
 
-              <p className="text-base sm:text-lg text-[#575953] leading-relaxed">
+              <p className="text-base sm:text-lg text-slate-600 leading-relaxed">
                 {isEn
-                  ? 'Suspicious messages are flooding the SMS inboxes and emails of our community. Your team’s duty is to investigate the evidence, detect red flags, and make the safest response decisions.'
-                  : 'Mesej mencurigakan mula membanjiri peti masuk telefon dan emel komuniti kita. Tugas pasukan anda adalah menyiasat bukti pada mesej, mengesan tanda bahaya, dan memutuskan tindakan paling selamat.'}
+                  ? 'Suspicious messages frequently flood our community SMS inboxes and WhatsApp. Your team’s mission is to inspect the clues, detect red flags, and make the safest response decisions.'
+                  : 'Mesej mencurigakan mula membanjiri peti masuk SMS dan WhatsApp komuniti kita. Tugas pasukan anda adalah meneliti bukti pada mesej, mengesan tanda bahaya, dan memilih tindakan paling selamat.'}
               </p>
 
-              <div className="p-4 bg-[#F5F4EE] border border-[#171914]/15 rounded-sm space-y-2 text-xs sm:text-sm">
-                <span className="font-mono font-bold uppercase text-[#171914] block">
-                  {isEn ? 'How to Run This Mission:' : 'Panduan Menjalankan Misi:'}
+              <div className="p-5 bg-slate-50 border border-slate-200/80 rounded-2xl space-y-3">
+                <span className="font-extrabold text-sm sm:text-base text-slate-900 block">
+                  {isEn ? '📋 3 Easy Steps in this Mission:' : '📋 3 Panduan Mudah Menjalankan Misi Ini:'}
                 </span>
-                <div className="space-y-1.5 text-[#575953]">
-                  <div>
-                    <strong>{isEn ? '1. Look at Left Column:' : '1. Lihat Sebelah Kiri:'}</strong>{' '}
-                    {isEn ? 'The simulated message or SMS under investigation is always displayed.' : 'Mesej atau SMS yang disiasat akan sentiasa dipaparkan.'}
+                <div className="space-y-2 text-sm sm:text-base text-slate-700 leading-relaxed">
+                  <div className="flex items-start gap-2.5">
+                    <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center shrink-0 mt-0.5 text-xs">
+                      1
+                    </span>
+                    <span>
+                      <strong>{isEn ? 'Inspect Evidence (Left):' : 'Teliti Bukti di Sebelah Kiri:'}</strong>{' '}
+                      {isEn ? 'Read the simulated SMS or email message carefully.' : 'Baca contoh SMS atau emel yang disyaki dengan tenang.'}
+                    </span>
                   </div>
-                  <div>
-                    <strong>{isEn ? '2. Answer on Right Column:' : '2. Jawab di Sebelah Kanan:'}</strong>{' '}
-                    {isEn ? 'Mark suspicious clues and select the safest protective action.' : 'Tandakan petunjuk meragukan dan pilih tindakan selamat.'}
+                  <div className="flex items-start gap-2.5">
+                    <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center shrink-0 mt-0.5 text-xs">
+                      2
+                    </span>
+                    <span>
+                      <strong>{isEn ? 'Mark Red Flags (Right):' : 'Tandakan Tanda Bahaya di Sebelah Kanan:'}</strong>{' '}
+                      {isEn ? 'Click only on the suspicious parts (links, urgency, strange phone numbers).' : 'Klik bahagian yang mencurigakan (pautan pelik, ugutan masa, fail luar).'}
+                    </span>
                   </div>
-                  <div>
-                    <strong>{isEn ? '3. Collaborate in Groups:' : '3. Bekerjasama dalam Pasukan:'}</strong>{' '}
-                    {isEn ? 'Discuss with your team before clicking the confirm button!' : 'Bincang bersama sebelum menekan butang sahkan!'}
+                  <div className="flex items-start gap-2.5">
+                    <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center shrink-0 mt-0.5 text-xs">
+                      3
+                    </span>
+                    <span>
+                      <strong>{isEn ? 'Decide Safe Action:' : 'Pilih Tindakan Selamat:'}</strong>{' '}
+                      {isEn ? 'Select what to do next to protect your money and identity.' : 'Pilih satu keputusan terbaik untuk menyelamatkan simpanan anda.'}
+                    </span>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Right side: Tools & Start CTA */}
-            <div className="lg:col-span-5 bg-[#FAF9F5] border-2 border-[#171914]/20 rounded-sm p-6 space-y-5">
-              <span className="font-mono text-xs font-bold uppercase tracking-wider text-[#171914] block pb-2 border-b border-[#171914]/15">
-                {isEn ? 'Station Investigation Tools:' : 'Alat Siasatan Stesen:'}
+            <div className="lg:col-span-5 bg-blue-50/60 border border-blue-100 rounded-3xl p-6 sm:p-7 space-y-5">
+              <span className="text-sm font-extrabold text-blue-900 block pb-2 border-b border-blue-200/60">
+                {isEn ? 'Special Station Tools Provided:' : 'Alat Bantuan Khas Stesen Ini:'}
               </span>
 
-              <div className="space-y-3 text-xs sm:text-sm text-[#575953]">
-                <div className="p-3 bg-white border border-[#171914]/15 rounded-xs space-y-1">
-                  <div className="flex items-center gap-2 font-bold text-[#171914]">
-                    <Globe className="w-4 h-4 text-[#171914]" />
+              <div className="space-y-3.5 text-sm text-slate-700">
+                <div className="p-4 bg-white border border-blue-100 rounded-2xl space-y-1 shadow-2xs">
+                  <div className="flex items-center gap-2 font-bold text-slate-900">
+                    <Globe className="w-4 h-4 text-blue-600" />
                     <span>{isEn ? 'Diagnostic X-Ray Link Scanner' : 'Pengimbas Pautan X-Ray'}</span>
                   </div>
-                  <p>
+                  <p className="text-xs sm:text-sm text-slate-600">
                     {isEn
-                      ? 'Inspect SSL certificates, threat ratings, and suspicious registration records of fake domains.'
-                      : 'Boleh digunakan untuk memeriksa sijil keselamatan dan rekod pendaftaran laman web palsu.'}
+                      ? 'Inspect threat ratings and fake registration records of suspicious domains.'
+                      : 'Boleh digunakan bila-bila masa untuk memeriksa sama ada pautan itu palsu atau berbahaya.'}
                   </p>
                 </div>
 
-                <div className="p-3 bg-white border border-[#171914]/15 rounded-xs space-y-1">
-                  <div className="flex items-center gap-2 font-bold text-[#171914]">
-                    <Award className="w-4 h-4 text-[#171914]" />
-                    <span>{isEn ? 'Team Investigation Badges' : 'Lencana Siasatan Pasukan'}</span>
+                <div className="p-4 bg-white border border-blue-100 rounded-2xl space-y-1 shadow-2xs">
+                  <div className="flex items-center gap-2 font-bold text-slate-900">
+                    <Award className="w-4 h-4 text-amber-500" />
+                    <span>{isEn ? 'Team Investigation Badges' : 'Lencana Kejayaan Pasukan'}</span>
                   </div>
-                  <p>
+                  <p className="text-xs sm:text-sm text-slate-600">
                     {isEn
-                      ? 'Unlock 4 special badges including Eagle Eye & Phish Blocker throughout your inquiry.'
-                      : 'Kumpul 4 lencana khas termasuk Mata Helang & Penyekat Penipuan sepanjang siasatan.'}
+                      ? 'Unlock 4 special badges including Eagle Eye & Phish Blocker.'
+                      : 'Kumpul 4 lencana khas termasuk Mata Helang & Penyekat Penipuan.'}
                   </p>
                 </div>
               </div>
@@ -294,10 +318,10 @@ export const InvestigationGame: React.FC = () => {
               <div className="pt-2">
                 <button
                   onClick={handleStartMission}
-                  className="w-full py-4 px-6 min-h-[54px] rounded-sm font-mono font-bold text-sm uppercase tracking-wider text-[#171914] bg-[#D9FA62] hover:bg-[#CCF050] border-2 border-[#171914] transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                  className="w-full py-4 px-6 min-h-[56px] rounded-2xl font-bold text-base sm:text-lg text-white bg-blue-600 hover:bg-blue-700 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md hover:shadow-lg"
                 >
-                  <span>{isEn ? 'Start Team Mission' : 'Mulakan Misi Siasatan Pasukan'}</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <span>{isEn ? 'Start Mission 01 Now' : 'Mulakan Misi 01 Sekarang'}</span>
+                  <ArrowRight className="w-5 h-5" />
                 </button>
               </div>
             </div>
@@ -308,103 +332,103 @@ export const InvestigationGame: React.FC = () => {
   }
 
   /* =========================================================================
-     STAGE 6: MISSION RESULTS (SPLIT VIEW)
+     STAGE 3: MISSION RESULTS
      ========================================================================= */
   if (stage === 'results') {
     return (
       <div className="w-full space-y-6">
         <BadgesDrawer badges={badges} />
 
-        <div className="rounded-sm border-2 border-[#171914] bg-white p-6 sm:p-8 shadow-xs">
+        <div className="rounded-3xl border border-slate-200/90 bg-white p-6 sm:p-10 shadow-sm space-y-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             {/* Left: Summary & Stats */}
             <div className="lg:col-span-6 space-y-6">
-              <div className="flex items-center justify-between pb-3 border-b border-[#171914]/15 font-mono text-xs">
-                <span className="font-bold uppercase tracking-wider text-[#171914] bg-[#D9FA62] px-2.5 py-1 rounded-xs border border-[#171914]/20">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100 text-xs sm:text-sm">
+                <span className="font-extrabold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
                   {isEn ? 'INVESTIGATION REPORT COMPLETE' : 'LAPORAN SIASATAN SELESAI'}
                 </span>
-                <span className="text-[#7C7E77]">MISI 01 / PHISHING</span>
+                <span className="text-slate-500 font-bold">MISI 01 / SMS & EMEL</span>
               </div>
 
               <div>
-                <h2 className="text-3xl sm:text-4xl font-black text-[#171914] tracking-tight">
-                  {isEn ? 'Investigation Successfully Completed!' : 'Siasatan Berjaya Dilengkapkan!'}
+                <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
+                  {isEn ? '🎉 Mission Completed Successfully!' : '🎉 Siasatan Berjaya Dilengkapkan!'}
                 </h2>
-                <p className="text-sm sm:text-base text-[#575953] mt-2 leading-relaxed">
+                <p className="text-base text-slate-600 mt-2.5 leading-relaxed">
                   {isEn
                     ? 'Your team completed investigating all 5 suspicious message scenarios, used the X-Ray scanner, and protected sensitive data.'
-                    : 'Pasukan anda telah selesai menyiasat kesemua 5 senario mesej mencurigakan, menggunakan alat diagnostik X-Ray, dan berjaya melindungi maklumat peribadi.'}
+                    : 'Pasukan anda telah selesai menyiasat kesemua 5 senario mesej mencurigakan, menggunakan alat diagnostik X-Ray, dan berjaya melindungi data peribadi.'}
                 </p>
               </div>
 
               {/* Stats Grid */}
-              <div className="grid grid-cols-2 gap-3 border-y border-[#171914]/15 py-4">
-                <div className="p-3 bg-[#FAF9F5] border border-[#171914]/10 rounded-xs">
-                  <span className="font-mono text-[10px] uppercase text-[#7C7E77] block font-bold">
+              <div className="grid grid-cols-2 gap-3.5 border-y border-slate-100 py-4">
+                <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-2xl">
+                  <span className="text-xs uppercase text-slate-500 block font-bold">
                     {t('results.scenariosTested')}
                   </span>
-                  <span className="font-mono text-2xl font-black text-[#171914] mt-1 block">5 / 5</span>
+                  <span className="text-2xl sm:text-3xl font-black text-slate-900 mt-1 block">5 / 5</span>
                 </div>
-                <div className="p-3 bg-[#FAF9F5] border border-[#171914]/10 rounded-xs">
-                  <span className="font-mono text-[10px] uppercase text-[#7C7E77] block font-bold">
+                <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-2xl">
+                  <span className="text-xs uppercase text-slate-500 block font-bold">
                     {t('results.cluesFound')}
                   </span>
-                  <span className="font-mono text-2xl font-black text-[#171914] mt-1 block">
-                    {totalCluesFound} <span className="text-xs font-normal text-[#82847C]">/ {totalPossibleClues}</span>
+                  <span className="text-2xl sm:text-3xl font-black text-slate-900 mt-1 block">
+                    {totalCluesFound} <span className="text-sm font-normal text-slate-500">/ {totalPossibleClues}</span>
                   </span>
                 </div>
-                <div className="p-3 bg-[#FAF9F5] border border-[#171914]/10 rounded-xs">
-                  <span className="font-mono text-[10px] uppercase text-[#7C7E77] block font-bold">
+                <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-2xl">
+                  <span className="text-xs uppercase text-slate-500 block font-bold">
                     {t('results.safeDecisions')}
                   </span>
-                  <span className="font-mono text-2xl font-black text-[#171914] mt-1 block">{correctActionDecisions} / 5</span>
+                  <span className="text-2xl sm:text-3xl font-black text-slate-900 mt-1 block">{correctActionDecisions} / 5</span>
                 </div>
-                <div className="p-3 bg-[#E7F3EB] border border-[#1E4D2B]/20 rounded-xs">
-                  <span className="font-mono text-[10px] uppercase text-[#123E23] block font-bold">
+                <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl">
+                  <span className="text-xs uppercase text-emerald-800 block font-bold">
                     {t('results.totalScore')}
                   </span>
-                  <span className="font-mono text-2xl font-black text-[#123E23] mt-1 block">
-                    {totalScore} <span className="text-xs font-normal text-[#123E23]/70">/ 50</span>
+                  <span className="text-2xl sm:text-3xl font-black text-emerald-900 mt-1 block">
+                    {totalScore} <span className="text-sm font-normal text-emerald-700">/ 50 Mata</span>
                   </span>
                 </div>
               </div>
             </div>
 
             {/* Right: Key Lessons & Navigation Actions */}
-            <div className="lg:col-span-6 bg-[#FAF9F5] border-2 border-[#171914]/20 rounded-sm p-6 space-y-6">
-              <span className="font-mono text-xs font-bold uppercase tracking-wider text-[#171914] block pb-2 border-b border-[#171914]/15">
-                {isEn ? 'Community Defense Principles:' : 'Prinsip Pertahanan Komuniti:'}
+            <div className="lg:col-span-6 bg-slate-50 border border-slate-200 rounded-3xl p-6 sm:p-7 space-y-6">
+              <span className="text-sm font-extrabold uppercase tracking-wider text-slate-900 block pb-2 border-b border-slate-200">
+                {isEn ? '3 Golden Community Defense Rules:' : '3 Pesanan Emas Komuniti:'}
               </span>
 
-              <ul className="space-y-3 text-xs sm:text-sm text-[#575953]">
-                <li className="flex items-start gap-2.5">
-                  <span className="w-5 h-5 rounded-xs bg-[#171914] text-[#D9FA62] flex items-center justify-center shrink-0 mt-0.5">
-                    <Check className="w-3.5 h-3.5" />
+              <ul className="space-y-3.5 text-sm sm:text-base text-slate-700">
+                <li className="flex items-start gap-3">
+                  <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
+                    <Check className="w-4 h-4" />
                   </span>
                   <span>
                     {isEn
                       ? 'Never click links asking for small fee payments or parcel delivery rescheduling via random SMS.'
-                      : 'Jangan tekan pautan bayaran caj kecil atau penukaran jadual melalui SMS rawak.'}
+                      : 'Jangan sesekali tekan pautan bayaran caj kecil atau kurier melalui SMS rawak.'}
                   </span>
                 </li>
-                <li className="flex items-start gap-2.5">
-                  <span className="w-5 h-5 rounded-xs bg-[#171914] text-[#D9FA62] flex items-center justify-center shrink-0 mt-0.5">
-                    <Check className="w-3.5 h-3.5" />
+                <li className="flex items-start gap-3">
+                  <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
+                    <Check className="w-4 h-4" />
                   </span>
                   <span>
                     {isEn
                       ? 'Banks in Malaysia never send TAC confirmation links or login prompts via SMS.'
-                      : 'Bank di Malaysia tidak lagi menghantar pautan pengesahan TAC atau kata laluan melalui SMS.'}
+                      : 'Pihak bank di Malaysia tidak lagi menghantar pautan pengesahan TAC atau kata laluan melalui SMS.'}
                   </span>
                 </li>
-                <li className="flex items-start gap-2.5">
-                  <span className="w-5 h-5 rounded-xs bg-[#171914] text-[#D9FA62] flex items-center justify-center shrink-0 mt-0.5">
-                    <Check className="w-3.5 h-3.5" />
+                <li className="flex items-start gap-3">
+                  <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
+                    <Check className="w-4 h-4" />
                   </span>
                   <span>
                     {isEn
                       ? 'Never install application (.apk) files from prize-winning or cash aid grant emails.'
-                      : 'Jangan sesekali pasang fail aplikasi (.apk) daripada emel tuntutan wang tunai atau hadiah.'}
+                      : 'Jangan pasang fail aplikasi (.apk) daripada emel bantuan wang tunai atau hadiah percuma.'}
                   </span>
                 </li>
               </ul>
@@ -412,7 +436,7 @@ export const InvestigationGame: React.FC = () => {
               <div className="pt-2 flex flex-col sm:flex-row gap-3">
                 <button
                   onClick={handleStartMission}
-                  className="flex-1 flex items-center justify-center gap-2 px-5 py-3.5 min-h-[48px] rounded-sm font-mono font-bold text-xs uppercase tracking-wider text-[#171914] bg-white hover:bg-[#ECEAE2] border-2 border-[#171914]/20 transition-colors cursor-pointer"
+                  className="flex-1 flex items-center justify-center gap-2 px-5 py-3.5 min-h-[50px] rounded-xl font-bold text-sm text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 transition-colors cursor-pointer"
                 >
                   <RotateCcw className="w-4 h-4" />
                   <span>{t('game.retry')}</span>
@@ -420,7 +444,7 @@ export const InvestigationGame: React.FC = () => {
 
                 <Link
                   href="/"
-                  className="flex-1 flex items-center justify-center gap-2 px-5 py-3.5 min-h-[48px] rounded-sm font-mono font-bold text-xs uppercase tracking-wider text-[#171914] bg-white hover:bg-[#ECEAE2] border-2 border-[#171914]/20 transition-colors cursor-pointer"
+                  className="flex-1 flex items-center justify-center gap-2 px-5 py-3.5 min-h-[50px] rounded-xl font-bold text-sm text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 transition-colors cursor-pointer"
                 >
                   <Home className="w-4 h-4" />
                   <span>{t('game.mainMenu')}</span>
@@ -428,10 +452,9 @@ export const InvestigationGame: React.FC = () => {
 
                 <Link
                   href="/challenge/passwords"
-                  className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 min-h-[48px] rounded-sm font-mono font-bold text-xs uppercase tracking-wider text-[#171914] bg-[#D9FA62] hover:bg-[#CCF050] border-2 border-[#171914] transition-colors shadow-xs text-center"
+                  className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 min-h-[50px] rounded-xl font-bold text-sm text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-sm text-center"
                 >
-                  <span>{isEn ? 'Mission 02: Passwords' : 'Misi 02: Kata Laluan'}</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <span>{isEn ? 'Mission 02: Passwords →' : 'Misi 02: Kata Laluan →'}</span>
                 </Link>
               </div>
             </div>
@@ -442,27 +465,27 @@ export const InvestigationGame: React.FC = () => {
   }
 
   /* =========================================================================
-     STAGE 2: INTERACTIVE INVESTIGATION (FULL PAGE SPLIT VIEW)
+     STAGE 2: INTERACTIVE INVESTIGATION (SPLIT SCREEN)
      ========================================================================= */
   const activeAction = currentCase.actions.find(a => a.id === selectedActionId);
 
   return (
-    <div className="w-full space-y-4">
-      {/* Top Full-Width Navigation & Status Bar */}
-      <div className="bg-white border-2 border-[#171914] rounded-sm p-4 shadow-xs">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#171914]/15 font-mono text-xs">
-          <div className="flex flex-wrap items-center gap-3">
+    <div className="w-full space-y-5">
+      {/* Top Navigation & Status Bar */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 text-xs sm:text-sm">
+          <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
             <Link
               href="/"
-              className="text-[#7C7E77] hover:text-[#171914] font-bold transition-colors"
+              className="text-slate-600 hover:text-blue-600 font-bold transition-colors"
             >
-              {t('game.backMenu')}
+              ← {t('nav.backToMenuFriendly')}
             </Link>
-            <span className="text-[#171914]/20">|</span>
-            <span className="font-bold text-[#171914] bg-[#D9FA62] px-2.5 py-0.5 rounded-xs border border-[#171914]/20">
+            <span className="text-slate-300">|</span>
+            <span className="font-extrabold text-blue-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-100 text-xs">
               {t('game.case')} 0{currentCaseIndex + 1} / 0{cases.length}
             </span>
-            <span className="font-bold text-[#171914] text-xs sm:text-sm">
+            <span className="font-extrabold text-slate-900 text-sm sm:text-base">
               {currentCase.title}
             </span>
           </div>
@@ -472,7 +495,7 @@ export const InvestigationGame: React.FC = () => {
               type="button"
               onClick={handleStartMission}
               title={t('game.resetFromStart')}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-[#FAF0E6] border border-[#8A241C]/30 text-[#8A241C] hover:text-[#8A241C] rounded-xs cursor-pointer font-mono font-bold text-xs transition-colors min-h-[36px] shadow-xs"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-red-50 border border-slate-200 hover:border-red-200 text-slate-600 hover:text-red-700 rounded-xl cursor-pointer font-bold text-xs transition-colors min-h-[38px]"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               <span>{t('game.resetFromStart')}</span>
@@ -481,28 +504,28 @@ export const InvestigationGame: React.FC = () => {
             <button
               type="button"
               onClick={() => setShowBadges(!showBadges)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#F5F4EE] hover:bg-[#ECEAE2] border border-[#171914]/20 rounded-xs cursor-pointer font-mono font-bold text-xs text-[#171914] min-h-[36px]"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl cursor-pointer font-bold text-xs text-amber-900 min-h-[38px]"
             >
-              <Award className="w-3.5 h-3.5 text-[#171914]" />
+              <Award className="w-4 h-4 text-amber-600" />
               <span>{t('game.badges')} ({badges.filter(b => b.isUnlocked).length}/{badges.length})</span>
             </button>
 
-            <div className="font-bold text-[#171914] bg-white px-3 py-1.5 border border-[#171914]/20 rounded-xs min-h-[36px] flex items-center">
-              {t('game.score')} <span className="bg-[#D9FA62] px-2 py-0.5 border border-[#171914]/20 ml-1">{totalScore} / 50</span>
+            <div className="font-extrabold text-slate-900 bg-emerald-50 px-3.5 py-1.5 border border-emerald-200 rounded-xl min-h-[38px] flex items-center text-xs sm:text-sm">
+              ⭐ {t('game.score')} <span className="ml-1 text-emerald-800">{totalScore} / 50</span>
             </div>
           </div>
         </div>
 
         {/* Progress track */}
-        <div className="pt-3 flex items-center gap-3 font-mono text-xs text-[#7C7E77]">
+        <div className="flex items-center gap-3 text-xs text-slate-500 font-medium">
           <span>{t('game.missionProgress')}</span>
-          <div className="flex-1 h-2 bg-[#ECEAE2] rounded-xs overflow-hidden border border-[#171914]/10">
+          <div className="flex-1 h-2.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200/50">
             <div
-              className="h-full bg-[#171914] transition-all duration-300"
+              className="h-full bg-blue-600 rounded-full transition-all duration-300"
               style={{ width: `${((currentCaseIndex + 1) / cases.length) * 100}%` }}
             />
           </div>
-          <span className="font-bold text-[#171914]">
+          <span className="font-bold text-slate-800">
             {Math.round(((currentCaseIndex + 1) / cases.length) * 100)}%
           </span>
         </div>
@@ -521,19 +544,19 @@ export const InvestigationGame: React.FC = () => {
             LEFT COLUMN: THE QUESTION & EVIDENCE TO INVESTIGATE (Cols 1-7)
             =================================================================== */}
         <div className="lg:col-span-7 flex flex-col space-y-4">
-          <div className="rounded-sm border-2 border-[#171914] bg-white p-5 sm:p-6 shadow-xs flex-1 flex flex-col justify-between space-y-4">
+          <div className="rounded-3xl border border-slate-200 bg-white p-5 sm:p-7 shadow-xs flex-1 flex flex-col justify-between space-y-4">
             <div>
-              <div className="flex flex-wrap items-center justify-between gap-2 pb-3 mb-3 border-b border-[#171914]/15 font-mono text-xs">
-                <span className="font-bold text-[#171914] uppercase tracking-wider flex items-center gap-1.5">
-                  <Search className="w-4 h-4 text-[#171914]" />
+              <div className="flex flex-wrap items-center justify-between gap-2 pb-3 mb-3 border-b border-slate-100 text-xs sm:text-sm">
+                <span className="font-extrabold text-slate-900 flex items-center gap-2">
+                  <Search className="w-4 h-4 text-blue-600" />
                   <span>{isEn ? '1. Inspect Evidence (Message)' : '1. Teliti Bahan Bukti (Mesej)'}</span>
                 </span>
                 <div className="flex items-center gap-2">
-                  <span className="bg-[#ECEAE2] px-2 py-0.5 rounded-xs font-bold uppercase text-[11px] text-[#575953]">
-                    {currentCase.format === 'email' ? (isEn ? 'Email Inbox' : 'Peti Masuk Emel') : (isEn ? 'Phone SMS' : 'SMS Telefon')}
+                  <span className="bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-full font-bold text-xs">
+                    {currentCase.format === 'email' ? (isEn ? '✉️ Email' : '✉️ Emel') : (isEn ? '💬 Phone SMS' : '💬 SMS Telefon')}
                   </span>
                   {currentCase.urgencyBadge && (
-                    <span className="bg-[#FAF0E6] text-[#8A241C] border border-[#8A241C]/30 px-2 py-0.5 rounded-xs font-bold uppercase text-[11px]">
+                    <span className="bg-red-50 text-red-700 border border-red-200 px-2.5 py-0.5 rounded-full font-bold text-xs">
                       {currentCase.urgencyBadge}
                     </span>
                   )}
@@ -541,125 +564,134 @@ export const InvestigationGame: React.FC = () => {
               </div>
 
               {/* Scenario Context */}
-              <p className="text-xs sm:text-sm text-[#575953] leading-relaxed mb-4">
-                <strong>{isEn ? 'Scenario:' : 'Senario:'}</strong> {currentCase.scenarioContext}
-              </p>
+              <div className="p-3.5 bg-blue-50/60 border border-blue-100 rounded-2xl mb-4 text-xs sm:text-sm text-slate-700 leading-relaxed">
+                <strong className="text-blue-900 font-bold">{isEn ? 'Situation:' : 'Situasi:'}</strong> {currentCase.scenarioContext}
+              </div>
 
               {/* Prominent Link X-Ray Scanner Action if available */}
               {linkClue && (
-                <div className="mb-4 p-3 bg-[#171914] text-white rounded-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
-                  <div className="flex items-center gap-2">
-                    <Globe className="w-4 h-4 text-[#D9FA62] shrink-0" />
-                    <span className="font-mono text-xs text-white">
-                      {isEn ? 'Link Detected:' : 'Pautan Dikesan:'} <code className="text-[#D9FA62] font-bold">{linkClue.targetText}</code>
+                <div className="mb-4 p-4 bg-slate-900 text-white rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+                  <div className="flex items-center gap-2.5">
+                    <Globe className="w-5 h-5 text-amber-400 shrink-0" />
+                    <span className="text-xs sm:text-sm text-slate-200 font-medium">
+                      {isEn ? 'Link Detected:' : 'Pautan Dikesan:'}{' '}
+                      <code className="text-amber-300 font-bold bg-slate-800 px-2 py-0.5 rounded">{linkClue.targetText}</code>
                     </span>
                   </div>
                   <button
                     type="button"
                     onClick={() => handleOpenScanner(linkClue.targetText)}
-                    className="px-4 py-2 bg-[#D9FA62] text-[#171914] hover:bg-[#CCF050] font-mono font-bold text-xs uppercase rounded-xs cursor-pointer min-h-[38px] flex items-center justify-center gap-1.5 shrink-0"
+                    className="px-4 py-2 bg-amber-400 text-slate-950 hover:bg-amber-300 font-bold text-xs rounded-xl cursor-pointer min-h-[40px] flex items-center justify-center gap-1.5 shrink-0 transition-colors"
                   >
-                    <span>{isEn ? 'Scan Link with X-Ray' : 'Imbas Pautan X-Ray'}</span>
+                    <span>{isEn ? 'Scan with X-Ray' : 'Imbas Pautan X-Ray'}</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
               )}
 
-              {/* Message Simulation */}
+              {/* Realistic Message Simulation */}
               {currentCase.format === 'email' ? (
                 /* EMAIL INTERFACE */
-                <div className="rounded-sm border-2 border-[#171914]/25 bg-white overflow-hidden shadow-xs">
-                  <div className="bg-[#ECEAE2] px-4 py-2.5 border-b border-[#171914]/15 flex items-center justify-between font-mono text-xs text-[#575953]">
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-2.5 h-2.5 rounded-full bg-[#171914]/30" />
-                      <span className="w-2.5 h-2.5 rounded-full bg-[#171914]/30" />
-                      <span className="w-2.5 h-2.5 rounded-full bg-[#171914]/30" />
-                      <span className="ml-2 font-bold text-[#171914] uppercase text-[11px]">
-                        {isEn ? 'Official Email Inbox' : 'Peti Masuk Emel Rasmi'}
+                <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-xs">
+                  <div className="bg-slate-100 px-4 py-3 border-b border-slate-200 flex items-center justify-between text-xs text-slate-600">
+                    <div className="flex items-center gap-2">
+                      <Mail className="w-4 h-4 text-slate-500" />
+                      <span className="font-bold text-slate-800">
+                        {isEn ? 'Official Inbox Simulator' : 'Peti Masuk Emel'}
                       </span>
                     </div>
-                    <span className="text-[11px] text-[#7C7E77]">{currentCase.receivedTime}</span>
+                    <div className="flex items-center gap-2">
+                      <VoiceOverButton
+                        text={`${currentCase.subject ? currentCase.subject + '. ' : ''}${currentCase.body}`}
+                        variant="badge"
+                      />
+                      <span className="text-slate-500">{currentCase.receivedTime}</span>
+                    </div>
                   </div>
 
-                  <div className="p-4 bg-[#FAF9F5] border-b border-[#171914]/10 space-y-1.5 text-xs sm:text-sm">
+                  <div className="p-4 bg-slate-50/70 border-b border-slate-100 space-y-2 text-xs sm:text-sm">
                     <div className="flex items-baseline gap-2">
-                      <span className="font-mono font-bold text-[#7C7E77] text-xs uppercase w-20 shrink-0">
+                      <span className="font-bold text-slate-500 w-20 shrink-0">
                         {isEn ? 'From:' : 'Daripada:'}
                       </span>
-                      <span className="font-bold text-[#171914]">{currentCase.sender}</span>
+                      <span className="font-bold text-slate-900">{currentCase.sender}</span>
                       {currentCase.senderAddress && (
-                        <code className="text-xs bg-white px-2 py-0.5 border border-[#171914]/15 font-mono text-[#8A241C] font-bold rounded-xs">
+                        <code className="text-xs bg-red-50 text-red-700 px-2 py-0.5 border border-red-200 font-mono rounded-lg">
                           &lt;{currentCase.senderAddress}&gt;
                         </code>
                       )}
                     </div>
                     {currentCase.subject && (
                       <div className="flex items-baseline gap-2">
-                        <span className="font-mono font-bold text-[#7C7E77] text-xs uppercase w-20 shrink-0">
+                        <span className="font-bold text-slate-500 w-20 shrink-0">
                           {isEn ? 'Subject:' : 'Perkara:'}
                         </span>
-                        <span className="font-bold text-[#171914]">{currentCase.subject}</span>
+                        <span className="font-extrabold text-slate-900">{currentCase.subject}</span>
                       </div>
                     )}
                   </div>
 
-                  <div className="p-5 text-sm sm:text-base text-[#171914] leading-relaxed whitespace-pre-line space-y-4 bg-white">
+                  <div className="p-5 text-sm sm:text-base text-slate-800 leading-relaxed whitespace-pre-line space-y-4 bg-white">
                     <p>{currentCase.body}</p>
 
                     {currentCase.attachmentName && (
-                      <div className="mt-4 p-3.5 rounded-xs border-2 border-[#8A241C]/40 bg-[#FAF0E6] flex items-center justify-between gap-3">
+                      <div className="mt-4 p-4 rounded-xl border border-red-200 bg-red-50/70 flex items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-xs bg-[#FCE8E6] text-[#8A241C] flex items-center justify-center shrink-0">
+                          <div className="w-10 h-10 rounded-xl bg-red-100 text-red-700 flex items-center justify-center shrink-0">
                             <Paperclip className="w-5 h-5" />
                           </div>
                           <div>
-                            <div className="text-sm font-mono font-bold text-[#8A241C]">{currentCase.attachmentName}</div>
-                            <div className="text-xs text-[#575953]">
-                              {isEn ? 'Dangerous App Package (.apk)' : 'Lampiran Aplikasi Berbahaya (.apk)'}
+                            <div className="text-sm font-bold text-red-900">{currentCase.attachmentName}</div>
+                            <div className="text-xs text-slate-600">
+                              {isEn ? 'Dangerous App Package (.apk)' : 'Lampiran Fail Luar (.apk)'}
                             </div>
                           </div>
                         </div>
-                        <span className="text-[11px] font-mono font-bold uppercase text-[#8A241C] bg-white px-2 py-1 rounded-xs border border-[#8A241C]/30">
-                          {isEn ? 'MALWARE ALERT' : 'AMARAN MALWARE'}
+                        <span className="text-xs font-bold text-red-700 bg-white px-2.5 py-1 rounded-full border border-red-200">
+                          {isEn ? 'MALWARE RISK' : 'BERISIKO TINGGI'}
                         </span>
                       </div>
                     )}
                   </div>
                 </div>
               ) : (
-                /* SMS PHONE INTERFACE */
-                <div className="max-w-md mx-auto rounded-xl border-2 border-[#171914] bg-[#0F141C] text-white p-4 sm:p-5 shadow-md space-y-4">
-                  <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono px-1">
+                /* REALISTIC SMS PHONE INTERFACE */
+                <div className="max-w-md mx-auto rounded-3xl border-4 border-slate-800 bg-slate-900 text-white p-5 shadow-lg space-y-4 font-sans">
+                  <div className="flex items-center justify-between text-xs text-slate-400 px-1">
                     <span>10:42 AM</span>
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-2">
+                      <VoiceOverButton
+                        text={currentCase.body}
+                        variant="badge"
+                      />
                       <span>5G</span>
                       <span>92% 🔋</span>
                     </div>
                   </div>
 
                   <div className="text-center pb-2 border-b border-slate-800">
-                    <div className="w-10 h-10 rounded-full bg-slate-800 text-[#D9FA62] mx-auto flex items-center justify-center font-bold font-mono text-sm mb-1">
-                      SMS
+                    <div className="w-12 h-12 rounded-full bg-blue-600 text-white mx-auto flex items-center justify-center font-bold text-base mb-1 shadow-sm">
+                      <MessageSquare className="w-6 h-6" />
                     </div>
-                    <div className="text-sm font-bold text-white font-mono">{currentCase.sender}</div>
-                    <div className="text-[11px] text-slate-400 font-mono">
-                      {isEn ? 'Random Incoming SMS' : 'Mesej Teks Rawak'}
+                    <div className="text-base font-bold text-white">{currentCase.sender}</div>
+                    <div className="text-xs text-slate-400">
+                      {isEn ? 'Incoming SMS Message' : 'Mesej SMS Masuk'}
                     </div>
                   </div>
 
-                  <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 text-sm sm:text-base text-slate-100 leading-relaxed shadow-xs space-y-2">
+                  <div className="bg-slate-800 border border-slate-700 rounded-2xl p-4 sm:p-5 text-sm sm:text-base text-slate-100 leading-relaxed shadow-xs space-y-2">
                     <p className="whitespace-pre-line">{currentCase.body}</p>
                     <div className="text-right">
-                      <span className="text-[10px] text-slate-400 font-mono">{currentCase.receivedTime}</span>
+                      <span className="text-xs text-slate-400">{currentCase.receivedTime}</span>
                     </div>
                   </div>
                 </div>
               )}
             </div>
 
-            <div className="pt-3 border-t border-[#171914]/15 font-mono text-xs text-[#7C7E77] flex items-center justify-between">
-              <span>{isEn ? 'Compare the message above with the questions on the right →' : 'Bandingkan mesej di atas dengan soalan di sebelah kanan →'}</span>
-              <span className="font-bold text-[#171914]">{isEn ? `Clues: ${currentCase.clues.length} total` : `Petunjuk: ${currentCase.clues.length} jumlah`}</span>
+            <div className="pt-3 border-t border-slate-100 text-xs sm:text-sm text-slate-500 flex items-center justify-between">
+              <span>{isEn ? 'Now answer the question on the right →' : 'Seterusnya, jawab soalan di sebelah kanan →'}</span>
+              <span className="font-bold text-slate-800">{isEn ? `${currentCase.clues.length} clues to review` : `${currentCase.clues.length} petunjuk disiasat`}</span>
             </div>
           </div>
         </div>
@@ -668,17 +700,17 @@ export const InvestigationGame: React.FC = () => {
             RIGHT COLUMN: QUESTIONS, CLUES & DECISIONS (Cols 8-12)
             =================================================================== */}
         <div className="lg:col-span-5 flex flex-col space-y-4">
-          <div className="rounded-sm border-2 border-[#171914] bg-white p-5 sm:p-6 shadow-xs flex-1 flex flex-col justify-between space-y-5">
+          <div className="rounded-3xl border border-slate-200 bg-white p-5 sm:p-7 shadow-xs flex-1 flex flex-col justify-between space-y-5">
             <div className="space-y-1">
-              <div className="flex items-center justify-between pb-3 border-b border-[#171914]/15 font-mono text-xs">
-                <span className="font-bold text-[#171914] uppercase tracking-wider flex items-center gap-1.5">
-                  <ShieldCheck className="w-4 h-4 text-[#171914]" />
-                  <span>{isEn ? '2. Answer & Decide' : '2. Jawab & Buat Keputusan'}</span>
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100 text-xs sm:text-sm">
+                <span className="font-extrabold text-slate-900 flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-blue-600" />
+                  <span>{isEn ? '2. Answer & Action' : '2. Jawab & Buat Keputusan'}</span>
                 </span>
-                <span className={`px-2 py-0.5 rounded-xs font-bold text-[11px] ${
+                <span className={`px-3 py-1 rounded-full font-bold text-xs ${
                   isFindingsSubmitted
-                    ? 'bg-[#E7F3EB] text-[#123E23] border border-[#1E4D2B]/30'
-                    : 'bg-[#D9FA62] text-[#171914] border border-[#171914]/20'
+                    ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                    : 'bg-blue-50 text-blue-800 border border-blue-200'
                 }`}>
                   {!isFindingsSubmitted ? t('game.step1Badge') : t('game.step2Badge')}
                 </span>
@@ -688,28 +720,20 @@ export const InvestigationGame: React.FC = () => {
             {/* Content Area: Step 1 or Step 2 */}
             <div className="space-y-4 flex-1">
               {!isFindingsSubmitted ? (
-                /* STEP 1 */
+                /* STEP 1: CLUES SELECTION */
                 <div className="space-y-4">
                   <div>
-                    <h3 className="text-base sm:text-lg font-black text-[#171914] tracking-tight">
-                      {isEn ? 'Step 1: Mark ONLY Warning Signs / Red Flags' : 'Langkah 1: Tandakan HANYA Petunjuk Bahaya'}
+                    <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">
+                      {isEn ? 'Step 1: Mark ONLY Suspicious Red Flags' : 'Langkah 1: Tandakan HANYA Tanda-tanda Bahaya'}
                     </h3>
-                    <p className="text-xs sm:text-sm text-[#575953] mt-1 leading-relaxed">
-                      {isEn ? (
-                        <>
-                          Based on the message on the left, mark <strong>only the suspicious parts</strong>.<br className="hidden sm:inline" />
-                          <span className="text-[#8A241C] font-semibold">Caution: Some choices below are harmless text that DO NOT need to be marked!</span>
-                        </>
-                      ) : (
-                        <>
-                          Berdasarkan mesej di sebelah kiri, tandakan <strong>bahagian yang mencurigakan sahaja</strong>.<br className="hidden sm:inline" />
-                          <span className="text-[#8A241C] font-semibold">Awas: Sesetengah pilihan di bawah adalah maklumat biasa yang TIDAK PERLU ditandakan!</span>
-                        </>
-                      )}
+                    <p className="text-xs sm:text-sm text-slate-600 mt-1.5 leading-relaxed">
+                      {isEn
+                        ? 'Based on the message on the left, mark the phrases that look dangerous. Some options below are completely normal and DO NOT need marking!'
+                        : 'Berdasarkan mesej di sebelah kiri, tandakan bahagian yang meragukan. Berhati-hati: pilihan tertentu adalah ayat biasa yang TIDAK perlu ditandakan!'}
                     </p>
                   </div>
 
-                  <div className="space-y-2.5">
+                  <div className="space-y-3">
                     {currentCase.clues.map((clue) => {
                       const isMarked = selectedClueIds.includes(clue.id);
 
@@ -718,19 +742,21 @@ export const InvestigationGame: React.FC = () => {
                           key={clue.id}
                           type="button"
                           onClick={() => handleToggleClue(clue.id)}
-                          className={`w-full p-4 rounded-sm border-2 text-left transition-all cursor-pointer flex items-center justify-between gap-3 min-h-[54px] ${
+                          className={`w-full p-4 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-center justify-between gap-3 min-h-[56px] shadow-2xs ${
                             isMarked
-                              ? 'bg-[#171914] text-[#D9FA62] border-[#171914] font-bold shadow-xs'
-                              : 'bg-white text-[#171914] border-[#171914]/20 hover:border-[#171914] hover:bg-[#FAF9F5]'
+                              ? 'bg-blue-50 border-blue-600 text-blue-950 font-bold shadow-xs'
+                              : 'bg-white text-slate-800 border-slate-200 hover:border-blue-300 hover:bg-slate-50'
                           }`}
                         >
                           <div className="min-w-0 pr-2">
-                            <span className="font-mono text-xs sm:text-sm block">
+                            <span className="text-sm sm:text-base block">
                               &ldquo;{clue.targetText}&rdquo;
                             </span>
                           </div>
-                          <span className={`shrink-0 font-mono text-xs font-bold px-2.5 py-1 rounded-xs border ${
-                            isMarked ? 'bg-[#D9FA62] text-[#171914] border-[#D9FA62]' : 'bg-[#ECEAE2] text-[#575953] border-[#171914]/15'
+                          <span className={`shrink-0 text-xs font-extrabold px-3 py-1 rounded-full border transition-colors ${
+                            isMarked
+                              ? 'bg-blue-600 text-white border-blue-600'
+                              : 'bg-slate-100 text-slate-600 border-slate-200'
                           }`}>
                             {isMarked ? t('game.marked') : t('game.mark')}
                           </span>
@@ -740,211 +766,160 @@ export const InvestigationGame: React.FC = () => {
                   </div>
                 </div>
               ) : (
-                /* STEP 2 */
+                /* STEP 2: ACTION DECISION */
                 <div className="space-y-4">
                   {/* Detailed Clues Review Breakdown Box */}
-                  <div className="p-4 bg-[#FAF9F5] border-2 border-[#171914]/15 rounded-sm space-y-3">
-                    <div className="flex items-center justify-between font-mono text-xs pb-2 border-b border-[#171914]/10">
-                      <span className="font-bold text-[#171914] flex items-center gap-1.5">
-                        <CheckCircle2 className="w-4 h-4 text-[#1E4D2B]" />
-                        <span>{isEn ? 'Team Clue Review Results:' : 'Hasil Semakan Petunjuk Pasukan:'}</span>
+                  <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+                    <div className="flex items-center justify-between text-xs sm:text-sm pb-2 border-b border-slate-200 font-bold text-slate-900">
+                      <span className="flex items-center gap-1.5 text-emerald-800">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                        <span>{isEn ? 'Review of Clues:' : 'Hasil Semakan Tanda Bahaya:'}</span>
                       </span>
-                      <span className="font-bold bg-[#D9FA62] px-2.5 py-0.5 rounded-xs text-[#171914] border border-[#171914]/20">
-                        +{caseClueScore} / 5 {t('game.pts')}
+                      <span className="bg-emerald-100 text-emerald-900 px-2.5 py-0.5 rounded-full text-xs">
+                        +{caseClueScore} Mata
                       </span>
                     </div>
 
-                    <div className="space-y-2 text-xs">
-                      {currentCase.clues.map((clue) => {
-                        const isTicked = selectedClueIds.includes(clue.id);
-                        const isSuspicious = clue.isSuspicious;
-
-                        if (isTicked && isSuspicious) {
-                          return (
-                            <div key={clue.id} className="p-2.5 bg-[#E7F3EB] border border-[#1E4D2B]/30 rounded-xs text-[#123E23]">
-                              <div className="font-bold flex items-center gap-1.5">
-                                <span>{isEn ? '✓ Correctly Spotted:' : '✓ Tepat Dikesan:'}</span>
-                                <code className="bg-white/80 px-1 rounded">&ldquo;{clue.targetText}&rdquo;</code>
-                              </div>
-                              <p className="text-[11px] text-[#575953] mt-1 leading-relaxed">{clue.explanation}</p>
-                            </div>
-                          );
-                        }
-
-                        if (isTicked && !isSuspicious) {
-                          return (
-                            <div key={clue.id} className="p-2.5 bg-[#FAF0E6] border border-[#8A241C]/30 rounded-xs text-[#78271C]">
-                              <div className="font-bold flex items-center gap-1.5">
-                                <span>{isEn ? '✕ False Alarm:' : '✕ Tersilap Tanda:'}</span>
-                                <code className="bg-white/80 px-1 rounded">&ldquo;{clue.targetText}&rdquo;</code>
-                              </div>
-                              <p className="text-[11px] text-[#575953] mt-1 leading-relaxed">{clue.explanation}</p>
-                            </div>
-                          );
-                        }
-
-                        if (!isTicked && isSuspicious) {
-                          return (
-                            <div key={clue.id} className="p-2.5 bg-[#FAF0E6] border border-[#8A241C]/20 rounded-xs text-[#8A241C]">
-                              <div className="font-bold flex items-center gap-1.5">
-                                <span>{isEn ? '⚠ Missed Red Flag:' : '⚠ Terlepas Pandang:'}</span>
-                                <code className="bg-white/80 px-1 rounded">&ldquo;{clue.targetText}&rdquo;</code>
-                              </div>
-                              <p className="text-[11px] text-[#575953] mt-1 leading-relaxed">{clue.explanation}</p>
-                            </div>
-                          );
-                        }
+                    <div className="space-y-2 text-xs sm:text-sm">
+                      {currentCase.clues.map(c => {
+                        const isMarked = selectedClueIds.includes(c.id);
+                        const isCorrectSelection = (c.isSuspicious && isMarked) || (!c.isSuspicious && !isMarked);
 
                         return (
-                          <div key={clue.id} className="p-2 bg-white border border-[#171914]/10 rounded-xs text-[#575953]">
-                            <div className="font-bold text-[#1E4D2B] flex items-center gap-1.5">
-                              <span>{isEn ? '✓ Correctly Ignored:' : '✓ Tepat Dibiarkan:'}</span>
-                              <code className="text-[#171914] bg-[#FAF9F5] px-1 rounded">&ldquo;{clue.targetText}&rdquo;</code>
-                              <span className="text-[10px] text-[#7C7E77] font-normal">
-                                {isEn ? '(Normal text, not a threat)' : '(Maklumat biasa, bukan ancaman)'}
-                              </span>
+                          <div
+                            key={c.id}
+                            className={`p-3 rounded-xl border text-xs sm:text-sm leading-relaxed ${
+                              isCorrectSelection
+                                ? 'bg-emerald-50/70 border-emerald-200 text-emerald-950'
+                                : 'bg-red-50/70 border-red-200 text-red-950'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between font-bold mb-1">
+                              <span>&ldquo;{c.targetText}&rdquo;</span>
+                              <span>{isCorrectSelection ? '✓ Tepat' : '⚠ Perlu Diperbaiki'}</span>
                             </div>
+                            <p className="text-xs text-slate-700">{c.explanation}</p>
                           </div>
                         );
                       })}
                     </div>
                   </div>
 
-                  <div>
-                    <h3 className="text-base sm:text-lg font-black text-[#171914] tracking-tight">
-                      {t('game.step2Header')}
-                    </h3>
-                    <p className="text-xs sm:text-sm text-[#575953] mt-1 leading-relaxed">
-                      {t('game.step2Sub')}
-                    </p>
-                  </div>
+                  {/* Step 2 Decision */}
+                  <div className="space-y-3 pt-2">
+                    <div>
+                      <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">
+                        {t('game.step2HeaderFriendly')}
+                      </h3>
+                      <p className="text-xs sm:text-sm text-slate-600 mt-1">
+                        {t('game.step2Sub')}
+                      </p>
+                    </div>
 
-                  {/* 3 Action Buttons */}
-                  <div className="space-y-2.5">
-                    {currentCase.actions.map((act) => {
-                      const isSelected = selectedActionId === act.id;
-                      let btnStyles = 'bg-white border-[#171914]/20 hover:border-[#171914] text-[#171914]';
+                    <div className="space-y-2.5">
+                      {currentCase.actions.map(action => {
+                        const isChosen = selectedActionId === action.id;
 
-                      if (isSelected) {
-                        btnStyles = 'bg-[#F5F4EE] border-2 border-[#171914] shadow-xs';
-                      }
+                        return (
+                          <button
+                            key={action.id}
+                            type="button"
+                            disabled={isActionSubmitted}
+                            onClick={() => handleSelectAction(action.id)}
+                            className={`w-full p-4 rounded-2xl border-2 text-left transition-all min-h-[60px] shadow-2xs ${
+                              isChosen
+                                ? 'bg-blue-50 border-blue-600 text-blue-950 shadow-xs'
+                                : 'bg-white text-slate-800 border-slate-200 hover:border-blue-300 hover:bg-slate-50'
+                            } ${isActionSubmitted ? 'cursor-default' : 'cursor-pointer'}`}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="space-y-1">
+                                <span className="font-extrabold text-sm sm:text-base block">
+                                  {action.title}
+                                </span>
+                                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                                  {action.description}
+                                </p>
+                              </div>
+                              <span className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5 ${
+                                isChosen ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300'
+                              }`}>
+                                {isChosen && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                              </span>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
 
-                      if (isActionSubmitted) {
-                        if (act.isSafe) {
-                          btnStyles = 'bg-[#E7F3EB] border-2 border-[#1E4D2B] text-[#123E23]';
-                        } else if (isSelected && !act.isSafe) {
-                          btnStyles = 'bg-[#FAF0E6] border-2 border-[#8A241C] text-[#78271C]';
-                        } else {
-                          btnStyles = 'bg-[#ECEAE2]/40 border-[#171914]/10 text-[#82847C]';
-                        }
-                      }
-
-                      return (
-                        <button
-                          key={act.id}
-                          type="button"
-                          disabled={isActionSubmitted}
-                          onClick={() => handleSelectAction(act.id)}
-                          className={`w-full p-4 rounded-sm border-2 text-left transition-colors cursor-pointer flex flex-col justify-between min-h-[58px] ${btnStyles}`}
-                        >
-                          <div className="space-y-1">
-                            <span className="font-bold text-sm sm:text-base block">{act.title}</span>
-                            <span className="text-xs text-[#575953] leading-relaxed block">{act.description}</span>
-                          </div>
-                          {isSelected && !isActionSubmitted && (
-                            <span className="mt-2 font-mono text-xs font-bold text-[#171914] bg-[#D9FA62] px-2 py-0.5 rounded-xs self-start border border-[#171914]/20">
-                              {t('game.yourChoice')}
-                            </span>
+                    {/* Feedback if action submitted */}
+                    {isActionSubmitted && activeAction && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className={`p-4 rounded-2xl border-2 space-y-1.5 ${
+                          activeAction.isSafe
+                            ? 'bg-emerald-50 border-emerald-300 text-emerald-950'
+                            : 'bg-red-50 border-red-300 text-red-950'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 font-black text-sm sm:text-base">
+                          {activeAction.isSafe ? (
+                            <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                          ) : (
+                            <AlertTriangle className="w-5 h-5 text-red-600" />
                           )}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {/* Immediate Consequence Outcome Banner */}
-                  {isActionSubmitted && activeAction && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className={`p-4 rounded-sm border-l-4 ${
-                        activeAction.isSafe
-                          ? 'border-l-[#1E4D2B] bg-[#E7F3EB] border border-[#1E4D2B]/30 text-[#123E23]'
-                          : 'border-l-[#8A241C] bg-[#FAF0E6] border border-[#8A241C]/30 text-[#78271C]'
-                      }`}
-                    >
-                      <div className="flex items-start gap-2.5">
-                        {activeAction.isSafe ? (
-                          <CheckCircle2 className="w-5 h-5 text-[#1E4D2B] shrink-0 mt-0.5" />
-                        ) : (
-                          <AlertTriangle className="w-5 h-5 text-[#8A241C] shrink-0 mt-0.5" />
-                        )}
-                        <div className="space-y-1">
-                          <span className="font-mono text-xs uppercase font-bold tracking-wider block">
-                            {activeAction.isSafe ? (isEn ? 'Safe Action! (+5 Points)' : 'Tindakan Tepat! (+5 Mata)') : (isEn ? 'Action Risk Warning' : 'Amaran Risiko Tindakan')}
+                          <span>
+                            {activeAction.isSafe
+                              ? (isEn ? 'EXCELLENT & SAFE DECISION (+5 PTS)' : 'TAHNIAH! KEPUTUSAN PALING TEPAT (+5 MATA)')
+                              : (isEn ? 'HIGH RISK ACTION!' : 'BAHAYA! TINDAKAN BERISIKO TINGGI!')}
                           </span>
-                          <p className="text-xs sm:text-sm leading-relaxed text-[#171914]">
-                            {activeAction.consequence}
-                          </p>
                         </div>
-                      </div>
-                    </motion.div>
-                  )}
+                        <p className="text-xs sm:text-sm leading-relaxed">{activeAction.consequence}</p>
+                      </motion.div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
 
-            {/* Bottom Primary Action CTA */}
-            <div className="pt-4 border-t border-[#171914]/15">
+            {/* Bottom Step Actions */}
+            <div className="pt-4 border-t border-slate-100">
               {!isFindingsSubmitted ? (
-                <div className="flex flex-col gap-2">
-                  <div className="font-mono text-xs text-[#7C7E77]">
-                    {selectedClueIds.length === 0
-                      ? (isEn ? 'Please mark at least one warning sign/red flag.' : 'Sila tandakan sekurang-kurangnya satu petunjuk bahaya.')
-                      : (isEn ? `${selectedClueIds.length} signs marked.` : `${selectedClueIds.length} petunjuk ditandakan.`)}
-                  </div>
-                  <button
-                    type="button"
-                    disabled={selectedClueIds.length === 0}
-                    onClick={handleSubmitFindings}
-                    className={`w-full py-4 px-6 min-h-[50px] rounded-sm font-mono font-bold text-xs sm:text-sm uppercase tracking-wider transition-colors flex items-center justify-center gap-2 ${
-                      selectedClueIds.length > 0
-                        ? 'bg-[#D9FA62] text-[#171914] hover:bg-[#CCF050] border-2 border-[#171914] cursor-pointer shadow-xs'
-                        : 'bg-[#ECEAE2] text-[#82847C] cursor-not-allowed border border-[#171914]/10'
-                    }`}
-                  >
-                    <span>{t('game.submitStep1')}</span>
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={handleSubmitFindings}
+                  className="w-full py-4 px-6 min-h-[52px] rounded-2xl font-bold text-base text-white bg-blue-600 hover:bg-blue-700 transition-all cursor-pointer shadow-md hover:shadow-lg flex items-center justify-center gap-2"
+                >
+                  <span>{t('game.submitStep1')}</span>
+                  <ArrowRight className="w-5 h-5" />
+                </button>
               ) : !isActionSubmitted ? (
-                <div className="flex flex-col gap-2">
-                  <div className="font-mono text-xs text-[#7C7E77]">
-                    {isEn ? 'Select one of the 3 action choices above.' : 'Pilih salah satu daripada 3 pilihan tindakan di atas.'}
-                  </div>
-                  <button
-                    type="button"
-                    disabled={!selectedActionId}
-                    onClick={handleSubmitAction}
-                    className={`w-full py-4 px-6 min-h-[50px] rounded-sm font-mono font-bold text-xs sm:text-sm uppercase tracking-wider transition-colors flex items-center justify-center gap-2 ${
-                      selectedActionId
-                        ? 'bg-[#171914] text-[#D9FA62] hover:bg-[#2A2D25] border-2 border-[#171914] cursor-pointer shadow-xs'
-                        : 'bg-[#ECEAE2] text-[#82847C] cursor-not-allowed border border-[#171914]/10'
-                    }`}
-                  >
-                    <span>{t('game.submitStep2')}</span>
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  disabled={!selectedActionId}
+                  onClick={handleSubmitAction}
+                  className={`w-full py-4 px-6 min-h-[52px] rounded-2xl font-bold text-base flex items-center justify-center gap-2 transition-all ${
+                    selectedActionId
+                      ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer shadow-md hover:shadow-lg'
+                      : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                  }`}
+                >
+                  <Check className="w-5 h-5" />
+                  <span>{t('game.submitStep2')}</span>
+                </button>
               ) : (
                 <button
                   type="button"
                   onClick={handleNextCase}
-                  className="w-full py-4 px-6 min-h-[50px] rounded-sm font-mono font-bold text-xs sm:text-sm uppercase tracking-wider text-[#171914] bg-[#D9FA62] hover:bg-[#CCF050] border-2 border-[#171914] transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                  className="w-full py-4 px-6 min-h-[52px] rounded-2xl font-bold text-base text-white bg-blue-600 hover:bg-blue-700 transition-all cursor-pointer shadow-md hover:shadow-lg flex items-center justify-center gap-2"
                 >
                   <span>
-                    {currentCaseIndex + 1 === cases.length
-                      ? t('game.viewFinalReport')
-                      : (isEn ? `Next Investigation (Case 0${currentCaseIndex + 2})` : `Siasatan Seterusnya (Kes 0${currentCaseIndex + 2})`)}
+                    {currentCaseIndex + 1 < cases.length
+                      ? `${t('game.nextScenario')} (${currentCaseIndex + 2}/${cases.length}) →`
+                      : t('game.viewFinalReport')}
                   </span>
-                  <ArrowRight className="w-4 h-4" />
+                  <ArrowRight className="w-5 h-5" />
                 </button>
               )}
             </div>

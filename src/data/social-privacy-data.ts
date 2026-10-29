@@ -9,10 +9,12 @@ export interface SocialPrivacyCase {
     text: string;
     imageCaption: string;
     privacySetting: string;
+    aiVoiceIllustrationUrl?: string;
     exampleImages?: {
       id: string;
       title: string;
       tag: string;
+      imageUrl?: string;
       details: string[];
       warningNote: string;
     }[];
@@ -48,6 +50,7 @@ export const socialPrivacyCases: SocialPrivacyCase[] = [
           id: 'img-boarding-pass',
           title: 'Pas Masuk Penerbangan (Boarding Pass)',
           tag: 'KOD BAR SENSITIF',
+          imageUrl: '/images/social-privacy/boarding-pass.png',
           details: [
             'Nama Penumpang: SALMAH / AHMAD MRS',
             'Penerbangan: MH 002 (KUL ➔ LHR London)',
@@ -60,6 +63,7 @@ export const socialPrivacyCases: SocialPrivacyCase[] = [
           id: 'img-keys',
           title: 'Foto Kunci Rumah & Tag Alamat',
           tag: 'LOKASI RUMAH KOSONG',
+          imageUrl: '/images/social-privacy/house-keys.png',
           details: [
             'Tag Kunci: "No 12, Jalan Melati 4"',
             'Status: Rumah kosong 2 minggu',
@@ -71,6 +75,7 @@ export const socialPrivacyCases: SocialPrivacyCase[] = [
           id: 'img-badge',
           title: 'Foto Anak Memakai Pakaian Seragam',
           tag: 'IDENTITI KANAK-KANAK',
+          imageUrl: '/images/social-privacy/school-badge.png',
           details: [
             'Nama Anak: Farhan (Tahun 4)',
             'Lencana: SK Taman Melati',
@@ -135,7 +140,8 @@ export const socialPrivacyCases: SocialPrivacyCase[] = [
     postContent: {
       text: `[Audio Nota Suara]: "Ibu! Ini Farhan bu... Tolong Farhan bu! Telefon Farhan hilang kena ragut kat stesen bas. Farhan guna telefon kawan ni. Farhan perlukan RM1,500 sekarang bu untuk bayar duit hospital kawan Farhan! Tolong transfer ke akaun kawan Farhan ni segera bu, jangan telefon nombor lama Farhan!"`,
       imageCaption: 'Suara dalam audio 95% sangat menyerupai suara anak lelaki anda (Farhan) kerana teknologi klon suara AI (Voice Cloning) yang menggunakan sampel video TikTok anak anda.',
-      privacySetting: 'AWAM (PUBLIC)'
+      privacySetting: 'AWAM (PUBLIC)',
+      aiVoiceIllustrationUrl: '/images/social-privacy/ai-voice-clone.png'
     },
     leakItems: [
       {
@@ -194,6 +200,7 @@ export const socialPrivacyCasesEn: SocialPrivacyCase[] = [
           id: 'img-boarding-pass',
           title: 'Airline Boarding Pass',
           tag: 'SENSITIVE BARCODE',
+          imageUrl: '/images/social-privacy/boarding-pass.png',
           details: [
             'Passenger: SALMAH / AHMAD MRS',
             'Flight: MH 002 (KUL ➔ LHR London)',
@@ -206,6 +213,7 @@ export const socialPrivacyCasesEn: SocialPrivacyCase[] = [
           id: 'img-keys',
           title: 'House Keys & Address Tag',
           tag: 'UNOCCUPIED HOUSE LOCATION',
+          imageUrl: '/images/social-privacy/house-keys.png',
           details: [
             'Key Tag: "No 12, Jalan Melati 4"',
             'Status: House vacant for 2 weeks',
@@ -217,6 +225,7 @@ export const socialPrivacyCasesEn: SocialPrivacyCase[] = [
           id: 'img-badge',
           title: 'Child in School Uniform Photo',
           tag: 'MINOR IDENTIFIER',
+          imageUrl: '/images/social-privacy/school-badge.png',
           details: [
             'Child Name: Farhan (Grade 4)',
             'School Badge: SK Taman Melati',
@@ -281,7 +290,8 @@ export const socialPrivacyCasesEn: SocialPrivacyCase[] = [
     postContent: {
       text: `[Audio Voice Note]: "Mum! It's Farhan... Please help me mum! My phone was snatched at the bus terminal. I am using my friend's phone. I urgently need RM1,500 now to settle my friend's emergency hospital bill! Please transfer to my friend's account immediately mum, do not call my old number!"`,
       imageCaption: 'The audio voice note matches your son\'s (Farhan) voice with 95% acoustic similarity generated via AI Voice Cloning using short clips from his public TikTok videos.',
-      privacySetting: 'PUBLIC'
+      privacySetting: 'PUBLIC',
+      aiVoiceIllustrationUrl: '/images/social-privacy/ai-voice-clone.png'
     },
     leakItems: [
       {
