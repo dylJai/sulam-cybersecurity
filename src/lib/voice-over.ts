@@ -4,6 +4,7 @@
  * Universal Voice-Over engine for Sulam CyberSafe.
  * Supports pre-recorded authentic Malaysian/English audio assets (.m4a)
  * with automatic Web Speech API (speechSynthesis) fallback for dynamic text.
+ * Resilient against browser autoplay policies and cross-platform speech engine gaps.
  */
 
 type VoiceOverCallback = () => void;
@@ -26,6 +27,17 @@ class VoiceOverManager {
   private isSpeechSynthesisActive = false;
   private progressInterval: NodeJS.Timeout | null = null;
   private currentOnEnd: VoiceOverCallback | null = null;
+  private activeUtterance: SpeechSynthesisUtterance | null = null; // Prevent Chromium GC mid-speech
+  private cachedVoices: SpeechSynthesisVoice[] = [];
+
+  constructor() {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      this.cachedVoices = window.speechSynthesis.getVoices();
+      window.speechSynthesis.onvoiceschanged = () => {
+        this.cachedVoices = window.speechSynthesis.getVoices();
+      };
+    }
+  }
 
   public stopAll(): void {
     // Stop HTML Audio
@@ -48,6 +60,7 @@ class VoiceOverManager {
       }
     }
     this.isSpeechSynthesisActive = false;
+    this.activeUtterance = null;
 
     if (this.progressInterval) {
       clearInterval(this.progressInterval);
@@ -78,7 +91,7 @@ class VoiceOverManager {
 
     this.currentOnEnd = onEnd || null;
 
-    // 1. If audio file is provided, prioritize real audio playback
+    // 1. If audio file is provided, attempt playback first
     if (audioSrc) {
       try {
         const audio = new Audio(audioSrc);
@@ -100,7 +113,7 @@ class VoiceOverManager {
         };
 
         audio.onerror = (e) => {
-          console.warn('Audio playback error, attempting SpeechSynthesis fallback', e);
+          console.warn('Audio asset error, falling back to speech synthesis:', e);
           if (text) {
             this.playSpeechSynthesis(text, lang, rate, pitch, onStart, onEnd, onError);
           } else {
@@ -111,13 +124,19 @@ class VoiceOverManager {
 
         const playPromise = audio.play();
         if (playPromise !== undefined) {
-          playPromise.catch((err) => {
-            console.warn('Audio play auto-policy warning:', err);
-            // Fallback to text synthesis if direct playback is blocked
-            if (text) {
-              this.playSpeechSynthesis(text, lang, rate, pitch, onStart, onEnd, onError);
-            }
-          });
+          playPromise
+            .then(() => {
+              onStart?.();
+            })
+            .catch((err) => {
+              console.warn('Audio play auto-policy warning, attempting fallback:', err);
+              if (text) {
+                this.playSpeechSynthesis(text, lang, rate, pitch, onStart, onEnd, onError);
+              } else {
+                this.stopAll();
+                onError?.(err);
+              }
+            });
         }
         return;
       } catch (err) {
@@ -146,63 +165,109 @@ class VoiceOverManager {
     }
 
     try {
+      // Avoid immediate speak bug by delaying 50ms after cancel
       window.speechSynthesis.cancel();
 
-      // Clean text: remove bracketed labels like [Audio Nota Suara]:
-      const cleanText = text.replace(/\[.*?\]:?/g, '').trim();
-      const utterance = new SpeechSynthesisUtterance(cleanText);
+      setTimeout(() => {
+        try {
+          // Clean text: strip bracketed tags like [Audio Nota Suara]:
+          const cleanText = text.replace(/\[.*?\]:?/g, '').trim();
+          if (!cleanText) {
+            onEnd?.();
+            return;
+          }
 
-      // Language selection
-      utterance.lang = lang === 'en' ? 'en-US' : 'ms-MY';
-      utterance.rate = rate;
-      utterance.pitch = pitch;
+          const utterance = new SpeechSynthesisUtterance(cleanText);
+          this.activeUtterance = utterance; // Retain reference to prevent garbage collection
 
-      // Match voice if available
-      const voices = window.speechSynthesis.getVoices();
-      if (voices && voices.length > 0) {
-        if (lang === 'bm') {
-          const malayVoice = voices.find(
-            (v) =>
-              v.lang.toLowerCase().includes('ms') ||
-              v.name.toLowerCase().includes('amira') ||
-              v.name.toLowerCase().includes('damayanti') ||
-              v.name.toLowerCase().includes('malay')
-          );
-          if (malayVoice) utterance.voice = malayVoice;
-        } else {
-          const englishVoice = voices.find(
-            (v) =>
-              (v.lang.toLowerCase().includes('en-us') || v.lang.toLowerCase().includes('en-gb')) &&
-              (v.name.toLowerCase().includes('samantha') ||
-                v.name.toLowerCase().includes('daniel') ||
-                v.name.toLowerCase().includes('natural') ||
-                v.name.toLowerCase().includes('google'))
-          );
-          if (englishVoice) utterance.voice = englishVoice;
+          utterance.rate = rate;
+          utterance.pitch = pitch;
+
+          // Check voices
+          const voices =
+            this.cachedVoices.length > 0
+              ? this.cachedVoices
+              : window.speechSynthesis.getVoices();
+          this.cachedVoices = voices;
+
+          if (lang === 'bm') {
+            // Find Malay voice
+            const malayVoice = voices.find(
+              (v) =>
+                v.lang.toLowerCase().includes('ms') ||
+                v.name.toLowerCase().includes('amira') ||
+                v.name.toLowerCase().includes('damayanti') ||
+                v.name.toLowerCase().includes('malay')
+            );
+
+            if (malayVoice) {
+              utterance.voice = malayVoice;
+              utterance.lang = malayVoice.lang;
+            } else {
+              // Indonesian fallback (universally available on Windows/Chrome/Android and phonetically equivalent)
+              const indonesianVoice = voices.find(
+                (v) =>
+                  v.lang.toLowerCase().includes('id') ||
+                  v.name.toLowerCase().includes('indonesia')
+              );
+              if (indonesianVoice) {
+                utterance.voice = indonesianVoice;
+                utterance.lang = indonesianVoice.lang;
+              } else {
+                utterance.lang = 'id-ID';
+              }
+            }
+          } else {
+            // English voice
+            const englishVoice = voices.find(
+              (v) =>
+                (v.lang.toLowerCase().includes('en-us') ||
+                  v.lang.toLowerCase().includes('en-gb') ||
+                  v.lang.toLowerCase().includes('en-my')) &&
+                (v.name.toLowerCase().includes('samantha') ||
+                  v.name.toLowerCase().includes('daniel') ||
+                  v.name.toLowerCase().includes('natural') ||
+                  v.name.toLowerCase().includes('google'))
+            );
+            if (englishVoice) {
+              utterance.voice = englishVoice;
+              utterance.lang = englishVoice.lang;
+            } else {
+              utterance.lang = 'en-US';
+            }
+          }
+
+          this.isSpeechSynthesisActive = true;
+
+          utterance.onstart = () => {
+            onStart?.();
+          };
+
+          utterance.onend = () => {
+            this.isSpeechSynthesisActive = false;
+            this.activeUtterance = null;
+            this.currentOnEnd = null;
+            onEnd?.();
+          };
+
+          utterance.onerror = (e) => {
+            console.warn('SpeechSynthesis event error:', e);
+            this.isSpeechSynthesisActive = false;
+            this.activeUtterance = null;
+            this.currentOnEnd = null;
+            onError?.(e);
+          };
+
+          window.speechSynthesis.speak(utterance);
+        } catch (innerErr) {
+          this.isSpeechSynthesisActive = false;
+          this.activeUtterance = null;
+          onError?.(innerErr);
         }
-      }
-
-      this.isSpeechSynthesisActive = true;
-
-      utterance.onstart = () => {
-        onStart?.();
-      };
-
-      utterance.onend = () => {
-        this.isSpeechSynthesisActive = false;
-        this.currentOnEnd = null;
-        onEnd?.();
-      };
-
-      utterance.onerror = (e) => {
-        this.isSpeechSynthesisActive = false;
-        this.currentOnEnd = null;
-        onError?.(e);
-      };
-
-      window.speechSynthesis.speak(utterance);
+      }, 60);
     } catch (err) {
       this.isSpeechSynthesisActive = false;
+      this.activeUtterance = null;
       this.currentOnEnd = null;
       onError?.(err);
     }

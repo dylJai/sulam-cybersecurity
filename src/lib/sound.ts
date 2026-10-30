@@ -2,6 +2,7 @@
  * Audio feedback & celebration utilities for Sulam CyberSafe.
  * Uses Web Audio API synthesizers to avoid needing large audio assets.
  * Respects user interaction and silent mode.
+ * Fully resilient against browser autoplay restrictions and suspended audio contexts.
  */
 import confetti from 'canvas-confetti';
 
@@ -25,29 +26,67 @@ export const getSoundEnabled = (): boolean => {
   return soundEnabled;
 };
 
-const getAudioContext = (): AudioContext | null => {
+export const getAudioContext = (): AudioContext | null => {
   if (typeof window === 'undefined') return null;
   if (!audioCtx) {
-    const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const AudioContextClass =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     if (AudioContextClass) {
       audioCtx = new AudioContextClass();
     }
   }
-  if (audioCtx && audioCtx.state === 'suspended') {
-    audioCtx.resume();
-  }
   return audioCtx;
+};
+
+// Global unlock on first user gesture
+if (typeof window !== 'undefined') {
+  const unlockAudio = () => {
+    try {
+      const ctx = getAudioContext();
+      if (ctx && ctx.state === 'suspended') {
+        ctx.resume();
+      }
+    } catch {
+      // ignore
+    }
+    window.removeEventListener('click', unlockAudio);
+    window.removeEventListener('touchstart', unlockAudio);
+    window.removeEventListener('keydown', unlockAudio);
+  };
+  window.addEventListener('click', unlockAudio, { passive: true });
+  window.addEventListener('touchstart', unlockAudio, { passive: true });
+  window.addEventListener('keydown', unlockAudio, { passive: true });
+}
+
+const safeExecuteAudio = (fn: (ctx: AudioContext) => void) => {
+  if (!getSoundEnabled()) return;
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+
+    if (ctx.state === 'suspended') {
+      ctx.resume().then(() => {
+        try {
+          fn(ctx);
+        } catch {
+          // ignore
+        }
+      }).catch(() => {});
+      return;
+    }
+
+    fn(ctx);
+  } catch {
+    // Ignore audio autoplay restrictions
+  }
 };
 
 /**
  * Soft, gentle pop sound on tapping choices or clues
  */
 export const playPopSound = () => {
-  if (!getSoundEnabled()) return;
-  try {
-    const ctx = getAudioContext();
-    if (!ctx) return;
-
+  safeExecuteAudio((ctx) => {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
 
@@ -64,20 +103,14 @@ export const playPopSound = () => {
 
     osc.start(now);
     osc.stop(now + 0.08);
-  } catch {
-    // Ignore audio autoplay restrictions
-  }
+  });
 };
 
 /**
  * Warm uplifting double-chime for correct answers or findings
  */
 export const playSuccessChime = () => {
-  if (!getSoundEnabled()) return;
-  try {
-    const ctx = getAudioContext();
-    if (!ctx) return;
-
+  safeExecuteAudio((ctx) => {
     const notes = [523.25, 659.25, 783.99]; // C5, E5, G5 major triad
     const now = ctx.currentTime;
 
@@ -98,20 +131,14 @@ export const playSuccessChime = () => {
       osc.start(noteTime);
       osc.stop(noteTime + 0.28);
     });
-  } catch {
-    // Ignore audio restrictions
-  }
+  });
 };
 
 /**
  * Low cautionary notification for warnings or incorrect selections
  */
 export const playWarningTone = () => {
-  if (!getSoundEnabled()) return;
-  try {
-    const ctx = getAudioContext();
-    if (!ctx) return;
-
+  safeExecuteAudio((ctx) => {
     const now = ctx.currentTime;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
@@ -128,9 +155,7 @@ export const playWarningTone = () => {
 
     osc.start(now);
     osc.stop(now + 0.18);
-  } catch {
-    // Ignore audio restrictions
-  }
+  });
 };
 
 /**

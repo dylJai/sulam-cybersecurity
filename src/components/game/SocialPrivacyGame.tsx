@@ -76,6 +76,10 @@ export const SocialPrivacyGame: React.FC = () => {
           setIsVoiceNotePlaying(false);
           setVoiceNoteCurrentTime('0:00');
         },
+        onError: () => {
+          setIsVoiceNotePlaying(false);
+          setVoiceNoteCurrentTime('0:00');
+        },
         onProgress: (cur, dur) => {
           const curSec = Math.floor(cur);
           setVoiceNoteCurrentTime(`0:${curSec < 10 ? '0' : ''}${curSec}`);
