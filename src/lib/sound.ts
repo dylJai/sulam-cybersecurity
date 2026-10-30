@@ -1,8 +1,7 @@
 /**
  * Audio feedback & celebration utilities for Sulam CyberSafe.
- * Uses Web Audio API synthesizers to avoid needing large audio assets.
- * Respects user interaction and silent mode.
- * Fully resilient against browser autoplay restrictions and suspended audio contexts.
+ * Uses high-fidelity studio sound assets (.m4a) with Web Audio API synthesis fallback.
+ * Highly responsive, supports rapid clicks, and respects user sound settings.
  */
 import confetti from 'canvas-confetti';
 
@@ -19,13 +18,16 @@ export const setSoundEnabled = (enabled: boolean) => {
 export const getSoundEnabled = (): boolean => {
   if (typeof window !== 'undefined') {
     const saved = localStorage.getItem('cybersafe_sound');
-    if (saved !== null) {
-      soundEnabled = saved === 'true';
+    if (saved === 'false') {
+      soundEnabled = false;
+    } else {
+      soundEnabled = true;
     }
   }
   return soundEnabled;
 };
 
+// Global audio context for fallback synthesis
 export const getAudioContext = (): AudioContext | null => {
   if (typeof window === 'undefined') return null;
   if (!audioCtx) {
@@ -39,13 +41,28 @@ export const getAudioContext = (): AudioContext | null => {
   return audioCtx;
 };
 
-// Global unlock on first user gesture
+// Preload audio assets into browser cache on startup
 if (typeof window !== 'undefined') {
+  const preloadAudio = (src: string) => {
+    try {
+      const a = new Audio();
+      a.preload = 'auto';
+      a.src = src;
+    } catch {
+      // ignore
+    }
+  };
+
+  preloadAudio('/audio/pop.m4a');
+  preloadAudio('/audio/success.m4a');
+  preloadAudio('/audio/warning.m4a');
+
+  // Unlock audio context on first user interaction
   const unlockAudio = () => {
     try {
       const ctx = getAudioContext();
       if (ctx && ctx.state === 'suspended') {
-        ctx.resume();
+        ctx.resume().catch(() => {});
       }
     } catch {
       // ignore
@@ -54,63 +71,51 @@ if (typeof window !== 'undefined') {
     window.removeEventListener('touchstart', unlockAudio);
     window.removeEventListener('keydown', unlockAudio);
   };
+
   window.addEventListener('click', unlockAudio, { passive: true });
   window.addEventListener('touchstart', unlockAudio, { passive: true });
   window.addEventListener('keydown', unlockAudio, { passive: true });
 }
 
-const safeExecuteAudio = (fn: (ctx: AudioContext) => void) => {
-  if (!getSoundEnabled()) return;
+// Fallback synthetic pop sound if audio file cannot play
+const playSynthPop = () => {
   try {
     const ctx = getAudioContext();
     if (!ctx) return;
-
     if (ctx.state === 'suspended') {
-      ctx.resume().then(() => {
-        try {
-          fn(ctx);
-        } catch {
-          // ignore
-        }
-      }).catch(() => {});
-      return;
+      ctx.resume().catch(() => {});
     }
 
-    fn(ctx);
-  } catch {
-    // Ignore audio autoplay restrictions
-  }
-};
-
-/**
- * Soft, gentle pop sound on tapping choices or clues
- */
-export const playPopSound = () => {
-  safeExecuteAudio((ctx) => {
+    const now = ctx.currentTime;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
 
     osc.type = 'sine';
-    const now = ctx.currentTime;
-    osc.frequency.setValueAtTime(420, now);
-    osc.frequency.exponentialRampToValueAtTime(750, now + 0.08);
+    osc.frequency.setValueAtTime(480, now);
+    osc.frequency.linearRampToValueAtTime(800, now + 0.1);
 
-    gain.gain.setValueAtTime(0.12, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+    gain.gain.setValueAtTime(0.35, now);
+    gain.gain.linearRampToValueAtTime(0.001, now + 0.1);
 
     osc.connect(gain);
     gain.connect(ctx.destination);
 
     osc.start(now);
-    osc.stop(now + 0.08);
-  });
+    osc.stop(now + 0.1);
+  } catch {
+    // ignore
+  }
 };
 
-/**
- * Warm uplifting double-chime for correct answers or findings
- */
-export const playSuccessChime = () => {
-  safeExecuteAudio((ctx) => {
+// Fallback synthetic success chime
+const playSynthSuccess = () => {
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
+
     const notes = [523.25, 659.25, 783.99]; // C5, E5, G5 major triad
     const now = ctx.currentTime;
 
@@ -122,40 +127,89 @@ export const playSuccessChime = () => {
       const noteTime = now + idx * 0.09;
       osc.frequency.setValueAtTime(freq, noteTime);
 
-      gain.gain.setValueAtTime(0.15, noteTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, noteTime + 0.28);
+      gain.gain.setValueAtTime(0.3, noteTime);
+      gain.gain.linearRampToValueAtTime(0.001, noteTime + 0.3);
 
       osc.connect(gain);
       gain.connect(ctx.destination);
 
       osc.start(noteTime);
-      osc.stop(noteTime + 0.28);
+      osc.stop(noteTime + 0.3);
     });
-  });
+  } catch {
+    // ignore
+  }
 };
 
-/**
- * Low cautionary notification for warnings or incorrect selections
- */
-export const playWarningTone = () => {
-  safeExecuteAudio((ctx) => {
+// Fallback synthetic warning tone
+const playSynthWarning = () => {
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
+
     const now = ctx.currentTime;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
 
     osc.type = 'sine';
     osc.frequency.setValueAtTime(260, now);
-    osc.frequency.exponentialRampToValueAtTime(200, now + 0.18);
+    osc.frequency.linearRampToValueAtTime(200, now + 0.18);
 
-    gain.gain.setValueAtTime(0.1, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+    gain.gain.setValueAtTime(0.3, now);
+    gain.gain.linearRampToValueAtTime(0.001, now + 0.18);
 
     osc.connect(gain);
     gain.connect(ctx.destination);
 
     osc.start(now);
     osc.stop(now + 0.18);
-  });
+  } catch {
+    // ignore
+  }
+};
+
+const playSoundFile = (src: string, volume = 0.7, fallback: () => void = playSynthPop) => {
+  if (!getSoundEnabled() || typeof window === 'undefined') return;
+
+  try {
+    const audio = new Audio(src);
+    audio.volume = volume;
+    const promise = audio.play();
+
+    if (promise !== undefined) {
+      promise.catch((err) => {
+        // Fallback to Web Audio oscillator if audio file play is blocked
+        console.warn('Audio asset playback fallback:', err);
+        fallback();
+      });
+    }
+  } catch {
+    fallback();
+  }
+};
+
+/**
+ * Satisfying, tactile pop sound on tapping buttons, choices, or clues
+ */
+export const playPopSound = () => {
+  playSoundFile('/audio/pop.m4a', 0.8, playSynthPop);
+};
+
+/**
+ * Warm uplifting chime for correct answers, findings, or badges
+ */
+export const playSuccessChime = () => {
+  playSoundFile('/audio/success.m4a', 0.75, playSynthSuccess);
+};
+
+/**
+ * Low cautionary notification for warnings or incorrect selections
+ */
+export const playWarningTone = () => {
+  playSoundFile('/audio/warning.m4a', 0.75, playSynthWarning);
 };
 
 /**
