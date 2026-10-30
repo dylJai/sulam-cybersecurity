@@ -722,7 +722,7 @@ export const InvestmentScamGame: React.FC = () => {
                 <div className="space-y-4">
                   <div>
                     <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">
-                      {t('game.step1HeaderFriendly')}
+                      {isEn ? 'Step 1: Mark Investment Scam Red Flags' : 'Langkah 1: Tandakan Ciri-Ciri Skim Penipuan'}
                     </h3>
                     <p className="text-xs sm:text-sm text-slate-600 mt-1.5 leading-relaxed">
                       {isEn
