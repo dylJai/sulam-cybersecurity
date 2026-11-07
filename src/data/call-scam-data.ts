@@ -394,6 +394,76 @@ Pihak hospital perlukan deposit segera RM2,500 untuk bekalan darah dan bilik bed
         consequence: 'TERBAIK & BIJAK! Anda menghubungi anak anda dan dia menjawab panggilan dalam keadaan selamat. Anda menyelamatkan wang dan menewaskan sindiket!'
       }
     ]
+  },
+  {
+    id: 'call-05',
+    title: 'Bungkusan Pos Laju Mengandungi Kad Pengenalan & Barang Terlarang (Macau Scam Kurier)',
+    callerIdentity: 'Puan Maria / Menyamar Khidmat Pelanggan Pos Laju & Kastam',
+    claimedAgency: 'Pusat Mel Pos Laju & Ibu Pejabat Kastam Diraja',
+    phoneNumber: '+6018-9921 445',
+    callDuration: '03:15',
+    scenarioContext: 'Panggilan mendakwa bungkusan berdaftar atas nama anda ditahan pihak Kastam kerana mengandungi 5 keping MyKad palsu dan kad ATM curi. Panggilan kemudian "disambungkan" secara terus ke pegawai polis.',
+    urgencyLevel: 'KRITIKAL',
+    realCaseExample: realWorldCallScamStories[0],
+    audioSimulatedText: `"Selamat petang. Ini Pusat Mel Pos Laju KLIA. Kami telah menahan satu bungkusan kiriman berdaftar atas nama dan nombor MyKad anda yang mengandungi 5 keping MyKad palsu dan bahan terlarang.
+
+Kes ini telah diserahkan kepada pihak Kastam dan PDRM Bukit Aman. Jangan letak telefon! Saya sedang menyambungkan talian ini terus kepada Pegawai Penyiasat Tuan Razak di Bilik Gerakan PDRM sekarang untuk rekod kenyataan rasmi!"`,
+    tactics: [
+      {
+        id: 't-1',
+        text: 'Taktik sambungan panggilan automatik dari Pos Laju terus ke balai polis / bilik siasatan',
+        isTrap: true,
+        explanation: 'Sistem panggilan kurier tidak mempunyai fungsi menyambungkan talian secara langsung ke balai polis. Ini adalah lakonan terancang sindiket Macau Scam.'
+      },
+      {
+        id: 't-2',
+        text: 'Ugutan bahawa MyKad anda telah disenaraihitamkan dan akaun bank akan dibekukan serta-merta',
+        isTrap: true,
+        explanation: 'Scammer mencipta tekanan panik melampau supaya mangsa patuh memindahkan wang ke "akaun jaminan keselamatan".'
+      },
+      {
+        id: 't-3',
+        text: 'Mengetahui nama penuh dan nombor MyKad mangsa daripada data bocor',
+        isTrap: false,
+        explanation: 'Sindiket memperoleh nama dan nombor telefon daripada kebocoran pangkalan data komersial terdahulu.'
+      }
+    ],
+    semakMuleData: {
+      queryNumber: '018-9921445',
+      reportsCount: 14,
+      policeStatus: 'AMARAN MERAH (SINDIKET MACAU SCAM KURIR)',
+      lastReportedCategory: 'Penipuan Bungkusan Pos & Pemindahan Talian Polis Palsu'
+    },
+    actions: [
+      {
+        id: 'act-panic-follow',
+        title: 'Teruskan bercakap dengan "pegawai polis" dan ikut arahannya untuk memindahkan wang jaminan',
+        description: 'Patuh kerana bimbang ditangkap pihak berkuasa.',
+        isSafe: false,
+        consequence: 'PERANGKAP MACAU SCAM! Pemanggil bukan polis mahupun pegawai kurier. Duit jaminan anda dipindahkan ke akaun keldai sindiket.'
+      },
+      {
+        id: 'act-verify-pos',
+        title: 'Berikan maklumat akaun bank untuk membuktikan anda tidak bersalah',
+        description: 'Mendedahkan nombor akaun dan baki simpanan kepada penjenayah.',
+        isSafe: false,
+        consequence: 'BERBAHAYA! Scammer akan mengetahui jumlah simpanan anda dan memeras ugut wang tersebut hingga habis.'
+      },
+      {
+        id: 'act-shout',
+        title: 'Marah pemanggil dan mencabar mereka datang menangkap anda di rumah',
+        description: 'Bertengkar dengan scammer di telefon.',
+        isSafe: false,
+        consequence: 'TIDAK DIGALAKKAN! Scammer akan terus mengganggu dan menggunakan nombor anda untuk panggilan ugutan lain.'
+      },
+      {
+        id: 'act-safe',
+        title: 'Putuskan panggilan serta-merta. Semak status di cawangan Pos Laju sah dan laporkan nombor ke talian 997',
+        description: 'Jangan layan panggilan sambungan palsu dan buat semakan bebas.',
+        isSafe: true,
+        consequence: 'TAHNIAH! Anda mematahkan taktik klasik Macau Scam. Tiada agensi kurier boleh memindahkan panggilan ke balai polis!'
+      }
+    ]
   }
 ];
 
@@ -689,6 +759,76 @@ The hospital urgently requires an RM2,500 deposit for blood supplies and the ope
         consequence: 'EXCELLENT & WISE! You call your child directly and they answer safely from their desk. You protected your family and defeated the syndicate!'
       }
     ]
+  },
+  {
+    id: 'call-05',
+    title: 'Courier Parcel Interception & Illegal Contraband (Macau Parcel Scam)',
+    callerIdentity: 'Ms. Maria / Impersonating Pos Laju & Customs Officer',
+    claimedAgency: 'Pos Laju Central Mail Hub & Royal Malaysian Customs',
+    phoneNumber: '+6018-9921 445',
+    callDuration: '03:15',
+    scenarioContext: 'A caller claims an international registered package addressed to you was intercepted containing 5 counterfeit MyKad cards and contraband, and immediately "transfers" you directly to a police investigator.',
+    urgencyLevel: 'CRITICAL',
+    realCaseExample: realWorldCallScamStoriesEn[0],
+    audioSimulatedText: `"Good afternoon. This is Pos Laju KLIA Air Cargo Hub. We have intercepted a high-priority parcel registered under your MyKad containing 5 fake IC cards and prohibited contraband.
+
+Your investigation case has been forwarded to Royal Customs and Bukit Aman. Do not disconnect! I am transferring your call directly to Senior Investigator Inspector Razak at the Police Command Centre to record your sworn statement!"`,
+    tactics: [
+      {
+        id: 't-1',
+        text: 'Automated live call transfer illusion directly from courier company to "Police Station"',
+        isTrap: true,
+        explanation: 'Postal courier telecom systems possess zero technical capability to route calls into actual police investigation branches. This is the hallmark setup of Macau Scams.'
+      },
+      {
+        id: 't-2',
+        text: 'Threatening immediate IC blacklisting and complete freezing of bank accounts',
+        isTrap: true,
+        explanation: 'Scammers induce extreme fear to compel victims to comply with transferring funds to a "safe security audit account".'
+      },
+      {
+        id: 't-3',
+        text: 'Knowing victim\'s full IC name scraped from leaked commercial databases',
+        isTrap: false,
+        explanation: 'Syndicates purchase leaked commercial datasets containing names and mobile numbers to sound credible.'
+      }
+    ],
+    semakMuleData: {
+      queryNumber: '018-9921445',
+      reportsCount: 14,
+      policeStatus: 'RED ALERT (CONFIRMED MACAU SCAM SYNDICATE)',
+      lastReportedCategory: 'Fake Courier Parcel & Police Transfer Impersonation Scam'
+    },
+    actions: [
+      {
+        id: 'act-panic-follow',
+        title: 'Stay on the line and follow the "police officer\'s" instructions to transfer security clearance bail',
+        description: 'Complying out of fear of imminent arrest.',
+        isSafe: false,
+        consequence: 'MACAU SCAM TRAP! The caller is neither a courier worker nor a police officer. Your bail deposit is siphoned into syndicate mule accounts.'
+      },
+      {
+        id: 'act-verify-pos',
+        title: 'Disclose your bank accounts to demonstrate innocence to the officer',
+        description: 'Revealing account numbers and balances to criminals.',
+        isSafe: false,
+        consequence: 'DANGEROUS! Scammers use your balance information to demand exactly that amount in extortion payments.'
+      },
+      {
+        id: 'act-shout',
+        title: 'Scream and challenge them to come arrest you at your home',
+        description: 'Engaging emotionally with fraudsters.',
+        isSafe: false,
+        consequence: 'NOT RECOMMENDED! Scammers will continue harassing your number and may share your contact with other syndicates.'
+      },
+      {
+        id: 'act-safe',
+        title: 'Hang up immediately. Verify tracking at an official Pos Laju branch and report the caller to 997',
+        description: 'Reject fraudulent call transfers and carry out independent verification.',
+        isSafe: true,
+        consequence: 'CONGRATULATIONS! You defeated the classic Macau parcel scam. No courier company can ever transfer calls to a police interrogation room!'
+      }
+    ]
   }
 ];
 
@@ -721,7 +861,7 @@ export const callScamMeta: ChallengeMeta = {
     'Tiada agensi kerajaan yang mempunyai "Akaun Audit Sementara" peribadi.',
     'Jika terlanjur memindahkan wang ke akaun scammer, dail 997 (NSRC) dalam tempoh 1 jam untuk menyekat aliran keluar.'
   ],
-  totalQuestions: 4,
+  totalQuestions: 5,
   maxScore: 50
 };
 

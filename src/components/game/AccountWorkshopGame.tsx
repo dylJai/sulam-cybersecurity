@@ -1,1040 +1,1451 @@
 'use client';
 
-import React, { useState } from 'react';
-import { getAccountWorkshopData, upgradedPassphrases } from '@/data/account-workshop-data';
-import { PassphraseBuilderLab } from '@/components/game/PassphraseBuilderLab';
-import { TwoFactorPhoneSimulator } from '@/components/game/TwoFactorPhoneSimulator';
-import { BadgesDrawer, BadgeItem } from '@/components/game/BadgesDrawer';
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+import {
+  Lock,
+  Unlock,
+  AlertTriangle,
+  CheckCircle2,
+  XCircle,
+  Eye,
+  EyeOff,
+  Smartphone,
+  Mail,
+  Globe,
+  Wallet,
+  RefreshCw,
+  Zap,
+  PhoneCall,
+  Check,
+  Building2,
+  Terminal,
+  KeyRound,
+  ShieldCheck
+} from 'lucide-react';
 import { saveChallengeResult } from '@/lib/storage';
 import { useLanguage } from '@/context/LanguageContext';
-import { playPopSound, playSuccessChime, triggerCelebration } from '@/lib/sound';
+import { playPopSound, playSuccessChime, playWarningTone, triggerCelebration } from '@/lib/sound';
+import { BadgeItem } from '@/components/game/BadgesDrawer';
 import {
-  KeyRound,
-  AlertTriangle,
-  Check,
-  ArrowRight,
-  RotateCcw,
-  Home,
-  Mail,
-  ShoppingCart,
-  Share2,
-  CheckSquare,
-  Square,
-  Award,
-  Smartphone,
-  Layers,
-  Sparkles,
-  ShieldCheck,
-  CheckCircle2
-} from 'lucide-react';
-import Link from 'next/link';
-import { motion } from 'framer-motion';
+  StationTopBar,
+  StationBriefing,
+  StationResults,
+  TakeawayCard,
+  InfoBanner,
+  PrimaryButton,
+  SecondaryButton
+} from '@/components/game/station';
 
-export const AccountWorkshopGame: React.FC = () => {
-  const { language, t } = useLanguage();
-  const isEn = language === 'en';
+/* =========================================================================
+   TYPES & INTERFACES
+   ========================================================================= */
 
-  const { initialAccounts, securityChecklist } = getAccountWorkshopData(language);
+type GamePhase = 'briefing' | 'phase1' | 'phase2' | 'phase3' | 'results';
 
-  // Workshop Stages: 1. Briefing, 2. Inspect Accounts, 3. Password Lab, 4. Domino Breach, 5. 2FA Simulator & Checklist, 6. Results
-  const [stage, setStage] = useState<number>(1);
-  const [showBadges, setShowBadges] = useState<boolean>(false);
+interface CrackEstimate {
+  timeLabelBm: string;
+  timeLabelEn: string;
+  strength: 'very-weak' | 'weak' | 'moderate' | 'strong' | 'fortified';
+  score: number;
+  attemptsPerSecBm: string;
+  attemptsPerSecEn: string;
+  explanationBm: string;
+  explanationEn: string;
+}
 
-  // Stage 2 state: Accounts inspected
-  const [inspectedAccountIds, setInspectedAccountIds] = useState<string[]>(['acc-email']);
-  const [activeAccountId, setActiveAccountId] = useState<string>('acc-email');
+interface AccountCardState {
+  id: string;
+  nameBm: string;
+  nameEn: string;
+  serviceType: 'email' | 'bank' | 'social' | 'ewallet';
+  identifier: string;
+  currentPassword: string;
+  isBreached: boolean;
+  isSecured: boolean;
+  generatedPassphrase: string;
+}
 
-  // Stage 3 state: Password lab & custom passphrase
-  const [customPassphrase, setCustomPassphrase] = useState<string | null>(null);
-  const [labSubmitted, setLabSubmitted] = useState<boolean>(false);
+/* =========================================================================
+   CLIENT-SIDE PASSWORD ESTIMATOR (ZERO LOGGING / ZERO TRANSMISSION)
+   ========================================================================= */
 
-  // Stage 4 state: Domino breach simulation
-  const [dominoStep, setDominoStep] = useState<'initial' | 'breached-all' | 'upgraded' | 'breached-contained'>('initial');
+function calculateCrackEstimate(password: string): CrackEstimate {
+  if (!password || password.trim().length === 0) {
+    return {
+      timeLabelBm: '0 saat (Kosong)',
+      timeLabelEn: '0 seconds (Empty)',
+      strength: 'very-weak',
+      score: 0,
+      attemptsPerSecBm: '0 cubaan/saat',
+      attemptsPerSecEn: '0 guesses/sec',
+      explanationBm: 'Sila taip apa-apa kata laluan latihan di atas untuk menguji ketahanannya.',
+      explanationEn: 'Type any practice password above to test how long it resists a hacker.'
+    };
+  }
 
-  // Stage 5 state: 2FA Simulator & Security checklist
-  const [phone2FASimulated, setPhone2FASimulated] = useState<boolean>(false);
-  const [checkedMeasures, setCheckedMeasures] = useState<string[]>(['sec-unique']);
-
-  // Scoring
-  const [stageScores, setStageScores] = useState<Record<number, number>>({
-    2: 0,
-    3: 0,
-    4: 0,
-    5: 0
-  });
-
-  const totalScore = Object.values(stageScores).reduce((a, b) => a + b, 0);
-
-  // Dynamic Badges
-  const badges: BadgeItem[] = [
-    {
-      id: 'b-domino',
-      name: isEn ? 'Domino Stopper' : 'Penyekat Domino',
-      icon: '🔗',
-      description: isEn ? 'Set a unique password for each account' : 'Menetapkan kata laluan unik bagi setiap akaun',
-      isUnlocked: dominoStep === 'breached-contained'
-    },
-    {
-      id: 'b-fortress',
-      name: isEn ? 'Iron Fortress' : 'Kubu Besi',
-      icon: '🧱',
-      description: isEn ? 'Built an unbreakable 4-word passphrase' : 'Membina frasa laluan 4 perkataan yang kebal',
-      isUnlocked: !!customPassphrase
-    },
-    {
-      id: 'b-two-factor',
-      name: isEn ? '2FA Defender' : 'Perisai 2FA',
-      icon: '📲',
-      description: isEn ? 'Blocked unauthorized hacker login with 2FA' : 'Menolak cubaan pencerobohan penggodam dengan 2FA',
-      isUnlocked: phone2FASimulated
-    },
-    {
-      id: 'b-champion',
-      name: isEn ? 'CyberSafe Guardian' : 'Penjaga Akaun Komuniti',
-      icon: '🛡️',
-      description: isEn ? 'Completed the entire Account Defense Workshop' : 'Menyelesaikan bengkel pertahanan akaun penuh',
-      isUnlocked: stage === 6
-    }
+  const commonWeak = [
+    '123456', '12345678', 'password', 'qwerty', '123456789', '12345',
+    'kucing123', 'malaysia2024', 'malaysia', 'sayang123', 'merdeka',
+    'admin', 'iloveyou', 'bunga123', 'rahsia', 'kampung123', 'kampung',
+    'rahasia123', 'selamat123', 'politeknik', '111111', '000000', 'ali123'
   ];
 
-  const handleStart = () => {
+  const lower = password.toLowerCase().trim();
+  if (commonWeak.includes(lower)) {
+    return {
+      timeLabelBm: '0.001 saat (Serta-merta!)',
+      timeLabelEn: '0.001 seconds (Instantly!)',
+      strength: 'very-weak',
+      score: 1,
+      attemptsPerSecBm: '1 bilion cubaan/saat (Pecah serta-merta)',
+      attemptsPerSecEn: '1 billion guesses/sec (Instant crack)',
+      explanationBm: 'AMARAN: Kata laluan ini tersenarai dalam kamus penggodam! Ia dipecahkan dalam masa kurang 1 saat.',
+      explanationEn: 'DANGER: Found in common hacker dictionaries! Cracked in less than 1 second.'
+    };
+  }
+
+  const length = password.length;
+  const hasLower = /[a-z]/.test(password);
+  const hasUpper = /[A-Z]/.test(password);
+  const hasNumber = /[0-9]/.test(password);
+  const hasSpecial = /[^A-Za-z0-9]/.test(password);
+  const varietyCount = [hasLower, hasUpper, hasNumber, hasSpecial].filter(Boolean).length;
+
+  if (length < 6) {
+    return {
+      timeLabelBm: '0.01 saat (Serta-merta)',
+      timeLabelEn: '0.01 seconds (Instantly)',
+      strength: 'very-weak',
+      score: 1,
+      attemptsPerSecBm: '100 juta cubaan/saat',
+      attemptsPerSecEn: '100M guesses/sec',
+      explanationBm: 'Terlalu pendek! Komputer penggodam boleh mencuba semua kombinasi dalam sesaat.',
+      explanationEn: 'Too short! Modern computers cycle through all combinations in a split second.'
+    };
+  }
+
+  if (length <= 8) {
+    if (varietyCount <= 2) {
+      return {
+        timeLabelBm: '2 minit',
+        timeLabelEn: '2 minutes',
+        strength: 'weak',
+        score: 2,
+        attemptsPerSecBm: '50 juta cubaan/saat',
+        attemptsPerSecEn: '50M guesses/sec',
+        explanationBm: 'Pendek dan mudah diteka oleh serangan perisian bot automatik.',
+        explanationEn: 'Short and quickly guessed by automated bot scripts.'
+      };
+    }
+    return {
+      timeLabelBm: '5 jam',
+      timeLabelEn: '5 hours',
+      strength: 'moderate',
+      score: 3,
+      attemptsPerSecBm: '10 juta cubaan/saat',
+      attemptsPerSecEn: '10M guesses/sec',
+      explanationBm: 'Simbol membantu, tetapi panjang kata laluan masih terlalu singkat.',
+      explanationEn: 'Symbols help slightly, but length is still too short.'
+    };
+  }
+
+  if (length <= 11) {
+    if (varietyCount <= 2) {
+      return {
+        timeLabelBm: '3 hari',
+        timeLabelEn: '3 days',
+        strength: 'moderate',
+        score: 3,
+        attemptsPerSecBm: '5 juta cubaan/saat',
+        attemptsPerSecEn: '5M guesses/sec',
+        explanationBm: 'Sederhana, namun masih terdedah kepada pelayan komputer berkuasa tinggi.',
+        explanationEn: 'Moderate, but vulnerable to modern cloud GPU clusters.'
+      };
+    }
+    return {
+      timeLabelBm: '5 tahun',
+      timeLabelEn: '5 years',
+      strength: 'strong',
+      score: 4,
+      attemptsPerSecBm: '1 juta cubaan/saat',
+      attemptsPerSecEn: '1M guesses/sec',
+      explanationBm: 'Kukuh! Menggabungkan kepanjangan huruf dan aksara pelbagai.',
+      explanationEn: 'Strong! Combines reasonable length and character diversity.'
+    };
+  }
+
+  if (length <= 14) {
+    return {
+      timeLabelBm: '3,000 tahun',
+      timeLabelEn: '3,000 years',
+      strength: 'fortified',
+      score: 5,
+      attemptsPerSecBm: '100,000 cubaan/saat',
+      attemptsPerSecEn: '100k guesses/sec',
+      explanationBm: 'Sangat selamat! Memerlukan beribu tahun untuk dipecahkan komputer.',
+      explanationEn: 'Highly secure! Would take supercomputers millennia to crack.'
+    };
+  }
+
+  return {
+    timeLabelBm: '2.5 Juta Tahun (Kubu Kebal!)',
+    timeLabelEn: '2.5 Million Years (Fortified!)',
+    strength: 'fortified',
+    score: 5,
+    attemptsPerSecBm: 'Mustahil dipecahkan',
+    attemptsPerSecEn: 'Mathematically impossible',
+    explanationBm: 'LUAR BIASA! Frasa laluan panjang menewaskan superkomputer penggodam selama jutaan tahun!',
+    explanationEn: 'OUTSTANDING! Long passphrases defeat hacker supercomputers for millions of years!'
+  };
+}
+
+/* =========================================================================
+   INITIAL DATA FOR 4 ACCOUNTS IN PHASE 2
+   ========================================================================= */
+
+const INITIAL_ACCOUNTS: AccountCardState[] = [
+  {
+    id: 'acc-email',
+    nameBm: 'Emel Utama Peribadi',
+    nameEn: 'Primary Personal Email',
+    serviceType: 'email',
+    identifier: 'ali.desa@email.com',
+    currentPassword: 'KucingComel123!',
+    isBreached: false,
+    isSecured: false,
+    generatedPassphrase: 'Kopi-Panas-Pagi-Tenang-24'
+  },
+  {
+    id: 'acc-bank',
+    nameBm: 'Perbankan Internet',
+    nameEn: 'Online Banking Portal',
+    serviceType: 'bank',
+    identifier: 'Maybank2u / CIMB Clicks',
+    currentPassword: 'KucingComel123!',
+    isBreached: false,
+    isSecured: false,
+    generatedPassphrase: 'Harimau-Lompat-Sungai-99'
+  },
+  {
+    id: 'acc-social',
+    nameBm: 'Akaun Media Sosial',
+    nameEn: 'Social Media (FB & TikTok)',
+    serviceType: 'social',
+    identifier: '@Ali_Desa',
+    currentPassword: 'KucingComel123!',
+    isBreached: false,
+    isSecured: false,
+    generatedPassphrase: 'Padi-Kuning-Gunung-77'
+  },
+  {
+    id: 'acc-ewallet',
+    nameBm: 'E-Dompet Digital',
+    nameEn: 'E-Wallet Account (TnG / Boost)',
+    serviceType: 'ewallet',
+    identifier: '+6012-345-6789',
+    currentPassword: 'KucingComel123!',
+    isBreached: false,
+    isSecured: false,
+    generatedPassphrase: 'Kereta-Biru-Laju-55'
+  }
+];
+
+export const AccountWorkshopGame: React.FC = () => {
+  const { language } = useLanguage();
+  const isEn = language === 'en';
+  const shouldReduceMotion = useReducedMotion();
+
+  /* =========================================================================
+     GLOBAL STATE
+     ========================================================================= */
+  const [phase, setPhase] = useState<GamePhase>('briefing');
+
+  /* =========================================================================
+     PHASE 1 STATE: CRACK RACE
+     ========================================================================= */
+  const [practicePassword, setPracticePassword] = useState<string>('');
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [hackerGuesses, setHackerGuesses] = useState<string[]>([
+    'a1b2c3d4', 'pass1234', 'qwerty99', 'admin2024', 'sayangku'
+  ]);
+
+  useEffect(() => {
+    if (phase !== 'phase1') return;
+    const interval = setInterval(() => {
+      const randomPrefixes = ['123', 'abc', 'pwd', 'my', 'kl', 'admin', 'pass', 'bot', 'hack'];
+      const randomSuffixes = ['99', '2024', '!', '#', '88', '00', 'xyz', '77'];
+      const newGuess =
+        randomPrefixes[Math.floor(Math.random() * randomPrefixes.length)] +
+        Math.floor(Math.random() * 9999).toString() +
+        randomSuffixes[Math.floor(Math.random() * randomSuffixes.length)];
+
+      setHackerGuesses(prev => [newGuess, prev[0], prev[1], prev[2], prev[3]]);
+    }, 450);
+    return () => clearInterval(interval);
+  }, [phase]);
+
+  const crackEstimate = calculateCrackEstimate(practicePassword);
+
+  const handleFillExample = (exampleType: 'weak' | 'strong') => {
     playPopSound();
-    setStage(2);
-    setInspectedAccountIds(['acc-email']);
-    setActiveAccountId('acc-email');
-    setCustomPassphrase(null);
-    setLabSubmitted(false);
-    setDominoStep('initial');
-    setPhone2FASimulated(false);
-    setCheckedMeasures(['sec-unique']);
-    setStageScores({ 2: 0, 3: 0, 4: 0, 5: 0 });
-  };
-
-  const handleInspectAccount = (accId: string) => {
-    setActiveAccountId(accId);
-    if (!inspectedAccountIds.includes(accId)) {
-      setInspectedAccountIds(prev => [...prev, accId]);
+    if (exampleType === 'weak') {
+      setPracticePassword('kucing123');
+    } else {
+      setPracticePassword('Kopi-Pagi-Sarawak-88');
     }
-  };
-
-  const handleCompleteAudit = () => {
-    setStageScores(prev => ({ ...prev, 2: 10 }));
-    setStage(3);
-  };
-
-  const handlePassphraseBuilt = (phrase: string) => {
-    setCustomPassphrase(phrase);
-    setLabSubmitted(true);
-    setStageScores(prev => ({ ...prev, 3: 10 }));
-  };
-
-  const handleProceedToDomino = () => {
-    setStage(4);
-  };
-
-  const handleTestDominoBreach = () => {
-    setDominoStep('breached-all');
-  };
-
-  const handleApplyUniquePassphrases = () => {
-    setDominoStep('upgraded');
-  };
-
-  const handleRetestBreach = () => {
-    setDominoStep('breached-contained');
-    setStageScores(prev => ({ ...prev, 4: 15 }));
-  };
-
-  const handleProceedToChecklist = () => {
-    setStage(5);
-  };
-
-  const handle2FASuccess = () => {
-    setPhone2FASimulated(true);
-    if (!checkedMeasures.includes('sec-2fa')) {
-      setCheckedMeasures(prev => [...prev, 'sec-2fa']);
-    }
-    setStageScores(prev => ({ ...prev, 5: 15 }));
-  };
-
-  const handleToggleMeasure = (id: string) => {
-    setCheckedMeasures(prev =>
-      prev.includes(id) ? prev.filter(m => m !== id) : [...prev, id]
-    );
-  };
-
-  const handleCompleteWorkshop = () => {
-    triggerCelebration();
-    const finalScore = Math.min(50, totalScore);
-    saveChallengeResult('passwords', finalScore, 50);
-    setStage(6);
   };
 
   /* =========================================================================
-     STAGE 1: BRIEFING
+     PHASE 2 STATE: DOMINO BREACH
      ========================================================================= */
-  if (stage === 1) {
+  const [accounts, setAccounts] = useState<AccountCardState[]>(INITIAL_ACCOUNTS);
+  const [isDominoAttacking, setIsDominoAttacking] = useState<boolean>(false);
+  const [hasRunFirstBreach, setHasRunFirstBreach] = useState<boolean>(false);
+  const [dominoBreachedCount, setDominoBreachedCount] = useState<number>(0);
+  const [retestPassed, setRetestPassed] = useState<boolean>(false);
+
+  const triggerDominoBreach = () => {
+    playWarningTone();
+    setIsDominoAttacking(true);
+    setHasRunFirstBreach(true);
+    setDominoBreachedCount(0);
+
+    const staggerTimes = [300, 900, 1500, 2100];
+    staggerTimes.forEach((delay, idx) => {
+      setTimeout(() => {
+        setDominoBreachedCount(idx + 1);
+        playPopSound();
+        setAccounts(prev =>
+          prev.map((acc, aIdx) => (aIdx <= idx ? { ...acc, isBreached: true } : acc))
+        );
+      }, delay);
+    });
+
+    setTimeout(() => {
+      setIsDominoAttacking(false);
+    }, 2600);
+  };
+
+  const handleAssignUnique = (accountId: string) => {
+    playPopSound();
+    setAccounts(prev =>
+      prev.map(acc => {
+        if (acc.id === accountId) {
+          return {
+            ...acc,
+            currentPassword: acc.generatedPassphrase,
+            isBreached: false,
+            isSecured: true
+          };
+        }
+        return acc;
+      })
+    );
+  };
+
+  const allAccountsSecured = accounts.every(a => a.isSecured);
+
+  const triggerRetestAttack = () => {
+    playPopSound();
+    setIsDominoAttacking(true);
+    setTimeout(() => {
+      setIsDominoAttacking(false);
+      setRetestPassed(true);
+      playSuccessChime();
+    }, 1200);
+  };
+
+  /* =========================================================================
+     PHASE 3 STATE: LOCK THE VAULT
+     ========================================================================= */
+  const [enable2FA, setEnable2FA] = useState<boolean>(false);
+  const [usePasswordManager, setUsePasswordManager] = useState<boolean>(false);
+  const [show2FAStep, setShow2FAStep] = useState<boolean>(false);
+  const [enteredOtp, setEnteredOtp] = useState<string>('');
+  const [otpVerified, setOtpVerified] = useState<boolean>(false);
+  const [otpError, setOtpError] = useState<boolean>(false);
+
+  // Modal accessibility state & refs
+  const [showScamCallModal, setShowScamCallModal] = useState<boolean>(false);
+  const [scamCallFeedback, setScamCallFeedback] = useState<'safe' | 'unsafe' | null>(null);
+  const scamModalCloseRef = useRef<HTMLButtonElement | null>(null);
+  const scamRefuseBtnRef = useRef<HTMLButtonElement | null>(null);
+  const scamTriggerBtnRef = useRef<HTMLButtonElement | null>(null);
+
+  const [isTestingVault, setIsTestingVault] = useState<boolean>(false);
+
+  // Modal accessibility: Escape key listener and focus management
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && showScamCallModal) {
+        setShowScamCallModal(false);
+      }
+    };
+    if (showScamCallModal) {
+      window.addEventListener('keydown', handleKeyDown);
+      // Focus the primary safe action button when modal opens
+      setTimeout(() => {
+        scamRefuseBtnRef.current?.focus();
+      }, 50);
+    } else {
+      // Return focus to trigger button when modal closes
+      scamTriggerBtnRef.current?.focus();
+    }
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showScamCallModal]);
+
+  // Focus close button once feedback is revealed
+  useEffect(() => {
+    if (scamCallFeedback) {
+      setTimeout(() => {
+        scamModalCloseRef.current?.focus();
+      }, 50);
+    }
+  }, [scamCallFeedback]);
+
+  const handleToggle2FA = () => {
+    playPopSound();
+    const nextVal = !enable2FA;
+    setEnable2FA(nextVal);
+    if (nextVal && !otpVerified) {
+      setShow2FAStep(true);
+    }
+  };
+
+  const handleVerifyOtp = (codeToTest?: string) => {
+    const code = codeToTest || enteredOtp;
+    if (code.replace(/\s+/g, '') === '849201') {
+      playSuccessChime();
+      setOtpVerified(true);
+      setOtpError(false);
+    } else {
+      playWarningTone();
+      setOtpError(true);
+    }
+  };
+
+  const handleScamAnswer = (shared: boolean) => {
+    if (!shared) {
+      playSuccessChime();
+      setScamCallFeedback('safe');
+    } else {
+      playWarningTone();
+      setScamCallFeedback('unsafe');
+    }
+  };
+
+  /* =========================================================================
+     SCORING & RESULTS FINALIZATION
+     ========================================================================= */
+  const [finalScore, setFinalScore] = useState<number>(0);
+  const [vaultRating, setVaultRating] = useState<'Gold' | 'Silver' | 'Bronze'>('Bronze');
+  const [badges, setBadges] = useState<BadgeItem[]>([]);
+
+  const finalizeResults = () => {
+    // 1. Phase 1 score (max 15 pts)
+    const p1Score = Math.min(15, crackEstimate.score * 3);
+
+    // 2. Phase 2 score (max 15 pts)
+    const securedCount = accounts.filter(a => a.isSecured).length;
+    const p2Score = Math.round(securedCount * 3.75);
+
+    // 3. Phase 3 score (max 20 pts)
+    let p3Score = 0;
+    if (enable2FA && otpVerified) p3Score += 10;
+    if (usePasswordManager) p3Score += 5;
+    if (scamCallFeedback === 'safe') p3Score += 5;
+
+    const totalScore = Math.min(50, p1Score + p2Score + p3Score);
+    setFinalScore(totalScore);
+
+    let rating: 'Gold' | 'Silver' | 'Bronze' = 'Bronze';
+    if (totalScore >= 40) {
+      rating = 'Gold';
+    } else if (totalScore >= 25) {
+      rating = 'Silver';
+    }
+    setVaultRating(rating);
+
+    // Unlocked badges
+    const earnedBadges: BadgeItem[] = [
+      {
+        id: 'badge-vault-master',
+        name: isEn ? 'Master of the Vault' : 'Penjaga Kubu Kebal',
+        description: isEn
+          ? 'Completed Module 2: Password Defense & Account Vault challenge!'
+          : 'Berjaya menamatkan Cabaran Modul 2: Pertahankan Peti Besi!',
+        icon: '🛡️',
+        isUnlocked: true
+      }
+    ];
+
+    if (totalScore >= 45) {
+      earnedBadges.push({
+        id: 'badge-passphrase-hero',
+        name: isEn ? 'Passphrase Hero' : 'Wira Frasa Laluan',
+        description: isEn
+          ? 'Built impenetrable vault defenses across all phases!'
+          : 'Membina pertahanan peti besi yang kebal merentasi semua fasa!',
+        icon: '⭐',
+        isUnlocked: true
+      });
+    }
+
+    if (scamCallFeedback === 'safe') {
+      earnedBadges.push({
+        id: 'badge-anti-scam',
+        name: isEn ? 'Anti-Scam Guardian' : 'Pengawal Kebal Scammer',
+        description: isEn
+          ? 'Strictly refused to disclose 6-digit OTP code over the phone.'
+          : 'Tegas menolak berkongsi kod OTP melalui panggilan telefon.',
+        icon: '📞',
+        isUnlocked: true
+      });
+    }
+
+    setBadges(earnedBadges);
+
+    // Save to persistent progress
+    saveChallengeResult('passwords', totalScore, 50);
+    triggerCelebration();
+    setPhase('results');
+  };
+
+  const handleRunFinalVaultTest = () => {
+    setIsTestingVault(true);
+    playPopSound();
+    setTimeout(() => {
+      setIsTestingVault(false);
+      finalizeResults();
+    }, 1500);
+  };
+
+  const handleStartMission = () => {
+    playPopSound();
+    setPhase('phase1');
+  };
+
+  const handleResetForNextGroup = () => {
+    playPopSound();
+    setPracticePassword('');
+    setShowPassword(false);
+    setAccounts(INITIAL_ACCOUNTS);
+    setIsDominoAttacking(false);
+    setHasRunFirstBreach(false);
+    setDominoBreachedCount(0);
+    setRetestPassed(false);
+    setEnable2FA(false);
+    setUsePasswordManager(false);
+    setShow2FAStep(false);
+    setEnteredOtp('');
+    setOtpVerified(false);
+    setOtpError(false);
+    setShowScamCallModal(false);
+    setScamCallFeedback(null);
+    setIsTestingVault(false);
+    setFinalScore(0);
+    setVaultRating('Bronze');
+    setPhase('briefing');
+  };
+
+  /* =========================================================================
+     STAGE 0: BRIEFING SCREEN (USING StationBriefing)
+     ========================================================================= */
+  if (phase === 'briefing') {
     return (
-      <div className="w-full space-y-6">
-        <div>
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors py-1"
-          >
-            ← {t('nav.backToMenuFriendly')}
-          </Link>
-        </div>
-
-        <div className="rounded-3xl border border-slate-200/90 bg-white p-6 sm:p-10 shadow-sm space-y-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            <div className="lg:col-span-7 space-y-5">
-              <div className="flex items-center gap-3">
-                <span className="font-extrabold text-blue-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-100 text-xs">
-                  {isEn ? 'MISSION 02' : 'MISI 02'}
-                </span>
-                <span className="text-slate-500 font-semibold text-xs sm:text-sm">
-                  {isEn ? '⏱️ 6-8 Mins • 50 Points' : '⏱️ 6-8 Minit • 50 Mata'}
-                </span>
-              </div>
-
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight leading-snug">
-                {t('m2.title')}
-              </h1>
-
-              <p className="text-base sm:text-lg text-slate-600 leading-relaxed">
-                {isEn ? (
-                  <>
-                    A resident (Pak Ali) reuses the exact same password <code className="bg-red-50 text-red-700 font-bold px-2 py-0.5 rounded-lg border border-red-200">Kampung123!</code> across his email, social media, and online banking. Your mission is to audit his vulnerabilities, forge an unbreakable passphrase, and stop the domino breach effect.
-                  </>
-                ) : (
-                  <>
-                    Seorang penduduk (Pak Ali) menggunakan satu kata laluan yang sama iaitu <code className="bg-red-50 text-red-700 font-bold px-2 py-0.5 rounded-lg border border-red-200">Kampung123!</code> untuk emel, Facebook, dan akaun membeli-belahnya. Tugas anda adalah mengaudit kelemahan akaun beliau, membina kata laluan kebal, dan menyekat pencerobohan siber berjangkit.
-                  </>
-                )}
-              </p>
-
-              <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
-                <span className="font-extrabold text-sm sm:text-base text-slate-900 block">
-                  {isEn ? '📋 4 Fun Workshop Phases:' : '📋 4 Fasa Menarik Dalam Misi Ini:'}
-                </span>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-slate-700">
-                  <div className="p-3.5 bg-white border border-slate-200/80 rounded-xl space-y-1">
-                    <strong className="text-slate-900">{isEn ? '1. Account Audit' : '1. Audit Akaun'}</strong>
-                    <p className="text-xs text-slate-600">{isEn ? 'Examine flaws in Pak Ali’s 3 accounts.' : 'Siasat kelemahan 3 akaun digital Pak Ali.'}</p>
-                  </div>
-                  <div className="p-3.5 bg-white border border-slate-200/80 rounded-xl space-y-1">
-                    <strong className="text-slate-900">{isEn ? '2. Passphrase Lab' : '2. Makmal Kata Laluan'}</strong>
-                    <p className="text-xs text-slate-600">{isEn ? 'Build an unbreakable 4-word passphrase.' : 'Bina frasa laluan 4 perkataan yang kebal.'}</p>
-                  </div>
-                  <div className="p-3.5 bg-white border border-slate-200/80 rounded-xl space-y-1">
-                    <strong className="text-slate-900">{isEn ? '3. Domino Effect' : '3. Sekatan Domino'}</strong>
-                    <p className="text-xs text-slate-600">{isEn ? 'Witness how unique passwords block credential stuffing.' : 'Saksikan bagaimana kata laluan unik menyekat pencerobohan.'}</p>
-                  </div>
-                  <div className="p-3.5 bg-white border border-slate-200/80 rounded-xl space-y-1">
-                    <strong className="text-slate-900">{isEn ? '4. 2FA Simulator' : '4. Simulator 2FA'}</strong>
-                    <p className="text-xs text-slate-600">{isEn ? 'Block unauthorized sign-in attempts on mobile.' : 'Tolak cubaan pencerobohan pada skrin telefon pintar.'}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Right Column: Interactive Tools & Start Button */}
-            <div className="lg:col-span-5 bg-blue-50/60 border border-blue-100 rounded-3xl p-6 sm:p-7 space-y-5">
-              <span className="text-sm font-extrabold text-blue-900 block pb-2 border-b border-blue-200/60">
-                {isEn ? 'Interactive Tools Available:' : 'Alat Interaktif Disediakan:'}
-              </span>
-
-              <div className="space-y-3.5 text-sm text-slate-700">
-                <div className="p-4 bg-white border border-blue-100 rounded-2xl space-y-1 shadow-2xs">
-                  <div className="flex items-center gap-2 font-bold text-slate-900">
-                    <KeyRound className="w-4 h-4 text-blue-600" />
-                    <span>{isEn ? 'Tactile Passphrase Lab' : 'Makmal Cantuman Frasa'}</span>
-                  </div>
-                  <p className="text-xs sm:text-sm text-slate-600">
-                    {isEn
-                      ? 'Combine everyday words and watch the crack time skyrocket to 55,000+ years!'
-                      : 'Gabungkan perkataan harian mudah dan saksikan masa pemecahan melonjak ke 55,000+ tahun!'}
-                  </p>
-                </div>
-
-                <div className="p-4 bg-white border border-blue-100 rounded-2xl space-y-1 shadow-2xs">
-                  <div className="flex items-center gap-2 font-bold text-slate-900">
-                    <Smartphone className="w-4 h-4 text-blue-600" />
-                    <span>{isEn ? 'Smartphone 2FA Simulator' : 'Simulator 2FA Telefon'}</span>
-                  </div>
-                  <p className="text-xs sm:text-sm text-slate-600">
-                    {isEn
-                      ? 'Experience real push notification alerts and block intruders right from your phone.'
-                      : 'Alami situasi sebenar menerima amaran log masuk dan sekat penggodam dari telefon anda.'}
-                  </p>
-                </div>
-              </div>
-
-              <div className="pt-2">
-                <button
-                  onClick={handleStart}
-                  className="w-full py-4 px-6 min-h-[56px] rounded-2xl font-bold text-base sm:text-lg text-white bg-blue-600 hover:bg-blue-700 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md hover:shadow-lg"
-                >
-                  <span>{isEn ? 'Start Password Workshop' : 'Mulakan Bengkel Kata Laluan'}</span>
-                  <ArrowRight className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <StationBriefing
+        stationNumber="02"
+        stationName={isEn ? 'Vault Defense' : 'Pertahankan Peti Besi'}
+        title={isEn ? 'Defend the Digital Vault' : 'Pertahankan Peti Besi Digital'}
+        description={
+          isEn
+            ? 'Your group of 5 will protect personal accounts from simulated hackers across 3 rapid defense phases.'
+            : 'Kumpulan anda akan mempertahankan akaun digital daripada serangan penggodam merentasi 3 fasa pantas.'
+        }
+        voiceOverText={
+          isEn
+            ? 'Defend the Digital Vault. Your group of 5 will protect personal accounts from simulated hackers across 3 rapid defense phases: Crack Race, Domino Breach, and Lock the Vault.'
+            : 'Pertahankan Peti Besi Digital. Kumpulan anda akan mempertahankan akaun digital daripada serangan penggodam merentasi 3 fasa pantas: Perlumbaan Pecah, Serangan Berjangkit, dan Kunci Peti Besi.'
+        }
+        privacyNotice={{
+          title: isEn ? '⚠️ Privacy Rule: Never Type Your Real Password!' : '⚠️ Peraturan Privasi: Jangan Taip Kata Laluan Sebenar!',
+          description: isEn
+            ? 'This workshop station runs 100% locally on this laptop. Nothing is stored, saved, or transmitted. Always use practice phrases only.'
+            : 'Sesi latihan ini beroperasi 100% dalam komputer riba ini tanpa sebarang rakaman. Gunakan kata laluan rekaan sahaja.'
+        }}
+        steps={[
+          {
+            title: isEn ? 'Crack Race' : 'Perlumbaan Pecah',
+            description: isEn
+              ? 'Type practice phrases to see how live supercomputer bots attack weak vs. long words.'
+              : 'Taip frasa laluan latihan untuk melihat kelajuan penggodam memecahkan kata laluan.'
+          },
+          {
+            title: isEn ? 'Domino Breach' : 'Serangan Berjangkit',
+            description: isEn
+              ? 'Watch 4 accounts collapse when using one password, then assign unique passphrases to stop it.'
+              : 'Saksikan 4 akaun tumbang akibat satu kata laluan sama, lalu perbaikinya dengan frasa unik.'
+          },
+          {
+            title: isEn ? 'Lock the Vault' : 'Kunci Peti Besi',
+            description: isEn
+              ? 'Turn on 2FA shields, test a fake 6-digit code, and defeat suspicious phone calls.'
+              : 'Aktifkan perisai 2FA, uji kod 6-digit rahsia, dan tangkis panggilan penipuan TAC.'
+          }
+        ]}
+        onStart={handleStartMission}
+        startLabel={isEn ? 'Start Mission →' : 'Mula Misi →'}
+      />
     );
   }
 
   /* =========================================================================
-     TOP REUSABLE BAR FOR STAGES 2 - 5
+     STAGE 4: RESULTS SCREEN (USING StationResults & BadgesDrawer)
      ========================================================================= */
-  const stageTitles: Record<number, { title: string; subtitle: string }> = {
-    2: {
-      title: isEn ? 'PHASE 01 / 04' : 'FASA 01 / 04',
-      subtitle: isEn ? 'Audit Security of Pak Ali’s 3 Accounts' : 'Audit Keselamatan 3 Akaun Pak Ali'
-    },
-    3: {
-      title: isEn ? 'PHASE 02 / 04' : 'FASA 02 / 04',
-      subtitle: isEn ? 'Iron Fortress Passphrase Builder' : 'Makmal Kata Laluan Kubu Besi'
-    },
-    4: {
-      title: isEn ? 'PHASE 03 / 04' : 'FASA 03 / 04',
-      subtitle: isEn ? 'Domino Breach Chain Simulation' : 'Simulasi Pencerobohan Berjangkit (Domino)'
-    },
-    5: {
-      title: isEn ? 'PHASE 04 / 04' : 'FASA 04 / 04',
-      subtitle: isEn ? 'Smartphone 2FA Simulator & Checklist' : 'Simulator 2FA Telefon & Senarai Perisai'
-    }
-  };
+  if (phase === 'results') {
+    return (
+      <StationResults
+        stationNumber="02"
+        rating={vaultRating}
+        ratingTitle={
+          vaultRating === 'Gold'
+            ? isEn
+              ? 'Gold Vault Fortress (Kebal)'
+              : 'Kubu Emas Peti Besi (Kebal)'
+            : vaultRating === 'Silver'
+            ? isEn
+              ? 'Silver Shield (Kukuh)'
+              : 'Perisai Perak (Kukuh)'
+            : isEn
+            ? 'Bronze Vault (Perlu Diperkukuh)'
+            : 'Peti Besi Gangsa (Perlu Diperkukuh)'
+        }
+        ratingDescription={
+          isEn
+            ? 'Great job completing all vault defense phases and securing your accounts.'
+            : 'Tahniah kerana berjaya mempertahankan akaun anda merentasi semua fasa perlindungan.'
+        }
+        badges={badges}
+        homeTips={[
+          {
+            title: isEn ? 'Use 4-Word Passphrases' : 'Guna Frasa Laluan 4 Perkataan',
+            description: isEn
+              ? 'Combine 4 random memorable words (e.g. Kopi-Pagi-Sarawak-88). Far easier to remember and nearly impossible for hackers to crack.'
+              : 'Gabungkan 4 perkataan rawak yang bermakna. Lebih mudah diingati dan mustahil dipecahkan oleh komputer penggodam.'
+          },
+          {
+            title: isEn ? 'Turn On 2FA Everywhere' : 'Hidupkan 2FA di Semua Akaun',
+            description: isEn
+              ? 'Enable 2-Step Verification on WhatsApp, Google, and online banking. It shields you even if someone knows your password.'
+              : 'Aktifkan pengesahan 2-langkah di WhatsApp, Google, dan perbankan supaya akaun kebal walaupun kata laluan bocor.'
+          },
+          {
+            title: isEn ? 'Never Share OTP Over Phone' : 'Jangan Kongsi OTP Melalui Telefon',
+            description: isEn
+              ? 'Real banks, government officers, and police NEVER ask for your OTP/TAC codes over phone calls.'
+              : 'Jangan sekali-kali membaca kod OTP/TAC kepada pemanggil telefon, tidak kira apa pun gelaran yang mereka gunakan.'
+          }
+        ]}
+        onReset={handleResetForNextGroup}
+      />
+    );
+  }
 
-  const progressPercent = stage === 2 ? 25 : stage === 3 ? 50 : stage === 4 ? 75 : 100;
+  /* =========================================================================
+     PHASE 1: CRACK RACE
+     ========================================================================= */
+  const renderPhase1 = () => (
+    <div className="space-y-6">
+      <InfoBanner
+        variant="blue"
+        title={isEn ? 'Mission: Test Password Survival Time' : 'Misi: Uji Ketahanan Masa Kata Laluan'}
+        description={
+          isEn
+            ? 'Type a practice password below, or click the quick example buttons to see how fast automated computers guess them!'
+            : 'Taip kata laluan latihan di bawah, atau tekan butang contoh segera untuk melihat kepantasan komputer penggodam meneka!'
+        }
+        icon={<Zap className="w-5 h-5" />}
+      />
 
-  const renderTopBar = (currentStageNum: number) => (
-    <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs space-y-3">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 text-xs sm:text-sm">
-        <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
-          <Link href="/" className="text-slate-600 hover:text-blue-600 font-bold transition-colors">
-            ← {t('nav.backToMenuFriendly')}
-          </Link>
-          <span className="text-slate-300">|</span>
-          <span className="font-extrabold text-blue-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-100 text-xs">
-            {stageTitles[currentStageNum].title}
-          </span>
-          <span className="font-extrabold text-slate-900 text-sm sm:text-base">
-            {stageTitles[currentStageNum].subtitle}
-          </span>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div className="lg:col-span-7 bg-white rounded-3xl border-2 border-slate-200 p-6 sm:p-8 space-y-6 shadow-sm">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label htmlFor="practice-password-input" className="text-base font-black text-slate-900 block">
+                {isEn ? 'Enter Practice Password:' : 'Masukkan Kata Laluan Latihan:'}
+              </label>
+              <span className="text-sm font-bold text-slate-500 font-mono">
+                {practicePassword.length} {isEn ? 'Characters' : 'Aksara'}
+              </span>
+            </div>
+
+            <div className="relative">
+              <input
+                id="practice-password-input"
+                type={showPassword ? 'text' : 'password'}
+                value={practicePassword}
+                onChange={e => setPracticePassword(e.target.value)}
+                placeholder={isEn ? 'e.g. kucing123 or Kopi-Pagi-Sarawak-88' : 'cth: kucing123 atau Kopi-Pagi-Sarawak-88'}
+                className="w-full min-h-[56px] px-4 py-3.5 pr-14 rounded-2xl border-2 border-slate-300 focus:border-blue-600 focus:outline-hidden text-lg sm:text-xl font-mono text-slate-900 tracking-wider shadow-inner"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                title={showPassword ? (isEn ? 'Hide password' : 'Sorok kata laluan') : (isEn ? 'Show password' : 'Papar kata laluan')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
+            </div>
+
+            <p className="text-sm font-bold text-amber-700">
+              * {isEn ? 'Do not enter your real password.' : 'Jangan masukkan kata laluan sebenar anda.'}
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <span className="text-sm font-black text-slate-700 block uppercase tracking-wide">
+              {isEn ? 'Try Instant Examples:' : 'Cuba Contoh Segera:'}
+            </span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => handleFillExample('weak')}
+                className="min-h-[52px] p-3 rounded-2xl border-2 border-rose-300 bg-rose-50 hover:bg-rose-100 text-rose-950 font-bold text-base flex items-center justify-between transition-all active:scale-95 cursor-pointer"
+              >
+                <span className="flex items-center gap-2">
+                  <XCircle className="w-5 h-5 text-rose-600" />
+                  <span>kucing123</span>
+                </span>
+                <span className="text-sm bg-rose-200 text-rose-900 px-2.5 py-0.5 rounded-full font-black">
+                  {isEn ? 'Weak' : 'Lemah'}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleFillExample('strong')}
+                className="min-h-[52px] p-3 rounded-2xl border-2 border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-950 font-bold text-base flex items-center justify-between transition-all active:scale-95 cursor-pointer"
+              >
+                <span className="flex items-center gap-2">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                  <span className="text-sm sm:text-base font-mono">Kopi-Pagi-Sarawak-88</span>
+                </span>
+                <span className="text-sm bg-emerald-200 text-emerald-900 px-2.5 py-0.5 rounded-full font-black">
+                  {isEn ? 'Strong' : 'Kubu'}
+                </span>
+              </button>
+            </div>
+          </div>
+
+          <div className="p-5 rounded-2xl border-2 border-slate-200 bg-slate-50 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm uppercase font-black text-slate-500 tracking-wider">
+                {isEn ? 'Simulated Crack Time' : 'Anggaran Masa Pecah Penggodam'}
+              </span>
+              <span
+                className={`text-sm font-black uppercase px-2.5 py-0.5 rounded-full border ${
+                  crackEstimate.strength === 'fortified'
+                    ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                    : crackEstimate.strength === 'strong'
+                    ? 'bg-blue-100 text-blue-800 border-blue-300'
+                    : crackEstimate.strength === 'moderate'
+                    ? 'bg-amber-100 text-amber-800 border-amber-300'
+                    : 'bg-rose-100 text-rose-800 border-rose-300'
+                }`}
+              >
+                {crackEstimate.strength === 'fortified' && (isEn ? 'Fortified' : 'Kubu Kebal')}
+                {crackEstimate.strength === 'strong' && (isEn ? 'Strong' : 'Kukuh')}
+                {crackEstimate.strength === 'moderate' && (isEn ? 'Moderate' : 'Sederhana')}
+                {crackEstimate.strength === 'weak' && (isEn ? 'Weak' : 'Lemah')}
+                {crackEstimate.strength === 'very-weak' && (isEn ? 'Critical Risk' : 'Sangat Lemah')}
+              </span>
+            </div>
+
+            <div className="flex items-baseline gap-2">
+              <strong
+                className={`text-2xl sm:text-3xl font-black font-mono tracking-tight ${
+                  crackEstimate.strength === 'fortified'
+                    ? 'text-emerald-700'
+                    : crackEstimate.strength === 'strong'
+                    ? 'text-blue-700'
+                    : crackEstimate.strength === 'moderate'
+                    ? 'text-amber-700'
+                    : 'text-rose-700'
+                }`}
+              >
+                {isEn ? crackEstimate.timeLabelEn : crackEstimate.timeLabelBm}
+              </strong>
+            </div>
+
+            <p className="text-base text-slate-700 font-medium leading-relaxed">
+              {isEn ? crackEstimate.explanationEn : crackEstimate.explanationBm}
+            </p>
+          </div>
+
+          <TakeawayCard
+            takeawayNumber={1}
+            title={isEn ? 'Golden Takeaway #1:' : 'Prinsip Emas #1:'}
+            text={
+              isEn
+                ? 'Longer Passphrase (4 words) > Complicated short password. Length defeats computers every time!'
+                : 'Frasa laluan panjang (4 perkataan rawak) jauh lebih mudah diingati dan jauh lebih kebal daripada kata laluan pendek yang rumit!'
+            }
+            variant="emerald"
+          />
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-3">
-          <button
-            type="button"
-            onClick={handleStart}
-            title={t('game.resetFromStart')}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-red-50 border border-slate-200 hover:border-red-200 text-slate-600 hover:text-red-700 rounded-xl cursor-pointer font-bold text-xs transition-colors min-h-[38px]"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span>{t('game.resetFromStart')}</span>
-          </button>
+        {/* Live Hacker Terminal Animation */}
+        <div className="lg:col-span-5 bg-slate-950 text-white rounded-3xl border-2 border-slate-800 p-6 space-y-5 shadow-xl">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-3 text-sm text-slate-400">
+            <span className="flex items-center gap-2 font-mono text-emerald-400 font-bold">
+              <Terminal className="w-4 h-4" />
+              <span>{isEn ? 'Hacker Bot Attack Simulator' : 'Simulator Serangan Bot Penggodam'}</span>
+            </span>
+            <span className={`w-2.5 h-2.5 rounded-full bg-emerald-500 ${shouldReduceMotion ? '' : 'animate-pulse'}`}></span>
+          </div>
 
-          <button
-            type="button"
-            onClick={() => setShowBadges(!showBadges)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl cursor-pointer font-bold text-xs text-amber-900 min-h-[38px]"
-          >
-            <Award className="w-3.5 h-3.5 text-amber-600" />
-            <span>{t('game.badges')} ({badges.filter(b => b.isUnlocked).length}/{badges.length})</span>
-          </button>
+          <div className="p-6 bg-slate-900 rounded-2xl border border-slate-800 flex flex-col items-center justify-center text-center space-y-3">
+            <motion.div
+              animate={
+                shouldReduceMotion
+                  ? {}
+                  : crackEstimate.strength === 'very-weak'
+                  ? { x: [-3, 3, -3, 3, 0], transition: { repeat: Infinity, duration: 0.25 } }
+                  : crackEstimate.strength === 'weak'
+                  ? { x: [-2, 2, -2, 2, 0], transition: { repeat: Infinity, duration: 0.4 } }
+                  : crackEstimate.strength === 'moderate'
+                  ? { scale: [1, 1.05, 1], transition: { duration: 1.5, repeat: Infinity } }
+                  : {}
+              }
+              className={`w-20 h-20 rounded-3xl flex items-center justify-center text-white shadow-lg ${
+                crackEstimate.strength === 'fortified'
+                  ? 'bg-emerald-600 shadow-emerald-900/50'
+                  : crackEstimate.strength === 'strong'
+                  ? 'bg-blue-600 shadow-blue-900/50'
+                  : crackEstimate.strength === 'moderate'
+                  ? 'bg-amber-600 shadow-amber-900/50'
+                  : 'bg-rose-600 shadow-rose-900/50'
+              }`}
+            >
+              {crackEstimate.strength === 'fortified' ? (
+                <ShieldCheck className="w-10 h-10" />
+              ) : crackEstimate.strength === 'strong' ? (
+                <Lock className="w-10 h-10" />
+              ) : crackEstimate.strength === 'moderate' ? (
+                <Lock className="w-10 h-10" />
+              ) : (
+                <Unlock className="w-10 h-10" />
+              )}
+            </motion.div>
 
-          <div className="font-extrabold text-slate-900 bg-emerald-50 px-3.5 py-1.5 border border-emerald-200 rounded-xl min-h-[38px] flex items-center text-xs sm:text-sm">
-            ⭐ {t('game.score')} <span className="ml-1 text-emerald-800">{totalScore} / 50</span>
+            <div>
+              <strong className="text-lg font-bold text-white block">
+                {crackEstimate.strength === 'fortified' && (isEn ? 'VAULT SECURED' : 'PETI BESI KEBAL')}
+                {crackEstimate.strength === 'strong' && (isEn ? 'RESISTING ATTACK' : 'BERJAYA BERTAHAN')}
+                {crackEstimate.strength === 'moderate' && (isEn ? 'ATTACK IN PROGRESS' : 'SEDANG DISERANG')}
+                {crackEstimate.strength === 'weak' && (isEn ? 'HIGH CRACK CHANCE' : 'HAMPIR TERPECAH')}
+                {crackEstimate.strength === 'very-weak' && (isEn ? 'COMPROMISED INSTANTLY' : 'TERPECAH SERTA-MERTA')}
+              </strong>
+              <span className="text-sm text-slate-400 font-mono">
+                {isEn ? crackEstimate.attemptsPerSecEn : crackEstimate.attemptsPerSecBm}
+              </span>
+            </div>
+          </div>
+
+          <div className="space-y-1.5 font-mono text-sm">
+            <span className="text-slate-400 uppercase tracking-wider block font-bold text-xs">
+              {isEn ? 'Live Brute-Force Dictionary Stream:' : 'Aliran Percubaan Bot Penggodam:'}
+            </span>
+            <div className="bg-black/60 rounded-xl p-3 border border-slate-800 space-y-1 text-slate-400">
+              {hackerGuesses.map((guess, idx) => (
+                <div key={idx} className="flex items-center justify-between font-mono">
+                  <span className="text-slate-500">TRY #{idx + 1042}</span>
+                  <span className="text-emerald-400 font-bold">&gt;&gt; {guess}</span>
+                  <span className="text-rose-400 font-bold">{isEn ? 'FAIL' : 'GAGAL'}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Progress track */}
-      <div className="flex items-center gap-3 text-xs text-slate-500 font-medium">
-        <span>{t('game.missionProgress')}</span>
-        <div className="flex-1 h-2.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200/50">
-          <div
-            className="h-full bg-blue-600 rounded-full transition-all duration-300"
-            style={{ width: `${progressPercent}%` }}
-          />
-        </div>
-        <span className="font-bold text-slate-800">{progressPercent}%</span>
+      <div className="pt-4 flex justify-end">
+        <PrimaryButton
+          onClick={() => {
+            playSuccessChime();
+            setPhase('phase2');
+          }}
+          className="w-full sm:w-auto"
+        >
+          {isEn ? 'Proceed to Phase 2: Domino Breach →' : 'Seterusnya: Fasa 2 (Serangan Berjangkit) →'}
+        </PrimaryButton>
       </div>
     </div>
   );
 
   /* =========================================================================
-     STAGE 2: INSPECT THE ACCOUNTS
+     PHASE 2: DOMINO BREACH
      ========================================================================= */
-  if (stage === 2) {
-    const activeAcc = initialAccounts.find(a => a.id === activeAccountId) || initialAccounts[0];
-    const allAudited = inspectedAccountIds.length === initialAccounts.length;
+  const renderPhase2 = () => (
+    <div className="space-y-6">
+      <InfoBanner
+        variant="rose"
+        title={isEn ? 'Simulated Leak Event: Local Food Forum Database Hacked!' : 'Peristiwa Kebocoran: Pangkalan Data Forum Makanan Tempatan Digodam!'}
+        badgeText={isEn ? 'Critical Threat' : 'Amaran Bahaya'}
+        description={
+          isEn
+            ? 'All 4 accounts below currently use the same shared password ("KucingComel123!"). Trigger the attack to watch the domino effect, then assign unique passphrases to stop it!'
+            : 'Keempat-empat akaun di bawah menggunakan kata laluan yang sama ("KucingComel123!"). Cetuskan serangan untuk melihat kesan domino, kemudian berikan kata laluan unik untuk menghentikannya!'
+        }
+      />
 
-    return (
-      <div className="w-full space-y-5">
-        {renderTopBar(2)}
-
-        {showBadges && <BadgesDrawer badges={badges} />}
-
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-          {/* LEFT COLUMN: 3 Accounts to Click & Selected Account Report */}
-          <div className="lg:col-span-7 rounded-3xl border border-slate-200 bg-white p-5 sm:p-7 shadow-xs flex flex-col justify-between space-y-5">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100 text-xs sm:text-sm">
-                <span className="font-extrabold text-slate-900">
-                  {isEn ? '1. Tap & Audit Each of Pak Ali’s 3 Accounts' : '1. Tekan & Audit Ketiga-tiga Akaun Pak Ali'}
-                </span>
-                <span className="font-extrabold bg-blue-50 text-blue-700 border border-blue-100 px-3 py-1 rounded-full text-xs">
-                  {inspectedAccountIds.length} / 3 {isEn ? 'Audited' : 'Diaudit'}
-                </span>
-              </div>
-
-              {/* 3 Clickable Account Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {initialAccounts.map((acc) => {
-                  const isActive = activeAccountId === acc.id;
-                  const isChecked = inspectedAccountIds.includes(acc.id);
-
-                  return (
-                    <button
-                      key={acc.id}
-                      type="button"
-                      onClick={() => handleInspectAccount(acc.id)}
-                      className={`p-4 rounded-2xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between min-h-[120px] shadow-2xs ${
-                        isActive
-                          ? 'border-blue-600 bg-blue-50/70 shadow-xs ring-2 ring-blue-600/30'
-                          : 'border-slate-200 bg-white hover:border-blue-300 hover:bg-slate-50'
-                      }`}
-                    >
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          {acc.serviceType === 'email' && <Mail className="w-5 h-5 text-blue-600" />}
-                          {acc.serviceType === 'social' && <Share2 className="w-5 h-5 text-indigo-600" />}
-                          {acc.serviceType === 'shopping' && <ShoppingCart className="w-5 h-5 text-amber-600" />}
-
-                          <span className={`text-xs font-extrabold px-2 py-0.5 rounded-full ${
-                            isChecked ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'
-                          }`}>
-                            {isChecked ? '✓ Diaudit' : 'Tekan Sini'}
-                          </span>
-                        </div>
-
-                        <div>
-                          <span className="font-bold text-sm sm:text-base text-slate-900 block truncate">{acc.name}</span>
-                          <span className="text-xs text-slate-500 block truncate">{acc.identifier}</span>
-                        </div>
-                      </div>
-
-                      <div className="mt-2 text-xs bg-white p-2 rounded-xl border border-slate-200">
-                        <span className="text-slate-500 block text-[11px] font-medium">{isEn ? 'Password:' : 'Kata Laluan:'}</span>
-                        <span className="font-bold text-red-700">&ldquo;{acc.currentPassword}&rdquo;</span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Detailed Inspection Dossier for the active account */}
-              <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
-                <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-200 text-xs sm:text-sm">
-                  <span className="font-extrabold text-slate-900">{isEn ? 'Audit Findings:' : 'Hasil Audit:'} {activeAcc.name}</span>
-                  <span className="text-red-700 font-bold bg-red-50 border border-red-200 px-2.5 py-0.5 rounded-full text-xs">
-                    {isEn ? 'DANGER: REUSED PASSWORD' : 'BAHAYA: KATA LALUAN DIULANG'}
-                  </span>
-                </div>
-                <p className="text-sm text-slate-700 leading-relaxed">
-                  {activeAcc.statusNotes}
-                </p>
-              </div>
-            </div>
-
-            <div className="text-xs sm:text-sm text-slate-500">
-              {isEn
-                ? 'Tip: Make sure to tap and review all 3 accounts above before continuing.'
-                : 'Pesanan: Sila pastikan anda menekan ketiga-tiga akaun di atas sebelum melangkah ke Fasa 2.'}
-            </div>
-          </div>
-
-          {/* RIGHT COLUMN: Threat Analysis & Mission Action */}
-          <div className="lg:col-span-5 rounded-3xl border border-slate-200 bg-white p-5 sm:p-7 shadow-xs flex flex-col justify-between space-y-5">
-            <div className="space-y-4">
-              <div className="pb-3 border-b border-slate-100 text-xs sm:text-sm">
-                <span className="font-extrabold text-slate-900">
-                  {isEn ? '2. Security Risk Analysis' : '2. Analisis Risiko Keselamatan'}
-                </span>
-              </div>
-
-              {/* Warning Alert Box */}
-              <div className="p-4 bg-red-50 border border-red-200 rounded-2xl space-y-2 text-red-950">
-                <div className="flex items-center gap-2 font-bold text-sm">
-                  <AlertTriangle className="w-5 h-5 text-red-600" />
-                  <span>{isEn ? 'KEY AUDIT DISCOVERY:' : 'PENEMUAN UTAMA AUDIT:'}</span>
-                </div>
-                <p className="text-sm leading-relaxed">
-                  {isEn ? (
-                    <>
-                      All 3 of Pak Ali&apos;s digital accounts share the exact same password: <code className="bg-white px-2 py-0.5 rounded border border-red-200 font-bold text-red-700">Kampung123!</code>.
-                    </>
-                  ) : (
-                    <>
-                      Ketiga-tiga akaun digital Pak Ali menggunakan kata laluan yang sama iaitu <code className="bg-white px-2 py-0.5 rounded border border-red-200 font-bold text-red-700">Kampung123!</code>.
-                    </>
-                  )}
-                </p>
-                <p className="text-xs sm:text-sm leading-relaxed text-red-900">
-                  {isEn
-                    ? 'If hackers breach even one shopping website, they hold the master key to all of Pak Ali’s email and banking accounts simultaneously!'
-                    : 'Jika penjenayah siber berjaya memecahkan satu laman membeli-belah kecil, mereka secara automatik dapat menceroboh semua emel dan akaun perbankan Pak Ali!'}
-                </p>
-              </div>
-
-              {/* Checklist */}
-              <div className="space-y-2 text-xs sm:text-sm">
-                <span className="text-slate-500 font-bold uppercase tracking-wider block">
-                  {isEn ? 'Audit Progress:' : 'Status Semakan:'}
-                </span>
-                <div className="space-y-1.5 text-slate-900">
-                  {initialAccounts.map(acc => {
-                    const done = inspectedAccountIds.includes(acc.id);
-                    return (
-                      <div key={acc.id} className="flex items-center gap-2.5 p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
-                        <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
-                          done ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-400'
-                        }`}>
-                          {done ? '✓' : ''}
-                        </span>
-                        <span className="font-bold">{acc.name}</span>
-                        <span className="ml-auto text-xs text-slate-500 font-medium">
-                          {done ? (isEn ? 'Audited' : 'Selesai') : (isEn ? 'Pending' : 'Belum diaudit')}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-
-            {/* Bottom Action Button */}
-            <div className="pt-4 border-t border-slate-100 space-y-2">
-              <button
-                type="button"
-                disabled={!allAudited}
-                onClick={handleCompleteAudit}
-                className={`w-full py-4 px-6 min-h-[52px] rounded-2xl font-bold text-base transition-all flex items-center justify-center gap-2 ${
-                  allAudited
-                    ? 'bg-blue-600 text-white hover:bg-blue-700 cursor-pointer shadow-md hover:shadow-lg'
-                    : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                }`}
-              >
-                <span>{isEn ? 'Audit Done: Go to Passphrase Lab (+10 Pts) →' : 'Selesai Audit: Ke Makmal Kata Laluan (+10 Mata) →'}</span>
-              </button>
-            </div>
-          </div>
+      <div className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-2xl bg-white border-2 border-slate-200">
+        <div className="flex items-center gap-2">
+          <span className="text-base font-black text-slate-900">
+            {isEn ? 'Account Status:' : 'Status Akaun:'}
+          </span>
+          <span className="text-sm font-bold text-slate-600">
+            {accounts.filter(a => a.isSecured).length} / 4 {isEn ? 'Secured with Unique Passphrase' : 'Telah Diasingkan Kata Laluan'}
+          </span>
         </div>
-      </div>
-    );
-  }
 
-  /* =========================================================================
-     STAGE 3: PASSWORD LAB & TACTILE PASSPHRASE BUILDER
-     ========================================================================= */
-  if (stage === 3) {
-    return (
-      <div className="w-full space-y-5">
-        {renderTopBar(3)}
-
-        {showBadges && <BadgesDrawer badges={badges} />}
-
-        <PassphraseBuilderLab
-          onPassphraseCompleted={handlePassphraseBuilt}
-          onReset={() => {
-            setCustomPassphrase(null);
-            setLabSubmitted(false);
-            setStageScores(prev => ({ ...prev, 3: 0 }));
-          }}
-        />
-
-        {labSubmitted && (
-          <motion.div
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="p-5 sm:p-6 bg-emerald-50 border border-emerald-200 rounded-3xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm"
-          >
-            <div className="space-y-1">
-              <span className="text-xs uppercase font-extrabold text-emerald-800 block">
-                {isEn ? '✓ Iron Fortress Passphrase Verified (+10 Points)' : '✓ Kata Laluan Kubu Besi Berjaya Disahkan (+10 Mata)'}
-              </span>
-              <p className="text-sm sm:text-base text-emerald-950 font-medium">
-                {isEn ? 'Your Passphrase:' : 'Frasa anda:'} <strong className="bg-white px-2 py-0.5 rounded-lg border border-emerald-200 text-emerald-900">&ldquo;{customPassphrase}&rdquo;</strong> {isEn ? 'is ready to protect Pak Ali’s digital accounts.' : 'kini bersedia untuk melindungi akaun Pak Ali.'}
-              </p>
-            </div>
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          {!hasRunFirstBreach ? (
             <button
               type="button"
-              onClick={handleProceedToDomino}
-              className="px-8 py-4 min-h-[52px] rounded-2xl font-bold text-base text-white bg-blue-600 hover:bg-blue-700 cursor-pointer flex items-center justify-center gap-2 shadow-md hover:shadow-lg shrink-0 transition-all"
+              disabled={isDominoAttacking}
+              onClick={triggerDominoBreach}
+              className="w-full sm:w-auto min-h-[52px] px-6 py-3 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-black text-base flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 cursor-pointer disabled:opacity-50"
             >
-              <span>{isEn ? 'Test Domino Breach (Phase 03) →' : 'Uji Kesan Domino (Fasa 03) →'}</span>
+              <Zap className="w-5 h-5" />
+              <span>{isEn ? '⚡ Trigger Hacker Attack' : '⚡ Cetuskan Serangan Godaman'}</span>
             </button>
-          </motion.div>
-        )}
-      </div>
-    );
-  }
-
-  /* =========================================================================
-     STAGE 4: DOMINO BREACH SIMULATION
-     ========================================================================= */
-  if (stage === 4) {
-    return (
-      <div className="w-full space-y-5">
-        {renderTopBar(4)}
-
-        {showBadges && <BadgesDrawer badges={badges} />}
-
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-          {/* LEFT COLUMN: 3 Network Nodes Simulation */}
-          <div className="lg:col-span-7 rounded-3xl border border-slate-200 bg-white p-5 sm:p-7 shadow-xs flex flex-col justify-between space-y-5">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100 text-xs sm:text-sm">
-                <span className="font-extrabold text-slate-900 flex items-center gap-2">
-                  <Layers className="w-4 h-4 text-blue-600" />
-                  <span>{isEn ? '1. 3-Account Network Domino Simulation' : '1. Simulasi Kesan Domino 3 Akaun'}</span>
-                </span>
-                <span className={`px-3 py-1 rounded-full font-bold text-xs ${
-                  dominoStep === 'breached-contained'
-                    ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                    : dominoStep === 'breached-all'
-                    ? 'bg-red-50 text-red-800 border border-red-200'
-                    : 'bg-slate-100 text-slate-700'
-                }`}>
-                  {
-                    dominoStep === 'breached-contained'
-                      ? (isEn ? 'BREACH CONTAINED ✓' : 'KEBOCORAN DISEKAT ✓')
-                      : dominoStep === 'breached-all'
-                      ? (isEn ? 'ALL ACCOUNTS HIJACKED! ⚠' : 'SEMUA AKAUN DICEROBOH! ⚠')
-                      : dominoStep === 'upgraded'
-                      ? (isEn ? 'UNIQUE PASSWORDS ASSIGNED' : 'KATA LALUAN UNIK DITETAPKAN')
-                      : (isEn ? 'READY FOR TEST' : 'SEDIA UNTUK UJIAN')
-                  }
-                </span>
-              </div>
-
-              {/* 3 Interactive Visual Nodes */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {/* Node 1: PasarOnline */}
-                <div className={`p-4 rounded-2xl border-2 transition-all flex flex-col justify-between min-h-[150px] ${
-                  dominoStep === 'breached-all' || dominoStep === 'breached-contained'
-                    ? 'border-red-300 bg-red-50/70'
-                    : 'border-slate-200 bg-slate-50'
-                }`}>
-                  <div>
-                    <div className="flex items-center justify-between text-xs sm:text-sm font-bold mb-2">
-                      <span>1. PasarOnline</span>
-                      <ShoppingCart className="w-4 h-4 text-red-600" />
-                    </div>
-                    <div className="text-xs text-slate-600 space-y-1">
-                      <span>{isEn ? 'Password:' : 'Kata Laluan:'}</span>
-                      <code className="block bg-white p-1.5 rounded-lg border border-slate-200 font-bold text-slate-900 truncate">
-                        {dominoStep === 'upgraded' || dominoStep === 'breached-contained'
-                          ? upgradedPassphrases['acc-shopping']
-                          : 'Kampung123!'}
-                      </code>
-                    </div>
-                  </div>
-                  <div className="mt-3 pt-2 border-t border-slate-200 text-xs font-bold text-red-700">
-                    {dominoStep === 'breached-all' || dominoStep === 'breached-contained'
-                      ? (isEn ? 'DATABASE BREACHED!' : 'PANGKALAN DATA BOCOR!')
-                      : (isEn ? 'Initial Breach Point' : 'Punca Pencerobohan')}
-                  </div>
-                </div>
-
-                {/* Node 2: Social Media */}
-                <div className={`p-4 rounded-2xl border-2 transition-all flex flex-col justify-between min-h-[150px] ${
-                  dominoStep === 'breached-all'
-                    ? 'border-red-300 bg-red-50/70'
-                    : dominoStep === 'breached-contained'
-                    ? 'border-emerald-300 bg-emerald-50/70'
-                    : 'border-slate-200 bg-slate-50'
-                }`}>
-                  <div>
-                    <div className="flex items-center justify-between text-xs sm:text-sm font-bold mb-2">
-                      <span>2. {isEn ? 'Social Media' : 'Media Sosial'}</span>
-                      <Share2 className="w-4 h-4 text-slate-700" />
-                    </div>
-                    <div className="text-xs text-slate-600 space-y-1">
-                      <span>{isEn ? 'Password:' : 'Kata Laluan:'}</span>
-                      <code className="block bg-white p-1.5 rounded-lg border border-slate-200 font-bold text-slate-900 truncate">
-                        {dominoStep === 'upgraded' || dominoStep === 'breached-contained'
-                          ? upgradedPassphrases['acc-social']
-                          : 'Kampung123!'}
-                      </code>
-                    </div>
-                  </div>
-                  <div className="mt-3 pt-2 border-t border-slate-200 text-xs font-bold">
-                    {dominoStep === 'breached-all' && <span className="text-red-700">{isEn ? 'HACKER ENTERED!' : 'PENGGODAM MASUK!'}</span>}
-                    {dominoStep === 'breached-contained' && <span className="text-emerald-700">{isEn ? 'SAFE! UNIQUE PASSWORD ✓' : 'SELAMAT! KATA LALUAN BERBEZA ✓'}</span>}
-                    {dominoStep === 'initial' && <span className="text-slate-500">{isEn ? 'Reusing Password' : 'Guna Kata Laluan Sama'}</span>}
-                    {dominoStep === 'upgraded' && <span className="text-slate-800">{isEn ? 'Upgraded Password' : 'Kata Laluan Baharu'}</span>}
-                  </div>
-                </div>
-
-                {/* Node 3: Email */}
-                <div className={`p-4 rounded-2xl border-2 transition-all flex flex-col justify-between min-h-[150px] ${
-                  dominoStep === 'breached-all'
-                    ? 'border-red-300 bg-red-50/70'
-                    : dominoStep === 'breached-contained'
-                    ? 'border-emerald-300 bg-emerald-50/70'
-                    : 'border-slate-200 bg-slate-50'
-                }`}>
-                  <div>
-                    <div className="flex items-center justify-between text-xs sm:text-sm font-bold mb-2">
-                      <span>3. {isEn ? 'Email & Banking' : 'Emel & Bank'}</span>
-                      <Mail className="w-4 h-4 text-slate-700" />
-                    </div>
-                    <div className="text-xs text-slate-600 space-y-1">
-                      <span>{isEn ? 'Password:' : 'Kata Laluan:'}</span>
-                      <code className="block bg-white p-1.5 rounded-lg border border-slate-200 font-bold text-slate-900 truncate">
-                        {dominoStep === 'upgraded' || dominoStep === 'breached-contained'
-                          ? (customPassphrase || upgradedPassphrases['acc-email'])
-                          : 'Kampung123!'}
-                      </code>
-                    </div>
-                  </div>
-                  <div className="mt-3 pt-2 border-t border-slate-200 text-xs font-bold">
-                    {dominoStep === 'breached-all' && <span className="text-red-700">{isEn ? 'EMAIL & BANK COMPROMISED!' : 'EMEL & BANK DITAWAN!'}</span>}
-                    {dominoStep === 'breached-contained' && <span className="text-emerald-700">{isEn ? 'SAFE! UNIQUE PASSWORD ✓' : 'SELAMAT! KATA LALUAN BERBEZA ✓'}</span>}
-                    {dominoStep === 'initial' && <span className="text-slate-500">{isEn ? 'Reusing Password' : 'Guna Kata Laluan Sama'}</span>}
-                    {dominoStep === 'upgraded' && <span className="text-slate-800">{isEn ? 'Upgraded Password' : 'Kata Laluan Baharu'}</span>}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl text-xs sm:text-sm text-slate-600 leading-relaxed">
-              💡 <strong>{isEn ? 'The Domino Effect:' : 'Kesan Domino:'}</strong>{' '}
-              {isEn
-                ? 'When someone reuses the same password everywhere, a minor website leak exposes confidential banking and email instantly.'
-                : 'Apabila seseorang mengulang kata laluan yang sama, kebocoran satu laman membeli-belah kecil membolehkan penipu siber merampas emel dan akaun bank mangsa.'}
-            </div>
-          </div>
-
-          {/* RIGHT COLUMN: Crisis Control Actions */}
-          <div className="lg:col-span-5 rounded-3xl border border-slate-200 bg-white p-5 sm:p-7 shadow-xs flex flex-col justify-between space-y-5">
-            <div className="space-y-4">
-              <div className="pb-3 border-b border-slate-100 text-xs sm:text-sm">
-                <span className="font-extrabold text-slate-900">
-                  {isEn ? '2. Incident Control & Action' : '2. Kawalan & Tindakan Pasukan'}
-                </span>
-              </div>
-
-              <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2 text-sm text-slate-700 leading-relaxed">
-                <span className="font-extrabold text-slate-900 block">
-                  {isEn ? 'Team Action Instructions:' : 'Arahan Tindakan Pasukan:'}
-                </span>
-                {dominoStep === 'initial' && (
-                  <p className="text-red-700 font-semibold">
-                    {isEn
-                      ? 'Press button 1 below to simulate what happens when hackers breach PasarOnline’s database.'
-                      : 'Tekan butang 1 di bawah untuk melihat apa yang berlaku apabila penggodam mencuri data PasarOnline.'}
-                  </p>
-                )}
-                {dominoStep === 'breached-all' && (
-                  <p className="text-red-700 font-semibold">
-                    {isEn
-                      ? 'Danger! Hackers entered every account. Press button 2 to assign unique passwords.'
-                      : 'Bahaya! Penggodam berjaya masuk ke semua akaun. Tekan butang 2 untuk berikan kata laluan unik bagi setiap akaun.'}
-                  </p>
-                )}
-                {dominoStep === 'upgraded' && (
-                  <p className="text-emerald-800 font-semibold">
-                    {isEn
-                      ? 'Unique passwords assigned! Press button 3 to test if the breach is stopped.'
-                      : 'Kata laluan unik telah ditetapkan! Tekan butang 3 untuk menguji sama ada pencerobohan berjaya disekat.'}
-                  </p>
-                )}
-                {dominoStep === 'breached-contained' && (
-                  <p className="text-emerald-800 font-semibold">
-                    {isEn
-                      ? 'Congratulations! The domino effect was neutralized. Pak Ali’s email and banking are safe.'
-                      : 'Tahniah! Kesan domino berjaya disekat. Emel dan perbankan Pak Ali kini selamat kerana menggunakan kata laluan berbeza.'}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Bottom Actions */}
-            <div className="pt-4 border-t border-slate-100 space-y-2">
-              {dominoStep === 'initial' && (
-                <button
-                  type="button"
-                  onClick={handleTestDominoBreach}
-                  className="w-full py-4 px-6 min-h-[52px] rounded-2xl font-bold text-sm sm:text-base text-white bg-red-600 hover:bg-red-700 transition-all cursor-pointer shadow-md hover:shadow-lg text-center"
-                >
-                  {isEn ? '1. Simulate PasarOnline Breach →' : '1. Uji Kebocoran PasarOnline →'}
-                </button>
-              )}
-
-              {dominoStep === 'breached-all' && (
-                <button
-                  type="button"
-                  onClick={handleApplyUniquePassphrases}
-                  className="w-full py-4 px-6 min-h-[52px] rounded-2xl font-bold text-sm sm:text-base text-white bg-blue-600 hover:bg-blue-700 transition-all cursor-pointer shadow-md hover:shadow-lg text-center"
-                >
-                  {isEn ? '2. Assign Unique Passwords to Each Account →' : '2. Berikan Kata Laluan Unik Setiap Akaun →'}
-                </button>
-              )}
-
-              {dominoStep === 'upgraded' && (
-                <button
-                  type="button"
-                  onClick={handleRetestBreach}
-                  className="w-full py-4 px-6 min-h-[52px] rounded-2xl font-bold text-sm sm:text-base text-white bg-emerald-600 hover:bg-emerald-700 transition-all cursor-pointer shadow-md hover:shadow-lg text-center"
-                >
-                  {isEn ? '3. Retest Breach (Verify Blockade) →' : '3. Uji Semula (Sahkan Sekatan Berjaya) →'}
-                </button>
-              )}
-
-              {dominoStep === 'breached-contained' && (
-                <button
-                  type="button"
-                  onClick={handleProceedToChecklist}
-                  className="w-full py-4 px-6 min-h-[52px] rounded-2xl font-bold text-base text-white bg-blue-600 hover:bg-blue-700 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md hover:shadow-lg"
-                >
-                  <span>{isEn ? 'Go to Phase 04: 2FA Simulator (+15 Pts) →' : 'Ke Fasa 04: Simulator 2FA (+15 Mata) →'}</span>
-                  <ArrowRight className="w-5 h-5" />
-                </button>
-              )}
-            </div>
-          </div>
+          ) : allAccountsSecured ? (
+            <button
+              type="button"
+              disabled={isDominoAttacking}
+              onClick={triggerRetestAttack}
+              className="w-full sm:w-auto min-h-[52px] px-6 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-base flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 cursor-pointer"
+            >
+              <ShieldCheck className="w-5 h-5" />
+              <span>{isEn ? '🛡️ Re-Test Attack (Verify Defense)' : '🛡️ Uji Serangan Semula (Sahkan Kebal)'}</span>
+            </button>
+          ) : (
+            <span className="text-base font-bold text-amber-700 bg-amber-50 px-4 py-2 rounded-xl border border-amber-300">
+              {isEn ? '👉 Click "Assign Unique" on all accounts below' : '👉 Klik butang "Jana Unik" pada semua akaun di bawah'}
+            </span>
+          )}
         </div>
       </div>
-    );
-  }
 
-  /* =========================================================================
-     STAGE 5: 2FA SIMULATOR & CHECKLIST
-     ========================================================================= */
-  if (stage === 5) {
-    const defenseScore = Math.min(100, (phone2FASimulated ? 40 : 20) + checkedMeasures.length * 15);
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {accounts.map((account, index) => {
+          const isFalling = isDominoAttacking && dominoBreachedCount === index + 1;
 
-    return (
-      <div className="w-full space-y-5">
-        {renderTopBar(5)}
-
-        {showBadges && <BadgesDrawer badges={badges} />}
-
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-          <div className="lg:col-span-6 flex flex-col space-y-4">
-            <TwoFactorPhoneSimulator onSuccess={handle2FASuccess} />
-          </div>
-
-          <div className="lg:col-span-6 rounded-3xl border border-slate-200 bg-white p-5 sm:p-7 shadow-xs flex flex-col justify-between space-y-5">
-            <div className="space-y-4">
-              <div className="pb-3 border-b border-slate-100 text-xs sm:text-sm">
-                <span className="font-extrabold text-slate-900">
-                  {isEn ? '2. Account Security Checklist' : '2. Senarai Semak Perlindungan Akaun'}
-                </span>
-              </div>
-
-              {/* Defense Level Meter */}
-              <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2 text-xs sm:text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-slate-700">
-                    {isEn ? 'Pak Ali’s Account Shield Rating:' : 'Tahap Kekebalan Akaun Pak Ali:'}
-                  </span>
-                  <span className="font-extrabold text-blue-700 bg-blue-50 px-3 py-0.5 rounded-full border border-blue-200">
-                    {defenseScore}% {defenseScore >= 90 ? (isEn ? '(FORTIFIED)' : '(KEBAL & KUKUH)') : (isEn ? '(STRENGTHENING)' : '(SEDANG DIKUKUHKAN)')}
-                  </span>
-                </div>
-                <div className="h-3 w-full bg-slate-200 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-blue-500 to-emerald-500 rounded-full transition-all duration-300"
-                    style={{ width: `${defenseScore}%` }}
-                  />
-                </div>
-              </div>
-
-              {/* Checklist buttons */}
-              <div className="space-y-2.5">
-                {securityChecklist.map((item) => {
-                  const isChecked = checkedMeasures.includes(item.id);
-
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => handleToggleMeasure(item.id)}
-                      className={`w-full p-4 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-start gap-3.5 min-h-[60px] shadow-2xs ${
-                        isChecked
-                          ? 'bg-emerald-50/70 border-emerald-300 text-emerald-950'
-                          : 'bg-white border-slate-200 hover:border-blue-300 text-slate-800'
+          return (
+            <motion.div
+              key={account.id}
+              animate={
+                shouldReduceMotion
+                  ? {}
+                  : isFalling
+                  ? { y: [0, -10, 8, 0], rotate: [0, -3, 3, 0] }
+                  : {}
+              }
+              transition={{ duration: 0.4 }}
+              className={`rounded-3xl border-2 p-5 flex flex-col justify-between transition-all shadow-sm ${
+                account.isSecured
+                  ? 'bg-emerald-50/60 border-emerald-400'
+                  : account.isBreached
+                  ? 'bg-rose-50/70 border-rose-400'
+                  : 'bg-white border-slate-200'
+              }`}
+            >
+              <div className="space-y-3">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-200/60">
+                  <div className="flex items-center gap-2.5">
+                    <div
+                      className={`w-10 h-10 rounded-2xl flex items-center justify-center text-white font-bold shadow-xs ${
+                        account.serviceType === 'email'
+                          ? 'bg-blue-600'
+                          : account.serviceType === 'bank'
+                          ? 'bg-emerald-600'
+                          : account.serviceType === 'social'
+                          ? 'bg-purple-600'
+                          : 'bg-amber-600'
                       }`}
                     >
-                      <div className="shrink-0 mt-0.5">
-                        {isChecked ? (
-                          <CheckSquare className="w-5 h-5 text-emerald-600" />
-                        ) : (
-                          <Square className="w-5 h-5 text-slate-400" />
-                        )}
-                      </div>
-                      <div>
-                        <span className="font-bold text-sm sm:text-base block">{item.title}</span>
-                        <span className="text-xs sm:text-sm text-slate-600 leading-relaxed block mt-0.5">{item.shortDescription}</span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+                      {account.serviceType === 'email' && <Mail className="w-5 h-5" />}
+                      {account.serviceType === 'bank' && <Building2 className="w-5 h-5" />}
+                      {account.serviceType === 'social' && <Globe className="w-5 h-5" />}
+                      {account.serviceType === 'ewallet' && <Wallet className="w-5 h-5" />}
+                    </div>
+                    <div>
+                      <span className="text-sm font-black uppercase text-slate-500 block">
+                        {isEn ? `Account #${index + 1}` : `Akaun #${index + 1}`}
+                      </span>
+                      <strong className="text-base font-bold text-slate-900 block leading-tight">
+                        {isEn ? account.nameEn : account.nameBm}
+                      </strong>
+                    </div>
+                  </div>
+                </div>
 
-            {/* Complete Workshop CTA */}
-            <div className="pt-4 border-t border-slate-100 space-y-2">
-              <button
-                type="button"
-                disabled={!phone2FASimulated}
-                onClick={handleCompleteWorkshop}
-                className={`w-full py-4 px-6 min-h-[52px] rounded-2xl font-bold text-base transition-all flex items-center justify-center gap-2 ${
-                  phone2FASimulated
-                    ? 'bg-emerald-600 text-white hover:bg-emerald-700 cursor-pointer shadow-md hover:shadow-lg'
-                    : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                }`}
-              >
-                <span>{isEn ? 'Complete Workshop & View Report (+15 Points) →' : 'Lengkapkan Bengkel & Lihat Keputusan (+15 Mata) →'}</span>
-                <ArrowRight className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-        </div>
+                <div className="text-sm font-mono text-slate-500 truncate">
+                  {account.identifier}
+                </div>
+
+                <div className="p-3 bg-white rounded-xl border border-slate-200 space-y-1">
+                  <span className="text-xs sm:text-sm font-bold text-slate-500 block uppercase">
+                    {isEn ? 'Password in Use:' : 'Kata Laluan Digunakan:'}
+                  </span>
+                  <span
+                    className={`text-sm font-mono font-bold block truncate ${
+                      account.isSecured ? 'text-emerald-700' : 'text-slate-700'
+                    }`}
+                  >
+                    {account.currentPassword}
+                  </span>
+                </div>
+
+                <div>
+                  {account.isSecured ? (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 text-sm font-bold">
+                      <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                      <span>{isEn ? 'Unique & Fortified' : 'Unik & Kebal'}</span>
+                    </span>
+                  ) : account.isBreached ? (
+                    <span
+                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-100 text-rose-800 border border-rose-300 text-sm font-bold ${
+                        shouldReduceMotion ? 'ring-2 ring-rose-500' : 'animate-pulse'
+                      }`}
+                    >
+                      <XCircle className="w-4 h-4 text-rose-600" />
+                      <span>{isEn ? 'BREACHED BY DOMINO' : 'TUMBANG / DIGODAM'}</span>
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-700 text-sm font-bold">
+                      <Lock className="w-3.5 h-3.5" />
+                      <span>{isEn ? 'Shared Password' : 'Kata Laluan Kongsi'}</span>
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-slate-200 mt-4">
+                {!account.isSecured ? (
+                  <button
+                    type="button"
+                    onClick={() => handleAssignUnique(account.id)}
+                    className="w-full min-h-[48px] py-2.5 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-xs active:scale-95 cursor-pointer"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    <span>{isEn ? 'Assign Unique' : 'Jana Kata Laluan Unik'}</span>
+                  </button>
+                ) : (
+                  <div className="text-center py-2 text-sm font-bold text-emerald-800 bg-emerald-100 rounded-xl border border-emerald-200">
+                    ✓ {isEn ? 'Domino Chain Severed' : 'Kesan Domino Terputus'}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          );
+        })}
       </div>
-    );
-  }
+
+      {retestPassed && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-5 rounded-2xl bg-emerald-50 border-2 border-emerald-400 flex items-start gap-3"
+        >
+          <CheckCircle2 className="w-7 h-7 text-emerald-600 shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <strong className="text-lg font-black text-emerald-950 block">
+              {isEn ? 'DOMINO CHAIN BLOCKED! (DEFENSE SUCCESSFUL)' : 'RANTAIAN DOMINO TERPUTUS! (BERJAYA BERTAHAN)'}
+            </strong>
+            <p className="text-base text-emerald-900 font-medium">
+              {isEn
+                ? 'Because every service has an isolated passphrase, the leak of one website could not crack any of the others!'
+                : 'Oleh sebab semua akaun mempunyai frasa unik berasingan, kebocoran satu laman sesawang langsung tidak menggugat akaun yang lain!'}
+            </p>
+          </div>
+        </motion.div>
+      )}
+
+      <TakeawayCard
+        takeawayNumber={2}
+        title={isEn ? 'Golden Takeaway #2:' : 'Prinsip Emas #2:'}
+        text={
+          isEn
+            ? 'One Password Per Account. If one website leaks your details, your other services remain 100% safe.'
+            : 'Satu Kata Laluan Untuk Satu Akaun. Kebocoran satu laman sesawang tidak akan memudaratkan akaun perbankan atau emel anda yang lain.'
+        }
+        variant="blue"
+      />
+
+      <div className="pt-4 flex justify-end">
+        <PrimaryButton
+          disabled={!allAccountsSecured}
+          onClick={() => {
+            playSuccessChime();
+            setPhase('phase3');
+          }}
+          className="w-full sm:w-auto"
+        >
+          {isEn ? 'Proceed to Phase 3: Lock the Vault →' : 'Seterusnya: Fasa 3 (Kunci Peti Besi) →'}
+        </PrimaryButton>
+      </div>
+    </div>
+  );
 
   /* =========================================================================
-     STAGE 6: MISSION RESULTS
+     PHASE 3: LOCK THE VAULT
      ========================================================================= */
-  return (
-    <div className="w-full space-y-6">
-      <BadgesDrawer badges={badges} />
+  const renderPhase3 = () => (
+    <div className="space-y-6">
+      <InfoBanner
+        variant="blue"
+        title={isEn ? 'Final Phase: Fortify the Digital Vault' : 'Fasa Terakhir: Kukuhkan Peti Besi Digital'}
+        description={
+          isEn
+            ? 'Activate essential defense layers below: 2FA, Password Manager, and strict OTP privacy protocols.'
+            : 'Aktifkan lapisan perlindungan kubu di bawah: 2FA, Pengurus Kata Laluan, dan protokol privasi kod OTP.'
+        }
+      />
 
-      <div className="rounded-3xl border border-slate-200/90 bg-white p-6 sm:p-10 shadow-sm space-y-8">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          <div className="lg:col-span-6 space-y-6">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 text-xs sm:text-sm">
-              <span className="font-extrabold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
-                {isEn ? 'WORKSHOP REPORT COMPLETE' : 'LAPORAN BENGKEL SELESAI'}
+      <div className="grid grid-cols-1 gap-4">
+        {/* Toggle 1: 2FA */}
+        <div className="p-5 sm:p-6 rounded-3xl border-2 border-slate-200 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+          <div className="space-y-1 max-w-xl">
+            <div className="flex items-center gap-2">
+              <Smartphone className="w-6 h-6 text-blue-600" />
+              <strong className="text-lg sm:text-xl font-black text-slate-900">
+                {isEn ? 'Enable Two-Factor Authentication (2FA)' : 'Aktifkan Pengesahan Dua Faktor (2FA)'}
+              </strong>
+            </div>
+            <p className="text-base text-slate-600 font-medium">
+              {isEn
+                ? 'Adds a second layer of defense. Even if someone steals your password, they cannot enter without your phone approval.'
+                : 'Benteng kedua: Walaupun penjenayah tahu kata laluan anda, mereka tetap tidak boleh masuk tanpa kod telefon anda.'}
+            </p>
+            {enable2FA && otpVerified && (
+              <span className="inline-flex items-center gap-1.5 text-sm font-bold text-emerald-800 bg-emerald-100 px-3 py-1 rounded-full">
+                ✓ {isEn ? '2FA Code Verified' : 'Kod 2FA Telah Disahkan'}
               </span>
-              <span className="text-slate-500 font-bold">MISI 02 / KATA LALUAN</span>
-            </div>
-
-            <div>
-              <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
-                {isEn ? '🎉 Accounts Fortified Successfully!' : '🎉 Semua Akaun Berjaya Dikukuhkan!'}
-              </h2>
-              <p className="text-base text-slate-600 mt-2.5 leading-relaxed">
-                {isEn
-                  ? 'Your team successfully audited vulnerabilities, built a 4-word iron passphrase, and stopped the credential stuffing domino effect.'
-                  : 'Pasukan anda telah berjaya membaiki kelemahan kata laluan, membina frasa laluan Kubu Besi, dan menyekat pencerobohan siber berjangkit.'}
-              </p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3.5 border-y border-slate-100 py-4">
-              <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-2xl">
-                <span className="text-xs uppercase text-slate-500 block font-bold">
-                  {isEn ? 'Passphrase Strength' : 'Kekuatan Kata Laluan'}
-                </span>
-                <span className="text-xl sm:text-2xl font-black text-slate-900 mt-1 block">55,000+ Tahun</span>
-              </div>
-              <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-2xl">
-                <span className="text-xs uppercase text-slate-500 block font-bold">
-                  {isEn ? '2FA Block Test' : 'Ujian Sekatan 2FA'}
-                </span>
-                <span className="text-xl sm:text-2xl font-black text-emerald-700 mt-1 block">Berjaya ✓</span>
-              </div>
-              <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-2xl">
-                <span className="text-xs uppercase text-slate-500 block font-bold">
-                  {isEn ? 'Domino Breach' : 'Kesan Domino'}
-                </span>
-                <span className="text-xl sm:text-2xl font-black text-emerald-700 mt-1 block">Disekat ✓</span>
-              </div>
-              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl">
-                <span className="text-xs uppercase text-emerald-800 block font-bold">
-                  {t('results.totalScore')}
-                </span>
-                <span className="text-2xl sm:text-3xl font-black text-emerald-900 mt-1 block">
-                  {totalScore} <span className="text-sm font-normal text-emerald-700">/ 50 Mata</span>
-                </span>
-              </div>
-            </div>
+            )}
           </div>
 
-          <div className="lg:col-span-6 bg-slate-50 border border-slate-200 rounded-3xl p-6 sm:p-7 space-y-6">
-            <span className="text-sm font-extrabold uppercase tracking-wider text-slate-900 block pb-2 border-b border-slate-200">
-              {isEn ? '3 Key Account Protection Rules:' : '3 Prinsip Penting Kata Laluan:'}
-            </span>
+          <button
+            type="button"
+            onClick={handleToggle2FA}
+            className={`min-h-[52px] px-6 py-3 rounded-2xl font-black text-base flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs active:scale-95 ${
+              enable2FA
+                ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300'
+            }`}
+          >
+            {enable2FA ? <Check className="w-5 h-5" /> : null}
+            <span>{enable2FA ? (isEn ? '2FA Enabled' : '2FA Diaktifkan') : (isEn ? 'Turn On 2FA' : 'Hidupkan 2FA')}</span>
+          </button>
+        </div>
 
-            <ul className="space-y-3.5 text-sm sm:text-base text-slate-700">
-              <li className="flex items-start gap-3">
-                <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
-                  <Check className="w-4 h-4" />
-                </span>
-                <span>
-                  {isEn
-                    ? 'Always use unique passphrases for email and banking accounts so a minor leak never affects your life savings.'
-                    : 'Sentiasa gunakan kata laluan berbeza untuk emel dan akaun bank supaya kebocoran laman lain tidak menjejaskan duit simpanan.'}
-                </span>
-              </li>
-              <li className="flex items-start gap-3">
-                <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
-                  <Check className="w-4 h-4" />
-                </span>
-                <span>
-                  {isEn
-                    ? 'Passphrases combining 4 common words (e.g. kucing-hujan-pisang-pantai) are easy to recall but impossible for computers to brute-force crack.'
-                    : 'Frasa laluan 4 perkataan mudah (contoh: kucing-hujan-pisang-pantai) senang diingati tetapi mustahil dipecahkan penggodam.'}
-                </span>
-              </li>
-              <li className="flex items-start gap-3">
-                <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
-                  <Check className="w-4 h-4" />
-                </span>
-                <span>
-                  {isEn
-                    ? 'Activate Two-Factor Authentication (2FA) wherever available as an impenetrable second safety lock.'
-                    : 'Aktifkan Pengesahan 2 Faktor (2FA) di telefon pintar sebagai kunci pendua yang menyekat penceroboh.'}
-                </span>
-              </li>
-            </ul>
-
-            <div className="pt-2 flex flex-col sm:flex-row gap-3">
-              <button
-                onClick={handleStart}
-                className="flex-1 flex items-center justify-center gap-2 px-5 py-3.5 min-h-[50px] rounded-xl font-bold text-sm text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 transition-colors cursor-pointer"
-              >
-                <RotateCcw className="w-4 h-4" />
-                <span>{t('game.retry')}</span>
-              </button>
-
-              <Link
-                href="/"
-                className="flex-1 flex items-center justify-center gap-2 px-5 py-3.5 min-h-[50px] rounded-xl font-bold text-sm text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 transition-colors cursor-pointer"
-              >
-                <Home className="w-4 h-4" />
-                <span>{t('game.mainMenu')}</span>
-              </Link>
-
-              <Link
-                href="/challenge/call-scam"
-                className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 min-h-[50px] rounded-xl font-bold text-sm text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-sm text-center"
-              >
-                <span>{isEn ? 'Mission 03: Call Scams →' : 'Misi 03: Scam Panggilan →'}</span>
-              </Link>
+        {/* Toggle 2: Password Manager */}
+        <div className="p-5 sm:p-6 rounded-3xl border-2 border-slate-200 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+          <div className="space-y-1 max-w-xl">
+            <div className="flex items-center gap-2">
+              <KeyRound className="w-6 h-6 text-amber-600" />
+              <strong className="text-lg sm:text-xl font-black text-slate-900">
+                {isEn ? 'Use a Password Manager (Pengurus Kata Laluan)' : 'Gunakan Pengurus Kata Laluan (Password Manager)'}
+              </strong>
             </div>
+            <p className="text-base text-slate-600 font-medium">
+              {isEn
+                ? 'A secure digital safe that generates and remembers unique passwords so your brain only needs to remember one master passphrase.'
+                : 'Peti digital selamat yang mengingati semua kata laluan berbeza untuk anda. Anda hanya perlu ingat satu kata laluan utama.'}
+            </p>
           </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              playPopSound();
+              setUsePasswordManager(!usePasswordManager);
+            }}
+            className={`min-h-[52px] px-6 py-3 rounded-2xl font-black text-base flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs active:scale-95 ${
+              usePasswordManager
+                ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300'
+            }`}
+          >
+            {usePasswordManager ? <Check className="w-5 h-5" /> : null}
+            <span>{usePasswordManager ? (isEn ? 'Manager Active' : 'Pengurus Aktif') : (isEn ? 'Turn On' : 'Gunakan')}</span>
+          </button>
+        </div>
+
+        {/* Toggle 3: Scam Awareness */}
+        <div className="p-5 sm:p-6 rounded-3xl border-2 border-slate-200 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+          <div className="space-y-1 max-w-xl">
+            <div className="flex items-center gap-2">
+              <PhoneCall className="w-6 h-6 text-rose-600" />
+              <strong className="text-lg sm:text-xl font-black text-slate-900">
+                {isEn ? 'Anti-Scam Test: Never Share OTP / TAC' : 'Ujian Anti-Scam: Pantang Larang Kod OTP / TAC'}
+              </strong>
+            </div>
+            <p className="text-base text-slate-600 font-medium">
+              {isEn
+                ? 'Take the simulated bank call challenge to verify your readiness against phone impersonation scams.'
+                : 'Uji kepekaan pasukan terhadap helah pemanggil yang menyamar sebagai pihak bank meminta kod OTP.'}
+            </p>
+            {scamCallFeedback === 'safe' && (
+              <span className="inline-flex items-center gap-1.5 text-sm font-bold text-emerald-800 bg-emerald-100 px-3 py-1 rounded-full">
+                ✓ {isEn ? 'Safe: Refused to Disclose OTP' : 'Selamat: Menolak Berkongsi OTP'}
+              </span>
+            )}
+          </div>
+
+          <button
+            ref={scamTriggerBtnRef}
+            type="button"
+            onClick={() => {
+              playPopSound();
+              setShowScamCallModal(true);
+            }}
+            className="min-h-[52px] px-6 py-3 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-900 border-2 border-rose-300 font-black text-base flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs active:scale-95"
+          >
+            <PhoneCall className="w-5 h-5 text-rose-600" />
+            <span>{isEn ? 'Take Phone Call Test' : 'Ambil Ujian Panggilan'}</span>
+          </button>
         </div>
       </div>
+
+      {/* Mock 2FA Code Modal / Box */}
+      {show2FAStep && !otpVerified && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="p-6 rounded-3xl bg-slate-900 text-white border-2 border-blue-500 shadow-xl space-y-4"
+        >
+          <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+            <div className="flex items-center gap-2 text-emerald-400 font-bold">
+              <Smartphone className="w-5 h-5" />
+              <span className="text-base">{isEn ? 'Simulated Bank Phone SMS' : 'SMS Simulasi Bank di Telefon Pintar'}</span>
+            </div>
+            <span className="text-sm font-mono text-slate-400 font-bold">10:42 AM</span>
+          </div>
+
+          <div className="p-4 bg-slate-800/80 rounded-2xl border border-slate-700 space-y-1">
+            <span className="text-sm text-slate-400 uppercase tracking-wider block font-bold">
+              {isEn ? 'Incoming SMS Message:' : 'Mesej SMS Diterima:'}
+            </span>
+            <p className="text-base text-slate-200 font-mono">
+              {isEn ? (
+                <>
+                  &ldquo;Bank: Your vault 2FA verification code is <strong className="text-amber-400 text-lg">849 201</strong>. Never share this code with anyone.&rdquo;
+                </>
+              ) : (
+                <>
+                  &ldquo;Bank: Kod pengesahan 2FA peti besi anda ialah <strong className="text-amber-400 text-lg">849 201</strong>. Jangan kongsikan dengan sesiapa.&rdquo;
+                </>
+              )}
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <label htmlFor="otp-input" className="text-sm font-bold text-slate-300 block">
+              {isEn ? 'Type the 6-Digit Code to Confirm Vault Lock:' : 'Masukkan Kod 6-Digit untuk Mengesahkan Kunci Peti Besi:'}
+            </label>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+              <input
+                id="otp-input"
+                type="text"
+                maxLength={6}
+                value={enteredOtp}
+                onChange={e => setEnteredOtp(e.target.value)}
+                placeholder="849201"
+                className="min-h-[52px] px-4 py-2.5 rounded-2xl bg-black border-2 border-slate-700 text-xl font-mono text-emerald-400 tracking-widest text-center focus:border-blue-500 focus:outline-hidden"
+              />
+              <button
+                type="button"
+                onClick={() => handleVerifyOtp()}
+                className="min-h-[52px] px-6 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-base flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95"
+              >
+                <span>{isEn ? 'Verify Code' : 'Sahkan Kod'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEnteredOtp('849201');
+                  handleVerifyOtp('849201');
+                }}
+                className="min-h-[52px] px-4 py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-sm flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <span>{isEn ? 'Auto-Fill (849201)' : 'Isi Automatik (849201)'}</span>
+              </button>
+            </div>
+            {otpError && (
+              <p className="text-sm font-bold text-rose-400">
+                {isEn ? 'Incorrect code. Try typing: 849201' : 'Kod tidak tepat. Sila taip: 849201'}
+              </p>
+            )}
+          </div>
+        </motion.div>
+      )}
+
+      {/* Golden Takeaway #3 for Phase 3 */}
+      <TakeawayCard
+        takeawayNumber={3}
+        title={isEn ? 'Golden Takeaway #3:' : 'Prinsip Emas #3:'}
+        text={
+          isEn
+            ? 'Never share OTP/TAC codes with anyone over the phone. Real banks and police will never ask for them.'
+            : 'Jangan sesekali kongsikan kod OTP/TAC melalui panggilan telefon. Pihak bank atau polis rasmi tidak pernah meminta kod pengesahan rahsia anda.'
+        }
+        variant="emerald"
+      />
+
+      {/* Scam Call Modal Challenge (Accessible Dialog) */}
+      {showScamCallModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="scam-call-dialog-title"
+          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4"
+        >
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="w-full max-w-lg bg-white rounded-3xl border-2 border-slate-300 p-6 sm:p-8 space-y-6 shadow-2xl"
+          >
+            <div className="flex items-center gap-3 pb-3 border-b border-slate-200">
+              <div
+                className={`w-12 h-12 rounded-2xl bg-rose-100 flex items-center justify-center text-rose-600 ${
+                  shouldReduceMotion ? '' : 'animate-bounce'
+                }`}
+              >
+                <PhoneCall className="w-6 h-6" />
+              </div>
+              <div>
+                <span className="text-sm font-black uppercase text-rose-600 tracking-wider">
+                  {isEn ? 'Incoming Phone Call Simulation' : 'Simulasi Panggilan Masuk'}
+                </span>
+                <strong id="scam-call-dialog-title" className="text-xl font-black text-slate-900 block">
+                  {isEn ? 'Claimed: Bank Security Desk' : 'Mendakwa: Pusat Keselamatan Bank'}
+                </strong>
+              </div>
+            </div>
+
+            <div className="p-4 bg-slate-100 rounded-2xl border border-slate-200 text-base text-slate-800 font-medium leading-relaxed italic">
+              &ldquo;{isEn
+                ? 'Hello! This is Officer Farid from Bank Headquarters. We detected unauthorized withdrawals on your account. I need the 6-digit OTP code that was just sent to your phone right now to cancel the theft!'
+                : 'Puan/Tuan! Ini Pegawai Farid dari Ibu Pejabat Bank. Kami mengesan transaksi mencurigakan. Tolong bacakan kod 6-digit OTP yang baru dihantar ke telefon anda sekarang supaya kami boleh sekat!'}
+              &rdquo;
+            </div>
+
+            <div className="space-y-3">
+              <span className="text-base font-black text-slate-900 block">
+                {isEn ? 'Will you read out the OTP code to this caller?' : 'Adakah anda akan membacakan kod OTP ini kepada pemanggil?'}
+              </span>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button
+                  ref={scamRefuseBtnRef}
+                  type="button"
+                  onClick={() => handleScamAnswer(false)}
+                  className="min-h-[56px] p-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-base flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer shadow-sm focus-visible:ring-2 focus-visible:ring-emerald-500"
+                >
+                  <XCircle className="w-5 h-5" />
+                  <span>{isEn ? 'NO! NEVER SHARE' : 'TIDAK! JANGAN KONGSI'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleScamAnswer(true)}
+                  className="min-h-[56px] p-3 rounded-2xl bg-rose-100 hover:bg-rose-200 text-rose-900 border border-rose-300 font-bold text-base flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer focus-visible:ring-2 focus-visible:ring-rose-500"
+                >
+                  <CheckCircle2 className="w-5 h-5 text-rose-600" />
+                  <span>{isEn ? 'Yes, Read Out Code' : 'Ya, Bacakan Kod'}</span>
+                </button>
+              </div>
+            </div>
+
+            {scamCallFeedback && (
+              <div
+                role="status"
+                aria-live="polite"
+                className={`p-4 rounded-2xl border-2 space-y-1 ${
+                  scamCallFeedback === 'safe'
+                    ? 'bg-emerald-50 border-emerald-400 text-emerald-950'
+                    : 'bg-rose-50 border-rose-400 text-rose-950'
+                }`}
+              >
+                <strong className="text-base font-black block">
+                  {scamCallFeedback === 'safe'
+                    ? (isEn ? 'EXCELLENT DECISION! (100% CORRECT)' : 'KEPUTUSAN CEMERLANG! (100% TEPAT)')
+                    : (isEn ? 'DANGER! THIS IS A SCAM TRAP!' : 'BAHAYA! INI PERANGKAP SCAMMER!')}
+                </strong>
+                <p className="text-base font-medium leading-relaxed">
+                  {scamCallFeedback === 'safe'
+                    ? (isEn
+                        ? 'Banks, police, and government officers NEVER ask for OTP codes over the phone. You saved your account!'
+                        : 'Pihak bank dan polis TIDAK PERNAH meminta kod OTP melalui panggilan telefon. Anda berjaya menyelamatkan wang anda!')
+                    : (isEn
+                        ? 'Never share OTP codes! Giving the OTP allows fraudsters to immediately transfer away all your money.'
+                        : 'Jangan sesekali kongsi OTP! Memberi kod OTP membolehkan penjenayah memindahkan keluar semua wang anda.')}
+                </p>
+                <button
+                  ref={scamModalCloseRef}
+                  type="button"
+                  onClick={() => setShowScamCallModal(false)}
+                  className="mt-3 w-full py-2.5 rounded-xl bg-slate-900 text-white font-bold text-sm cursor-pointer hover:bg-slate-800"
+                >
+                  {isEn ? 'Close & Return to Vault (Esc)' : 'Tutup & Kembali ke Peti Besi (Esc)'}
+                </button>
+              </div>
+            )}
+          </motion.div>
+        </div>
+      )}
+
+      <div className="pt-4 flex justify-end">
+        <PrimaryButton
+          disabled={isTestingVault}
+          onClick={handleRunFinalVaultTest}
+          icon={isTestingVault ? <RefreshCw className={`w-5 h-5 ${shouldReduceMotion ? '' : 'animate-spin'}`} /> : <Zap className="w-5 h-5" />}
+          className="w-full sm:w-auto"
+        >
+          {isEn ? 'Test Final Vault Defense →' : 'Uji Pertahanan Akhir Peti Besi →'}
+        </PrimaryButton>
+      </div>
+    </div>
+  );
+
+  /* =========================================================================
+     MAIN RENDER
+     ========================================================================= */
+  const currentStepIndex = phase === 'phase1' ? 1 : phase === 'phase2' ? 2 : 3;
+  const currentStepLabel =
+    phase === 'phase1'
+      ? isEn ? 'Phase 1: Crack Race' : 'Fasa 1: Perlumbaan Pecah'
+      : phase === 'phase2'
+      ? isEn ? 'Phase 2: Domino Breach' : 'Fasa 2: Serangan Berjangkit'
+      : isEn ? 'Phase 3: Lock the Vault' : 'Fasa 3: Kunci Peti Besi';
+
+  return (
+    <div className="w-full max-w-[1400px] mx-auto py-2">
+      <StationTopBar
+        stationNumber="02"
+        stationName={isEn ? 'Vault Defense' : 'Pertahankan Peti Besi'}
+        stepLabel={currentStepLabel}
+        stepIndex={currentStepIndex}
+        stepTotal={3}
+        onReset={handleResetForNextGroup}
+      />
+      {phase === 'phase1' && renderPhase1()}
+      {phase === 'phase2' && renderPhase2()}
+      {phase === 'phase3' && renderPhase3()}
     </div>
   );
 };

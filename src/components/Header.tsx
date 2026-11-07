@@ -2,28 +2,18 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { RotateCcw, ShieldCheck, Sparkles, Type, Volume2, VolumeX } from 'lucide-react';
-import { getStationRecords, getOverallStats, resetStationRecords } from '@/lib/storage';
+import { RotateCcw, ShieldCheck, Type, Volume2, VolumeX } from 'lucide-react';
+import { resetStationRecords } from '@/lib/storage';
 import { useLanguage, FontSize } from '@/context/LanguageContext';
 import { getSoundEnabled, setSoundEnabled, playPopSound } from '@/lib/sound';
 
 export const Header: React.FC = () => {
   const { language, setLanguage, fontSize, setFontSize, t } = useLanguage();
-  const [stats, setStats] = useState({ totalScore: 0, maxPossibleScore: 300, completedCount: 0 });
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [soundOn, setSoundOn] = useState(true);
 
-  const refreshStats = () => {
-    const records = getStationRecords();
-    setStats(getOverallStats(records));
-  };
-
   useEffect(() => {
-    refreshStats();
     setSoundOn(getSoundEnabled());
-    const handleUpdate = () => refreshStats();
-    window.addEventListener('cybersafe-storage-updated', handleUpdate);
-    return () => window.removeEventListener('cybersafe-storage-updated', handleUpdate);
   }, []);
 
   const toggleSound = () => {
@@ -164,20 +154,6 @@ export const Header: React.FC = () => {
               >
                 EN
               </button>
-            </div>
-
-            {/* Station Score Indicator */}
-            <div className="flex items-center gap-2 px-3.5 py-2 bg-emerald-50 border border-emerald-200/80 rounded-xl shadow-xs text-xs sm:text-sm min-h-[42px] transition-transform hover:scale-105 duration-200">
-              <Sparkles className="w-4 h-4 text-emerald-600 animate-pulse" />
-              <div className="flex flex-col sm:flex-row sm:items-baseline gap-0.5 sm:gap-1.5">
-                <span className="text-emerald-800 font-medium text-[11px] sm:text-xs hidden md:inline">
-                  {t('nav.scoreLabel')}
-                </span>
-                <span className="font-extrabold text-emerald-900">
-                  {stats.totalScore}
-                  <span className="text-emerald-700 font-normal"> / {stats.maxPossibleScore}</span>
-                </span>
-              </div>
             </div>
 
             {/* Reset Station for Next Team */}

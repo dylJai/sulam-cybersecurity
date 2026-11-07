@@ -1,16 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { getInvestigationCases } from '@/data/investigation-cases';
 import { LinkScannerModal, LinkScanData } from '@/components/game/LinkScannerModal';
-import { BadgesDrawer, BadgeItem } from '@/components/game/BadgesDrawer';
+import { BadgeItem } from '@/components/game/BadgesDrawer';
 import { saveChallengeResult } from '@/lib/storage';
 import { useLanguage } from '@/context/LanguageContext';
 import { playPopSound, playSuccessChime, playWarningTone, triggerCelebration } from '@/lib/sound';
 import {
   ArrowRight,
-  RotateCcw,
-  Home,
   Check,
   Search,
   ShieldCheck,
@@ -18,19 +16,34 @@ import {
   Globe,
   Paperclip,
   CheckCircle2,
-  Award,
-  Sparkles,
-  Info,
   Mail,
   MessageSquare
 } from 'lucide-react';
-import Link from 'next/link';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { VoiceOverButton } from '@/components/common/VoiceOverButton';
 import { voiceOverManager } from '@/lib/voice-over';
+import {
+  StationTopBar,
+  StationBriefing,
+  StationResults,
+  TakeawayCard,
+  InfoBanner,
+  PrimaryButton
+} from '@/components/game/station';
+
+/* =========================================================================
+   3 MOST INSTRUCTIVE CASES FOR 7-MINUTE SPRINT
+   1. Courier Reschedule SMS (Smishing & fake fee)
+   2. Urgent Bank Suspension SMS (Panic & fake verify portal)
+   4. Utility Cutoff Email (Fake .xyz domain & TAC extortion)
+   ========================================================================= */
+const SELECTED_CASE_IDS = [1, 2, 4];
 
 export const InvestigationGame: React.FC = () => {
-  const { language, t } = useLanguage();
+  const { language } = useLanguage();
+  const isEn = language === 'en';
+  const shouldReduceMotion = useReducedMotion();
+
   const [stage, setStage] = useState<'briefing' | 'investigating' | 'results'>('briefing');
   const [currentCaseIndex, setCurrentCaseIndex] = useState<number>(0);
 
@@ -43,7 +56,6 @@ export const InvestigationGame: React.FC = () => {
 
   // Link Scanner Modal state
   const [activeScanData, setActiveScanData] = useState<LinkScanData | null>(null);
-  const [showBadges, setShowBadges] = useState<boolean>(false);
 
   // Cumulative game performance
   const [totalCluesFound, setTotalCluesFound] = useState<number>(0);
@@ -52,24 +64,25 @@ export const InvestigationGame: React.FC = () => {
   const [totalScore, setTotalScore] = useState<number>(0);
   const [scannerUsed, setScannerUsed] = useState<boolean>(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
     return () => {
       voiceOverManager.stopAll();
     };
   }, [currentCaseIndex, stage]);
 
-  const cases = getInvestigationCases(language);
+  // Load and filter to the 3 selected cases
+  const allCases = getInvestigationCases(language);
+  const cases = allCases.filter(c => SELECTED_CASE_IDS.includes(c.id));
   const currentCase = cases[currentCaseIndex] || cases[0];
-  const isEn = language === 'en';
 
-  // Dynamic Badges
+  // Dynamic Badges awarded upon completion
   const badges: BadgeItem[] = [
     {
       id: 'b-eagle',
       name: isEn ? 'Eagle Eye' : 'Mata Helang',
       icon: '🦅',
-      description: isEn ? 'Spotted more than 8 phishing indicators' : 'Mengesan lebih 8 petunjuk penipuan',
-      isUnlocked: totalCluesFound >= 8
+      description: isEn ? 'Spotted 6 or more phishing indicators' : 'Mengesan 6 atau lebih petunjuk penipuan',
+      isUnlocked: totalCluesFound >= 6
     },
     {
       id: 'b-xray',
@@ -82,19 +95,20 @@ export const InvestigationGame: React.FC = () => {
       id: 'b-shield',
       name: isEn ? 'Phish Blocker' : 'Penyekat Penipuan',
       icon: '🛑',
-      description: isEn ? 'Made 4 or more safe decisions' : 'Membuat 4 atau lebih keputusan selamat',
-      isUnlocked: correctActionDecisions >= 4
+      description: isEn ? 'Made safe decisions across cases' : 'Membuat keputusan selamat merentasi kes',
+      isUnlocked: correctActionDecisions >= 2
     },
     {
       id: 'b-hero',
       name: isEn ? 'Investigation Hero' : 'Wira Penyiasat',
       icon: '🛡️',
-      description: isEn ? 'Completed all 5 phishing cases' : 'Menyelesaikan semua 5 kes siasatan',
+      description: isEn ? 'Completed Station 01 challenge' : 'Menyelesaikan cabaran Stesen 01',
       isUnlocked: stage === 'results'
     }
   ];
 
   const handleStartMission = () => {
+    playPopSound();
     setStage('investigating');
     setCurrentCaseIndex(0);
     resetCaseState();
@@ -111,6 +125,20 @@ export const InvestigationGame: React.FC = () => {
     setSelectedActionId(null);
     setIsActionSubmitted(false);
     setCaseClueScore(0);
+  };
+
+  const handleResetForNextGroup = () => {
+    playPopSound();
+    voiceOverManager.stopAll();
+    setStage('briefing');
+    setCurrentCaseIndex(0);
+    resetCaseState();
+    setTotalCluesFound(0);
+    setTotalPossibleClues(0);
+    setCorrectActionDecisions(0);
+    setTotalScore(0);
+    setScannerUsed(false);
+    setActiveScanData(null);
   };
 
   const handleToggleClue = (clueId: string) => {
@@ -154,22 +182,23 @@ export const InvestigationGame: React.FC = () => {
     currentCase.clues.forEach(clue => {
       const isSelected = selectedClueIds.includes(clue.id);
       if (clue.isSuspicious && isSelected) {
-        scoreForThisStep += 2.5;
+        scoreForThisStep += 2.5; // 4 clues * 2.5 = 10 pts max per case
         foundCorrectCount += 1;
       } else if (!clue.isSuspicious && isSelected) {
         scoreForThisStep = Math.max(0, scoreForThisStep - 1);
       }
     });
 
+    const roundedScore = Math.min(10, Math.round(scoreForThisStep));
     if (foundCorrectCount > 0) {
       playSuccessChime();
     } else {
       playWarningTone();
     }
 
-    setCaseClueScore(Math.round(scoreForThisStep));
+    setCaseClueScore(roundedScore);
     setTotalCluesFound(prev => prev + foundCorrectCount);
-    setTotalScore(prev => prev + Math.round(scoreForThisStep));
+    setTotalScore(prev => prev + roundedScore);
   };
 
   const handleSelectAction = (actionId: string) => {
@@ -186,10 +215,19 @@ export const InvestigationGame: React.FC = () => {
     if (chosenAction?.isSafe) {
       playSuccessChime();
       setCorrectActionDecisions(prev => prev + 1);
-      setTotalScore(prev => prev + 5);
+      // Case 1 & 2 award 7 pts; Case 3 awards 6 pts (Total actions = 20 pts)
+      const actionAward = currentCaseIndex < 2 ? 7 : 6;
+      setTotalScore(prev => prev + actionAward);
     } else {
       playWarningTone();
     }
+  };
+
+  const finalizeResults = () => {
+    const finalScore = Math.min(50, totalScore);
+    saveChallengeResult('phishing', finalScore, 50);
+    triggerCelebration();
+    setStage('results');
   };
 
   const handleNextCase = () => {
@@ -198,10 +236,7 @@ export const InvestigationGame: React.FC = () => {
       setCurrentCaseIndex(prev => prev + 1);
       resetCaseState();
     } else {
-      const finalScore = Math.min(50, totalScore);
-      saveChallengeResult('phishing', finalScore, 50);
-      triggerCelebration();
-      setStage('results');
+      finalizeResults();
     }
   };
 
@@ -210,257 +245,110 @@ export const InvestigationGame: React.FC = () => {
   );
 
   /* =========================================================================
-     STAGE 1: MISSION BRIEFING
+     STAGE 1: MISSION BRIEFING (StationBriefing)
      ========================================================================= */
   if (stage === 'briefing') {
     return (
-      <div className="w-full space-y-6">
-        <div>
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors py-1"
-          >
-            ← {t('nav.backToMenuFriendly')}
-          </Link>
-        </div>
-
-        <div className="rounded-3xl border border-slate-200/90 bg-white p-6 sm:p-10 shadow-sm space-y-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            {/* Left side: Context & Scenario */}
-            <div className="lg:col-span-7 space-y-5">
-              <div className="flex items-center gap-3">
-                <span className="font-extrabold text-blue-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-100 text-xs">
-                  {isEn ? 'MISSION 01' : 'MISI 01'}
-                </span>
-                <span className="text-slate-500 font-semibold text-xs sm:text-sm">
-                  {isEn ? '⏱️ 5-7 Mins • 50 Points' : '⏱️ 5-7 Minit • 50 Mata'}
-                </span>
-              </div>
-
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight leading-snug">
-                {t('m1.title')}
-              </h1>
-
-              <p className="text-base sm:text-lg text-slate-600 leading-relaxed">
-                {isEn
-                  ? 'Suspicious messages frequently flood our community SMS inboxes and WhatsApp. Your team’s mission is to inspect the clues, detect red flags, and make the safest response decisions.'
-                  : 'Mesej mencurigakan mula membanjiri peti masuk SMS dan WhatsApp komuniti kita. Tugas pasukan anda adalah meneliti bukti pada mesej, mengesan tanda bahaya, dan memilih tindakan paling selamat.'}
-              </p>
-
-              <div className="p-5 bg-slate-50 border border-slate-200/80 rounded-2xl space-y-3">
-                <span className="font-extrabold text-sm sm:text-base text-slate-900 block">
-                  {isEn ? '📋 3 Easy Steps in this Mission:' : '📋 3 Panduan Mudah Menjalankan Misi Ini:'}
-                </span>
-                <div className="space-y-2 text-sm sm:text-base text-slate-700 leading-relaxed">
-                  <div className="flex items-start gap-2.5">
-                    <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center shrink-0 mt-0.5 text-xs">
-                      1
-                    </span>
-                    <span>
-                      <strong>{isEn ? 'Inspect Evidence (Left):' : 'Teliti Bukti di Sebelah Kiri:'}</strong>{' '}
-                      {isEn ? 'Read the simulated SMS or email message carefully.' : 'Baca contoh SMS atau emel yang disyaki dengan tenang.'}
-                    </span>
-                  </div>
-                  <div className="flex items-start gap-2.5">
-                    <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center shrink-0 mt-0.5 text-xs">
-                      2
-                    </span>
-                    <span>
-                      <strong>{isEn ? 'Mark Red Flags (Right):' : 'Tandakan Tanda Bahaya di Sebelah Kanan:'}</strong>{' '}
-                      {isEn ? 'Click only on the suspicious parts (links, urgency, strange phone numbers).' : 'Klik bahagian yang mencurigakan (pautan pelik, ugutan masa, fail luar).'}
-                    </span>
-                  </div>
-                  <div className="flex items-start gap-2.5">
-                    <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center shrink-0 mt-0.5 text-xs">
-                      3
-                    </span>
-                    <span>
-                      <strong>{isEn ? 'Decide Safe Action:' : 'Pilih Tindakan Selamat:'}</strong>{' '}
-                      {isEn ? 'Select what to do next to protect your money and identity.' : 'Pilih satu keputusan terbaik untuk menyelamatkan simpanan anda.'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Right side: Tools & Start CTA */}
-            <div className="lg:col-span-5 bg-blue-50/60 border border-blue-100 rounded-3xl p-6 sm:p-7 space-y-5">
-              <span className="text-sm font-extrabold text-blue-900 block pb-2 border-b border-blue-200/60">
-                {isEn ? 'Special Station Tools Provided:' : 'Alat Bantuan Khas Stesen Ini:'}
-              </span>
-
-              <div className="space-y-3.5 text-sm text-slate-700">
-                <div className="p-4 bg-white border border-blue-100 rounded-2xl space-y-1 shadow-2xs">
-                  <div className="flex items-center gap-2 font-bold text-slate-900">
-                    <Globe className="w-4 h-4 text-blue-600" />
-                    <span>{isEn ? 'Diagnostic X-Ray Link Scanner' : 'Pengimbas Pautan X-Ray'}</span>
-                  </div>
-                  <p className="text-xs sm:text-sm text-slate-600">
-                    {isEn
-                      ? 'Inspect threat ratings and fake registration records of suspicious domains.'
-                      : 'Boleh digunakan bila-bila masa untuk memeriksa sama ada pautan itu palsu atau berbahaya.'}
-                  </p>
-                </div>
-
-                <div className="p-4 bg-white border border-blue-100 rounded-2xl space-y-1 shadow-2xs">
-                  <div className="flex items-center gap-2 font-bold text-slate-900">
-                    <Award className="w-4 h-4 text-amber-500" />
-                    <span>{isEn ? 'Team Investigation Badges' : 'Lencana Kejayaan Pasukan'}</span>
-                  </div>
-                  <p className="text-xs sm:text-sm text-slate-600">
-                    {isEn
-                      ? 'Unlock 4 special badges including Eagle Eye & Phish Blocker.'
-                      : 'Kumpul 4 lencana khas termasuk Mata Helang & Penyekat Penipuan.'}
-                  </p>
-                </div>
-              </div>
-
-              <div className="pt-2">
-                <button
-                  onClick={handleStartMission}
-                  className="w-full py-4 px-6 min-h-[56px] rounded-2xl font-bold text-base sm:text-lg text-white bg-blue-600 hover:bg-blue-700 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md hover:shadow-lg"
-                >
-                  <span>{isEn ? 'Start Mission 01 Now' : 'Mulakan Misi 01 Sekarang'}</span>
-                  <ArrowRight className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <StationBriefing
+        stationNumber="01"
+        stationName={isEn ? 'Phishing Investigation' : 'Siasatan Phishing'}
+        title={isEn ? 'Phishing Defense & Message Inspection' : 'Pertahanan Phishing & Siasatan Mesej'}
+        description={
+          isEn
+            ? 'Your team has 3 suspicious message cases to inspect, detect disguised red flags, and make safe decisions to protect personal data.'
+            : 'Kumpulan anda mempunyai 3 kes mesej mencurigakan untuk disiasat, mengesan helah penipuan, dan memilih tindakan paling selamat.'
+        }
+        voiceOverText={
+          isEn
+            ? 'Phishing Defense & Message Inspection. Your team has 3 suspicious message cases: Parcel Delivery SMS, Urgent Bank Suspension Alert, and Utility Cutoff Email. Detect disguised red flags and make safe decisions.'
+            : 'Pertahanan Phishing dan Siasatan Mesej. Kumpulan anda mempunyai 3 kes mesej mencurigakan: SMS Penjadualan Bungkusan Pos, Amaran Penyekatan Akaun Bank, dan Emel Pemotongan Bekalan Elektrik. Kesan tanda bahaya dan buat keputusan selamat.'
+        }
+        privacyNotice={{
+          title: isEn ? '⚠️ Operational Rule: Inspect Links, Never Click Blindly!' : '⚠️ Peraturan Operasi: Periksa Pautan, Jangan Tekan Buta Tuli!',
+          description: isEn
+            ? 'This workshop station simulates real phishing messages in a 100% safe sandbox. Use the diagnostic X-Ray scanner to analyze threats without danger.'
+            : 'Stesen latihan ini mensimulasikan mesej penipuan sebenar dalam persekitaran selamat. Gunakan alat pengimbas X-Ray untuk memeriksa pautan berbahaya.'
+        }}
+        steps={[
+          {
+            title: isEn ? 'Inspect Evidence' : 'Teliti Bukti Mesej',
+            description: isEn
+              ? 'Read the simulated SMS or email and locate the sender address, urgent deadlines, and links.'
+              : 'Baca contoh SMS atau emel dengan tenang, semak nama penghantar, desakan masa, dan pautan.'
+          },
+          {
+            title: isEn ? 'Mark Red Flags' : 'Tandakan Tanda Bahaya',
+            description: isEn
+              ? 'Click ONLY the suspicious parts. Normal introductory phrases do NOT need marking.'
+              : 'Klik HANYA bahagian yang meragukan. Ayat pengenalan biasa tidak perlu ditandakan.'
+          },
+          {
+            title: isEn ? 'Decide Safe Action' : 'Pilih Tindakan Selamat',
+            description: isEn
+              ? 'Choose the safest countermeasure to protect your accounts, money, and identity.'
+              : 'Pilih satu tindakan paling selamat untuk mengelakkan wang atau data anda dirampas.'
+          }
+        ]}
+        onStart={handleStartMission}
+        startLabel={isEn ? 'Start Mission →' : 'Mula Misi →'}
+      />
     );
   }
 
   /* =========================================================================
-     STAGE 3: MISSION RESULTS
+     STAGE 3: MISSION RESULTS (StationResults & BadgesDrawer)
      ========================================================================= */
   if (stage === 'results') {
+    const finalScore = Math.min(50, totalScore);
+    const rating: 'Gold' | 'Silver' | 'Bronze' =
+      finalScore >= 40 ? 'Gold' : finalScore >= 25 ? 'Silver' : 'Bronze';
+
+    const ratingTitle =
+      rating === 'Gold'
+        ? isEn
+          ? 'Gold Detective Rank (Master Investigator)'
+          : 'Peringkat Detektif Emas (Pakar Penyiasat)'
+        : rating === 'Silver'
+        ? isEn
+          ? 'Silver Inspector Rank (Solid Vigilance)'
+          : 'Peringkat Pemeriksa Perak (Kukuh)'
+        : isEn
+        ? 'Bronze Trainee Rank (Keep Practicing)'
+        : 'Peringkat Pelatih Gangsa (Perlu Latihan Lanjut)';
+
     return (
-      <div className="w-full space-y-6">
-        <BadgesDrawer badges={badges} />
-
-        <div className="rounded-3xl border border-slate-200/90 bg-white p-6 sm:p-10 shadow-sm space-y-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            {/* Left: Summary & Stats */}
-            <div className="lg:col-span-6 space-y-6">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100 text-xs sm:text-sm">
-                <span className="font-extrabold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
-                  {isEn ? 'INVESTIGATION REPORT COMPLETE' : 'LAPORAN SIASATAN SELESAI'}
-                </span>
-                <span className="text-slate-500 font-bold">MISI 01 / SMS & EMEL</span>
-              </div>
-
-              <div>
-                <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
-                  {isEn ? '🎉 Mission Completed Successfully!' : '🎉 Siasatan Berjaya Dilengkapkan!'}
-                </h2>
-                <p className="text-base text-slate-600 mt-2.5 leading-relaxed">
-                  {isEn
-                    ? 'Your team completed investigating all 5 suspicious message scenarios, used the X-Ray scanner, and protected sensitive data.'
-                    : 'Pasukan anda telah selesai menyiasat kesemua 5 senario mesej mencurigakan, menggunakan alat diagnostik X-Ray, dan berjaya melindungi data peribadi.'}
-                </p>
-              </div>
-
-              {/* Stats Grid */}
-              <div className="grid grid-cols-2 gap-3.5 border-y border-slate-100 py-4">
-                <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-2xl">
-                  <span className="text-xs uppercase text-slate-500 block font-bold">
-                    {t('results.scenariosTested')}
-                  </span>
-                  <span className="text-2xl sm:text-3xl font-black text-slate-900 mt-1 block">5 / 5</span>
-                </div>
-                <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-2xl">
-                  <span className="text-xs uppercase text-slate-500 block font-bold">
-                    {t('results.cluesFound')}
-                  </span>
-                  <span className="text-2xl sm:text-3xl font-black text-slate-900 mt-1 block">
-                    {totalCluesFound} <span className="text-sm font-normal text-slate-500">/ {totalPossibleClues}</span>
-                  </span>
-                </div>
-                <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-2xl">
-                  <span className="text-xs uppercase text-slate-500 block font-bold">
-                    {t('results.safeDecisions')}
-                  </span>
-                  <span className="text-2xl sm:text-3xl font-black text-slate-900 mt-1 block">{correctActionDecisions} / 5</span>
-                </div>
-                <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl">
-                  <span className="text-xs uppercase text-emerald-800 block font-bold">
-                    {t('results.totalScore')}
-                  </span>
-                  <span className="text-2xl sm:text-3xl font-black text-emerald-900 mt-1 block">
-                    {totalScore} <span className="text-sm font-normal text-emerald-700">/ 50 Mata</span>
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Right: Key Lessons & Navigation Actions */}
-            <div className="lg:col-span-6 bg-slate-50 border border-slate-200 rounded-3xl p-6 sm:p-7 space-y-6">
-              <span className="text-sm font-extrabold uppercase tracking-wider text-slate-900 block pb-2 border-b border-slate-200">
-                {isEn ? '3 Golden Community Defense Rules:' : '3 Pesanan Emas Komuniti:'}
-              </span>
-
-              <ul className="space-y-3.5 text-sm sm:text-base text-slate-700">
-                <li className="flex items-start gap-3">
-                  <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
-                    <Check className="w-4 h-4" />
-                  </span>
-                  <span>
-                    {isEn
-                      ? 'Never click links asking for small fee payments or parcel delivery rescheduling via random SMS.'
-                      : 'Jangan sesekali tekan pautan bayaran caj kecil atau kurier melalui SMS rawak.'}
-                  </span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
-                    <Check className="w-4 h-4" />
-                  </span>
-                  <span>
-                    {isEn
-                      ? 'Banks in Malaysia never send TAC confirmation links or login prompts via SMS.'
-                      : 'Pihak bank di Malaysia tidak lagi menghantar pautan pengesahan TAC atau kata laluan melalui SMS.'}
-                  </span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
-                    <Check className="w-4 h-4" />
-                  </span>
-                  <span>
-                    {isEn
-                      ? 'Never install application (.apk) files from prize-winning or cash aid grant emails.'
-                      : 'Jangan pasang fail aplikasi (.apk) daripada emel bantuan wang tunai atau hadiah percuma.'}
-                  </span>
-                </li>
-              </ul>
-
-              <div className="pt-2 flex flex-col sm:flex-row gap-3">
-                <button
-                  onClick={handleStartMission}
-                  className="flex-1 flex items-center justify-center gap-2 px-5 py-3.5 min-h-[50px] rounded-xl font-bold text-sm text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 transition-colors cursor-pointer"
-                >
-                  <RotateCcw className="w-4 h-4" />
-                  <span>{t('game.retry')}</span>
-                </button>
-
-                <Link
-                  href="/"
-                  className="flex-1 flex items-center justify-center gap-2 px-5 py-3.5 min-h-[50px] rounded-xl font-bold text-sm text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 transition-colors cursor-pointer"
-                >
-                  <Home className="w-4 h-4" />
-                  <span>{t('game.mainMenu')}</span>
-                </Link>
-
-                <Link
-                  href="/challenge/passwords"
-                  className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 min-h-[50px] rounded-xl font-bold text-sm text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-sm text-center"
-                >
-                  <span>{isEn ? 'Mission 02: Passwords →' : 'Misi 02: Kata Laluan →'}</span>
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <StationResults
+        stationNumber="01"
+        rating={rating}
+        ratingTitle={ratingTitle}
+        ratingDescription={
+          isEn
+            ? 'Great job completing all investigation cases and identifying key scam warning signs.'
+            : 'Tahniah kerana berjaya menyiasat semua kes dan mengenalpasti tanda-tanda amaran penipuan.'
+        }
+        badges={badges}
+        homeTips={[
+          {
+            title: isEn ? 'Inspect Sender & Domain' : 'Semak Domain & Penghantar',
+            description: isEn
+              ? 'Never click links asking for small fee payments or delivery rescheduling sent from random mobile numbers (+6011) or cheap domains (.xyz / .cc).'
+              : 'Jangan sesekali tekan pautan bayaran caj kecil atau kurier melalui SMS nombor rawak peribadi (+6011) atau domain murah (.xyz / .cc).'
+          },
+          {
+            title: isEn ? 'Banks Never Send TAC Links' : 'Bank Tidak Menghantar Pautan TAC',
+            description: isEn
+              ? 'Banks in Malaysia never send SMS links asking you to verify your account or input TAC codes. Type the verified bank website address yourself.'
+              : 'Pihak bank di Malaysia tidak lagi menghantar pautan pengesahan akaun atau kod TAC melalui SMS. Taip alamat rasmi bank sendiri.'
+          },
+          {
+            title: isEn ? 'Verify via Official Channels' : 'Sahkan Melalui Saluran Rasmi',
+            description: isEn
+              ? 'If an email threatens immediate electricity cutoff or utility suspension, verify independently in the provider official app or customer portal.'
+              : 'Jika emel mengugut pemotongan elektrik dalam beberapa jam, semak secara bebas melalui aplikasi rasmi utiliti atau portal pelanggan sah.'
+          }
+        ]}
+        onReset={handleResetForNextGroup}
+      />
     );
   }
 
@@ -469,94 +357,67 @@ export const InvestigationGame: React.FC = () => {
      ========================================================================= */
   const activeAction = currentCase.actions.find(a => a.id === selectedActionId);
 
+  // Distinct Golden Takeaway per Case
+  const caseTakeaways = [
+    {
+      number: 1,
+      text: isEn
+        ? 'Real delivery companies never send urgent fee payment links from random mobile numbers (+6011). Always verify parcels inside the official courier app.'
+        : 'Syarikat kurier rasmi tidak pernah menghantar pautan caj bayaran segera dari nombor prabayar peribadi (+6011). Sentiasa semak bungkusan melalui aplikasi rasmi.'
+    },
+    {
+      number: 2,
+      text: isEn
+        ? 'Banks NEVER send SMS links asking you to "verify your account" or enter TAC codes. Log in only by typing the bank official URL yourself.'
+        : 'Pihak bank TIDAK PERNAH menghantar pautan SMS meminta anda mengesahkan akaun atau memasukkan nombor TAC. Taip alamat rasmi bank sendiri di pelayar.'
+    },
+    {
+      number: 3,
+      text: isEn
+        ? 'Check the sender domain extension (.xyz vs .com.my). Legitimate utilities never threaten 2-hour disconnection via email to extort bank logins.'
+        : 'Periksa sambungan domain emel (.xyz vs .com.my). Agensi utiliti rasmi tidak memotong bekalan elektrik dalam 2 jam melalui emel untuk memeras kata laluan bank.'
+    }
+  ];
+
+  const currentTakeaway = caseTakeaways[currentCaseIndex] || caseTakeaways[0];
+
   return (
-    <div className="w-full space-y-5">
-      {/* Top Navigation & Status Bar */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 text-xs sm:text-sm">
-          <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
-            <Link
-              href="/"
-              className="text-slate-600 hover:text-blue-600 font-bold transition-colors"
-            >
-              ← {t('nav.backToMenuFriendly')}
-            </Link>
-            <span className="text-slate-300">|</span>
-            <span className="font-extrabold text-blue-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-100 text-xs">
-              {t('game.case')} 0{currentCaseIndex + 1} / 0{cases.length}
-            </span>
-            <span className="font-extrabold text-slate-900 text-sm sm:text-base">
-              {currentCase.title}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2 sm:gap-3">
-            <button
-              type="button"
-              onClick={handleStartMission}
-              title={t('game.resetFromStart')}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-red-50 border border-slate-200 hover:border-red-200 text-slate-600 hover:text-red-700 rounded-xl cursor-pointer font-bold text-xs transition-colors min-h-[38px]"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>{t('game.resetFromStart')}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setShowBadges(!showBadges)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl cursor-pointer font-bold text-xs text-amber-900 min-h-[38px]"
-            >
-              <Award className="w-4 h-4 text-amber-600" />
-              <span>{t('game.badges')} ({badges.filter(b => b.isUnlocked).length}/{badges.length})</span>
-            </button>
-
-            <div className="font-extrabold text-slate-900 bg-emerald-50 px-3.5 py-1.5 border border-emerald-200 rounded-xl min-h-[38px] flex items-center text-xs sm:text-sm">
-              ⭐ {t('game.score')} <span className="ml-1 text-emerald-800">{totalScore} / 50</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Progress track */}
-        <div className="flex items-center gap-3 text-xs text-slate-500 font-medium">
-          <span>{t('game.missionProgress')}</span>
-          <div className="flex-1 h-2.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200/50">
-            <div
-              className="h-full bg-blue-600 rounded-full transition-all duration-300"
-              style={{ width: `${((currentCaseIndex + 1) / cases.length) * 100}%` }}
-            />
-          </div>
-          <span className="font-bold text-slate-800">
-            {Math.round(((currentCaseIndex + 1) / cases.length) * 100)}%
-          </span>
-        </div>
-      </div>
-
-      {/* Badges Drawer if toggled */}
-      {showBadges && (
-        <div className="pt-1">
-          <BadgesDrawer badges={badges} />
-        </div>
-      )}
+    <div className="w-full max-w-[1400px] mx-auto py-2 space-y-6">
+      {/* Station Top Bar with Step Progress */}
+      <StationTopBar
+        stationNumber="01"
+        stationName={isEn ? 'Phishing Investigation' : 'Siasatan Phishing'}
+        stepLabel={
+          isEn
+            ? `Case ${currentCaseIndex + 1} of 3: ${currentCase.title}`
+            : `Kes ${currentCaseIndex + 1} daripada 3: ${currentCase.title}`
+        }
+        stepIndex={currentCaseIndex + 1}
+        stepTotal={3}
+        onReset={handleResetForNextGroup}
+      />
 
       {/* Main Two-Column Split Screen */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
         {/* ===================================================================
-            LEFT COLUMN: THE QUESTION & EVIDENCE TO INVESTIGATE (Cols 1-7)
+            LEFT COLUMN: EVIDENCE TO INVESTIGATE (Cols 1-7)
             =================================================================== */}
         <div className="lg:col-span-7 flex flex-col space-y-4">
-          <div className="rounded-3xl border border-slate-200 bg-white p-5 sm:p-7 shadow-xs flex-1 flex flex-col justify-between space-y-4">
-            <div>
-              <div className="flex flex-wrap items-center justify-between gap-2 pb-3 mb-3 border-b border-slate-100 text-xs sm:text-sm">
-                <span className="font-extrabold text-slate-900 flex items-center gap-2">
-                  <Search className="w-4 h-4 text-blue-600" />
+          <div className="rounded-3xl border-2 border-slate-200 bg-white p-6 sm:p-8 shadow-sm flex-1 flex flex-col justify-between space-y-5">
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b-2 border-slate-100">
+                <span className="font-black text-slate-900 text-lg flex items-center gap-2">
+                  <Search className="w-5 h-5 text-blue-600" />
                   <span>{isEn ? '1. Inspect Evidence (Message)' : '1. Teliti Bahan Bukti (Mesej)'}</span>
                 </span>
                 <div className="flex items-center gap-2">
-                  <span className="bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-full font-bold text-xs">
-                    {currentCase.format === 'email' ? (isEn ? '✉️ Email' : '✉️ Emel') : (isEn ? '💬 Phone SMS' : '💬 SMS Telefon')}
+                  <span className="bg-slate-100 text-slate-700 px-3 py-1 rounded-full font-bold text-xs">
+                    {currentCase.format === 'email'
+                      ? isEn ? '✉️ Email' : '✉️ Emel'
+                      : isEn ? '💬 Phone SMS' : '💬 SMS Telefon'}
                   </span>
                   {currentCase.urgencyBadge && (
-                    <span className="bg-red-50 text-red-700 border border-red-200 px-2.5 py-0.5 rounded-full font-bold text-xs">
+                    <span className="bg-rose-50 text-rose-700 border border-rose-300 px-3 py-1 rounded-full font-bold text-xs">
                       {currentCase.urgencyBadge}
                     </span>
                   )}
@@ -564,27 +425,32 @@ export const InvestigationGame: React.FC = () => {
               </div>
 
               {/* Scenario Context */}
-              <div className="p-3.5 bg-blue-50/60 border border-blue-100 rounded-2xl mb-4 text-xs sm:text-sm text-slate-700 leading-relaxed">
-                <strong className="text-blue-900 font-bold">{isEn ? 'Situation:' : 'Situasi:'}</strong> {currentCase.scenarioContext}
+              <div className="p-4 bg-blue-50 border-2 border-blue-200 rounded-2xl text-base text-slate-800 leading-relaxed font-medium">
+                <strong className="text-blue-950 font-black">{isEn ? 'Situation:' : 'Situasi:'}</strong>{' '}
+                {currentCase.scenarioContext}
               </div>
 
-              {/* Prominent Link X-Ray Scanner Action if available */}
+              {/* Prominent Link X-Ray Scanner Action */}
               {linkClue && (
-                <div className="mb-4 p-4 bg-slate-900 text-white rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
-                  <div className="flex items-center gap-2.5">
-                    <Globe className="w-5 h-5 text-amber-400 shrink-0" />
-                    <span className="text-xs sm:text-sm text-slate-200 font-medium">
-                      {isEn ? 'Link Detected:' : 'Pautan Dikesan:'}{' '}
-                      <code className="text-amber-300 font-bold bg-slate-800 px-2 py-0.5 rounded">{linkClue.targetText}</code>
-                    </span>
+                <div className="p-4 sm:p-5 bg-slate-950 text-white rounded-3xl border-2 border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md">
+                  <div className="flex items-center gap-3">
+                    <Globe className="w-6 h-6 text-amber-400 shrink-0" />
+                    <div className="space-y-0.5">
+                      <span className="text-xs text-slate-400 font-bold uppercase tracking-wider block">
+                        {isEn ? 'Suspicious Link Detected:' : 'Pautan Mencurigakan Dikesan:'}
+                      </span>
+                      <code className="text-sm sm:text-base text-amber-300 font-black font-mono block break-all">
+                        {linkClue.targetText}
+                      </code>
+                    </div>
                   </div>
                   <button
                     type="button"
                     onClick={() => handleOpenScanner(linkClue.targetText)}
-                    className="px-4 py-2 bg-amber-400 text-slate-950 hover:bg-amber-300 font-bold text-xs rounded-xl cursor-pointer min-h-[40px] flex items-center justify-center gap-1.5 shrink-0 transition-colors"
+                    className="px-5 py-3 bg-amber-400 text-slate-950 hover:bg-amber-300 font-black text-sm rounded-2xl cursor-pointer min-h-[52px] flex items-center justify-center gap-2 shrink-0 transition-all active:scale-95 shadow-md"
                   >
                     <span>{isEn ? 'Scan with X-Ray' : 'Imbas Pautan X-Ray'}</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
+                    <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
               )}
@@ -592,62 +458,63 @@ export const InvestigationGame: React.FC = () => {
               {/* Realistic Message Simulation */}
               {currentCase.format === 'email' ? (
                 /* EMAIL INTERFACE */
-                <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-xs">
-                  <div className="bg-slate-100 px-4 py-3 border-b border-slate-200 flex items-center justify-between text-xs text-slate-600">
-                    <div className="flex items-center gap-2">
-                      <Mail className="w-4 h-4 text-slate-500" />
-                      <span className="font-bold text-slate-800">
+                <div className="rounded-3xl border-2 border-slate-200 bg-white overflow-hidden shadow-xs">
+                  <div className="bg-slate-100 px-5 py-3.5 border-b-2 border-slate-200 flex items-center justify-between text-sm text-slate-600">
+                    <div className="flex items-center gap-2.5">
+                      <Mail className="w-5 h-5 text-slate-600" />
+                      <span className="font-bold text-slate-900">
                         {isEn ? 'Official Inbox Simulator' : 'Peti Masuk Emel'}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                       <VoiceOverButton
                         text={`${currentCase.subject ? currentCase.subject + '. ' : ''}${currentCase.body}`}
                         variant="badge"
+                        label={isEn ? 'Listen' : 'Dengar'}
                       />
-                      <span className="text-slate-500">{currentCase.receivedTime}</span>
+                      <span className="text-slate-500 font-medium">{currentCase.receivedTime}</span>
                     </div>
                   </div>
 
-                  <div className="p-4 bg-slate-50/70 border-b border-slate-100 space-y-2 text-xs sm:text-sm">
-                    <div className="flex items-baseline gap-2">
-                      <span className="font-bold text-slate-500 w-20 shrink-0">
+                  <div className="p-5 bg-slate-50 border-b-2 border-slate-100 space-y-2.5 text-sm sm:text-base">
+                    <div className="flex items-baseline gap-2 flex-wrap">
+                      <span className="font-black text-slate-500 w-20 shrink-0">
                         {isEn ? 'From:' : 'Daripada:'}
                       </span>
-                      <span className="font-bold text-slate-900">{currentCase.sender}</span>
+                      <strong className="text-slate-900">{currentCase.sender}</strong>
                       {currentCase.senderAddress && (
-                        <code className="text-xs bg-red-50 text-red-700 px-2 py-0.5 border border-red-200 font-mono rounded-lg">
+                        <code className="text-sm bg-rose-50 text-rose-700 px-2.5 py-0.5 border border-rose-300 font-mono rounded-lg">
                           &lt;{currentCase.senderAddress}&gt;
                         </code>
                       )}
                     </div>
                     {currentCase.subject && (
-                      <div className="flex items-baseline gap-2">
-                        <span className="font-bold text-slate-500 w-20 shrink-0">
+                      <div className="flex items-baseline gap-2 flex-wrap">
+                        <span className="font-black text-slate-500 w-20 shrink-0">
                           {isEn ? 'Subject:' : 'Perkara:'}
                         </span>
-                        <span className="font-extrabold text-slate-900">{currentCase.subject}</span>
+                        <strong className="text-slate-900">{currentCase.subject}</strong>
                       </div>
                     )}
                   </div>
 
-                  <div className="p-5 text-sm sm:text-base text-slate-800 leading-relaxed whitespace-pre-line space-y-4 bg-white">
+                  <div className="p-6 text-base text-slate-900 leading-relaxed whitespace-pre-line space-y-4 bg-white font-medium">
                     <p>{currentCase.body}</p>
 
                     {currentCase.attachmentName && (
-                      <div className="mt-4 p-4 rounded-xl border border-red-200 bg-red-50/70 flex items-center justify-between gap-3">
+                      <div className="mt-4 p-4 rounded-2xl border-2 border-rose-300 bg-rose-50 flex items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-red-100 text-red-700 flex items-center justify-center shrink-0">
+                          <div className="w-10 h-10 rounded-xl bg-rose-200 text-rose-800 flex items-center justify-center shrink-0">
                             <Paperclip className="w-5 h-5" />
                           </div>
                           <div>
-                            <div className="text-sm font-bold text-red-900">{currentCase.attachmentName}</div>
-                            <div className="text-xs text-slate-600">
+                            <div className="text-base font-black text-rose-950">{currentCase.attachmentName}</div>
+                            <div className="text-sm text-slate-700 font-medium">
                               {isEn ? 'Dangerous App Package (.apk)' : 'Lampiran Fail Luar (.apk)'}
                             </div>
                           </div>
                         </div>
-                        <span className="text-xs font-bold text-red-700 bg-white px-2.5 py-1 rounded-full border border-red-200">
+                        <span className="text-xs font-black uppercase text-rose-800 bg-white px-3 py-1 rounded-full border border-rose-300">
                           {isEn ? 'MALWARE RISK' : 'BERISIKO TINGGI'}
                         </span>
                       </div>
@@ -656,42 +523,44 @@ export const InvestigationGame: React.FC = () => {
                 </div>
               ) : (
                 /* REALISTIC SMS PHONE INTERFACE */
-                <div className="max-w-md mx-auto rounded-3xl border-4 border-slate-800 bg-slate-900 text-white p-5 shadow-lg space-y-4 font-sans">
-                  <div className="flex items-center justify-between text-xs text-slate-400 px-1">
+                <div className="max-w-md mx-auto rounded-3xl border-4 border-slate-800 bg-slate-950 text-white p-5 sm:p-6 shadow-xl space-y-4 font-sans">
+                  <div className="flex items-center justify-between text-sm text-slate-400 px-1 font-mono">
                     <span>10:42 AM</span>
                     <div className="flex items-center gap-2">
                       <VoiceOverButton
                         text={currentCase.body}
                         variant="badge"
+                        label={isEn ? 'Listen' : 'Dengar'}
                       />
-                      <span>5G</span>
-                      <span>92% 🔋</span>
+                      <span>5G 92% 🔋</span>
                     </div>
                   </div>
 
-                  <div className="text-center pb-2 border-b border-slate-800">
-                    <div className="w-12 h-12 rounded-full bg-blue-600 text-white mx-auto flex items-center justify-center font-bold text-base mb-1 shadow-sm">
-                      <MessageSquare className="w-6 h-6" />
+                  <div className="text-center pb-3 border-b border-slate-800">
+                    <div className="w-14 h-14 rounded-2xl bg-blue-600 text-white mx-auto flex items-center justify-center font-bold text-lg mb-2 shadow-md">
+                      <MessageSquare className="w-7 h-7" />
                     </div>
-                    <div className="text-base font-bold text-white">{currentCase.sender}</div>
-                    <div className="text-xs text-slate-400">
+                    <strong className="text-lg text-white block">{currentCase.sender}</strong>
+                    <span className="text-xs text-slate-400 font-bold uppercase tracking-wider block">
                       {isEn ? 'Incoming SMS Message' : 'Mesej SMS Masuk'}
-                    </div>
+                    </span>
                   </div>
 
-                  <div className="bg-slate-800 border border-slate-700 rounded-2xl p-4 sm:p-5 text-sm sm:text-base text-slate-100 leading-relaxed shadow-xs space-y-2">
+                  <div className="bg-slate-900 border-2 border-slate-800 rounded-2xl p-5 text-base text-slate-100 leading-relaxed shadow-sm space-y-3 font-medium">
                     <p className="whitespace-pre-line">{currentCase.body}</p>
                     <div className="text-right">
-                      <span className="text-xs text-slate-400">{currentCase.receivedTime}</span>
+                      <span className="text-xs text-slate-400 font-mono">{currentCase.receivedTime}</span>
                     </div>
                   </div>
                 </div>
               )}
             </div>
 
-            <div className="pt-3 border-t border-slate-100 text-xs sm:text-sm text-slate-500 flex items-center justify-between">
+            <div className="pt-4 border-t-2 border-slate-100 text-sm text-slate-500 flex items-center justify-between font-medium">
               <span>{isEn ? 'Now answer the question on the right →' : 'Seterusnya, jawab soalan di sebelah kanan →'}</span>
-              <span className="font-bold text-slate-800">{isEn ? `${currentCase.clues.length} clues to review` : `${currentCase.clues.length} petunjuk disiasat`}</span>
+              <span className="font-black text-slate-800">
+                {isEn ? `${currentCase.clues.length} clues to review` : `${currentCase.clues.length} petunjuk disiasat`}
+              </span>
             </div>
           </div>
         </div>
@@ -700,227 +569,265 @@ export const InvestigationGame: React.FC = () => {
             RIGHT COLUMN: QUESTIONS, CLUES & DECISIONS (Cols 8-12)
             =================================================================== */}
         <div className="lg:col-span-5 flex flex-col space-y-4">
-          <div className="rounded-3xl border border-slate-200 bg-white p-5 sm:p-7 shadow-xs flex-1 flex flex-col justify-between space-y-5">
-            <div className="space-y-1">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100 text-xs sm:text-sm">
-                <span className="font-extrabold text-slate-900 flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-blue-600" />
+          <div className="rounded-3xl border-2 border-slate-200 bg-white p-6 sm:p-8 shadow-sm flex-1 flex flex-col justify-between space-y-6">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b-2 border-slate-100 text-sm">
+                <span className="font-black text-slate-900 text-lg flex items-center gap-2">
+                  <ShieldCheck className="w-5 h-5 text-blue-600" />
                   <span>{isEn ? '2. Answer & Action' : '2. Jawab & Buat Keputusan'}</span>
                 </span>
-                <span className={`px-3 py-1 rounded-full font-bold text-xs ${
-                  isFindingsSubmitted
-                    ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                    : 'bg-blue-50 text-blue-800 border border-blue-200'
-                }`}>
-                  {!isFindingsSubmitted ? t('game.step1Badge') : t('game.step2Badge')}
+                <span
+                  className={`px-3 py-1 rounded-full font-black text-xs uppercase tracking-wider ${
+                    isFindingsSubmitted
+                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                      : 'bg-blue-100 text-blue-800 border border-blue-300'
+                  }`}
+                >
+                  {!isFindingsSubmitted
+                    ? isEn ? 'Step 1 of 2: Clues' : 'Langkah 1/2: Petunjuk'
+                    : isEn ? 'Step 2 of 2: Action' : 'Langkah 2/2: Tindakan'}
                 </span>
               </div>
-            </div>
 
-            {/* Content Area: Step 1 or Step 2 */}
-            <div className="space-y-4 flex-1">
-              {!isFindingsSubmitted ? (
-                /* STEP 1: CLUES SELECTION */
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">
-                      {isEn ? 'Step 1: Mark ONLY Suspicious Red Flags' : 'Langkah 1: Tandakan HANYA Tanda-tanda Bahaya'}
-                    </h3>
-                    <p className="text-xs sm:text-sm text-slate-600 mt-1.5 leading-relaxed">
-                      {isEn
-                        ? 'Based on the message on the left, mark the phrases that look dangerous. Some options below are completely normal and DO NOT need marking!'
-                        : 'Berdasarkan mesej di sebelah kiri, tandakan bahagian yang meragukan. Berhati-hati: pilihan tertentu adalah ayat biasa yang TIDAK perlu ditandakan!'}
-                    </p>
-                  </div>
-
-                  <div className="space-y-3">
-                    {currentCase.clues.map((clue) => {
-                      const isMarked = selectedClueIds.includes(clue.id);
-
-                      return (
-                        <button
-                          key={clue.id}
-                          type="button"
-                          onClick={() => handleToggleClue(clue.id)}
-                          className={`w-full p-4 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-center justify-between gap-3 min-h-[56px] shadow-2xs ${
-                            isMarked
-                              ? 'bg-blue-50 border-blue-600 text-blue-950 font-bold shadow-xs'
-                              : 'bg-white text-slate-800 border-slate-200 hover:border-blue-300 hover:bg-slate-50'
-                          }`}
-                        >
-                          <div className="min-w-0 pr-2">
-                            <span className="text-sm sm:text-base block">
-                              &ldquo;{clue.targetText}&rdquo;
-                            </span>
-                          </div>
-                          <span className={`shrink-0 text-xs font-extrabold px-3 py-1 rounded-full border transition-colors ${
-                            isMarked
-                              ? 'bg-blue-600 text-white border-blue-600'
-                              : 'bg-slate-100 text-slate-600 border-slate-200'
-                          }`}>
-                            {isMarked ? t('game.marked') : t('game.mark')}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ) : (
-                /* STEP 2: ACTION DECISION */
-                <div className="space-y-4">
-                  {/* Detailed Clues Review Breakdown Box */}
-                  <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
-                    <div className="flex items-center justify-between text-xs sm:text-sm pb-2 border-b border-slate-200 font-bold text-slate-900">
-                      <span className="flex items-center gap-1.5 text-emerald-800">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                        <span>{isEn ? 'Review of Clues:' : 'Hasil Semakan Tanda Bahaya:'}</span>
-                      </span>
-                      <span className="bg-emerald-100 text-emerald-900 px-2.5 py-0.5 rounded-full text-xs">
-                        +{caseClueScore} Mata
-                      </span>
-                    </div>
-
-                    <div className="space-y-2 text-xs sm:text-sm">
-                      {currentCase.clues.map(c => {
-                        const isMarked = selectedClueIds.includes(c.id);
-                        const isCorrectSelection = (c.isSuspicious && isMarked) || (!c.isSuspicious && !isMarked);
-
-                        return (
-                          <div
-                            key={c.id}
-                            className={`p-3 rounded-xl border text-xs sm:text-sm leading-relaxed ${
-                              isCorrectSelection
-                                ? 'bg-emerald-50/70 border-emerald-200 text-emerald-950'
-                                : 'bg-red-50/70 border-red-200 text-red-950'
-                            }`}
-                          >
-                            <div className="flex items-center justify-between font-bold mb-1">
-                              <span>&ldquo;{c.targetText}&rdquo;</span>
-                              <span>{isCorrectSelection ? '✓ Tepat' : '⚠ Perlu Diperbaiki'}</span>
-                            </div>
-                            <p className="text-xs text-slate-700">{c.explanation}</p>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Step 2 Decision */}
-                  <div className="space-y-3 pt-2">
+              {/* Content Area: Step 1 or Step 2 */}
+              <div className="space-y-4">
+                {!isFindingsSubmitted ? (
+                  /* STEP 1: CLUES SELECTION */
+                  <div className="space-y-4">
                     <div>
-                      <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">
-                        {t('game.step2HeaderFriendly')}
+                      <h3 className="text-xl font-black text-slate-900 tracking-tight">
+                        {isEn ? 'Step 1: Mark ONLY Suspicious Red Flags' : 'Langkah 1: Tandakan HANYA Tanda-tanda Bahaya'}
                       </h3>
-                      <p className="text-xs sm:text-sm text-slate-600 mt-1">
-                        {t('game.step2Sub')}
+                      <p className="text-base text-slate-600 mt-1 leading-relaxed font-medium">
+                        {isEn
+                          ? 'Based on the message on the left, mark the phrases that look dangerous. Normal phrases do NOT need marking!'
+                          : 'Berdasarkan mesej di sebelah kiri, tandakan bahagian yang meragukan. Ayat pengenalan biasa TIDAK perlu ditandakan!'}
                       </p>
                     </div>
 
-                    <div className="space-y-2.5">
-                      {currentCase.actions.map(action => {
-                        const isChosen = selectedActionId === action.id;
+                    <div className="space-y-3">
+                      {currentCase.clues.map(clue => {
+                        const isMarked = selectedClueIds.includes(clue.id);
 
                         return (
                           <button
-                            key={action.id}
+                            key={clue.id}
                             type="button"
-                            disabled={isActionSubmitted}
-                            onClick={() => handleSelectAction(action.id)}
-                            className={`w-full p-4 rounded-2xl border-2 text-left transition-all min-h-[60px] shadow-2xs ${
-                              isChosen
-                                ? 'bg-blue-50 border-blue-600 text-blue-950 shadow-xs'
-                                : 'bg-white text-slate-800 border-slate-200 hover:border-blue-300 hover:bg-slate-50'
-                            } ${isActionSubmitted ? 'cursor-default' : 'cursor-pointer'}`}
+                            onClick={() => handleToggleClue(clue.id)}
+                            className={`w-full p-4 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-center justify-between gap-3 min-h-[56px] shadow-2xs active:scale-95 ${
+                              isMarked
+                                ? 'bg-blue-50 border-blue-600 text-blue-950 font-black shadow-xs'
+                                : 'bg-white text-slate-800 border-slate-200 hover:border-blue-300 hover:bg-slate-50 font-medium'
+                            }`}
                           >
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="space-y-1">
-                                <span className="font-extrabold text-sm sm:text-base block">
-                                  {action.title}
-                                </span>
-                                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                                  {action.description}
-                                </p>
-                              </div>
-                              <span className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5 ${
-                                isChosen ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300'
-                              }`}>
-                                {isChosen && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                            <div className="min-w-0 pr-2">
+                              <span className="text-base block">
+                                &ldquo;{clue.targetText}&rdquo;
                               </span>
                             </div>
+                            <span
+                              className={`shrink-0 text-xs font-black uppercase px-3 py-1 rounded-full border transition-colors ${
+                                isMarked
+                                  ? 'bg-blue-600 text-white border-blue-600'
+                                  : 'bg-slate-100 text-slate-600 border-slate-200'
+                              }`}
+                            >
+                              {isMarked ? (isEn ? '✓ Marked' : '✓ Ditanda') : (isEn ? 'Mark' : 'Tanda')}
+                            </span>
                           </button>
                         );
                       })}
                     </div>
-
-                    {/* Feedback if action submitted */}
-                    {isActionSubmitted && activeAction && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className={`p-4 rounded-2xl border-2 space-y-1.5 ${
-                          activeAction.isSafe
-                            ? 'bg-emerald-50 border-emerald-300 text-emerald-950'
-                            : 'bg-red-50 border-red-300 text-red-950'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2 font-black text-sm sm:text-base">
-                          {activeAction.isSafe ? (
-                            <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                          ) : (
-                            <AlertTriangle className="w-5 h-5 text-red-600" />
-                          )}
-                          <span>
-                            {activeAction.isSafe
-                              ? (isEn ? 'EXCELLENT & SAFE DECISION (+5 PTS)' : 'TAHNIAH! KEPUTUSAN PALING TEPAT (+5 MATA)')
-                              : (isEn ? 'HIGH RISK ACTION!' : 'BAHAYA! TINDAKAN BERISIKO TINGGI!')}
-                          </span>
-                        </div>
-                        <p className="text-xs sm:text-sm leading-relaxed">{activeAction.consequence}</p>
-                      </motion.div>
-                    )}
                   </div>
-                </div>
-              )}
+                ) : (
+                  /* STEP 2: ACTION DECISION */
+                  <div className="space-y-5">
+                    {/* Clues Review Breakdown Box */}
+                    <div className="p-4 bg-slate-50 border-2 border-slate-200 rounded-2xl space-y-3">
+                      <div className="flex items-center justify-between pb-2 border-b border-slate-200 text-sm font-black text-slate-900">
+                        <span className="flex items-center gap-2 text-emerald-800">
+                          <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                          <span>{isEn ? 'Review of Clues:' : 'Hasil Semakan Tanda Bahaya:'}</span>
+                        </span>
+                        <span className="bg-emerald-100 text-emerald-900 px-3 py-0.5 rounded-full text-xs font-black">
+                          {isEn ? 'Reviewed' : 'Selesai Disemak'}
+                        </span>
+                      </div>
+
+                      <div className="space-y-2">
+                        {currentCase.clues.map(c => {
+                          const isMarked = selectedClueIds.includes(c.id);
+                          const isCorrectSelection =
+                            (c.isSuspicious && isMarked) || (!c.isSuspicious && !isMarked);
+
+                          return (
+                            <div
+                              key={c.id}
+                              className={`p-3.5 rounded-xl border-2 text-sm leading-relaxed ${
+                                isCorrectSelection
+                                  ? 'bg-emerald-50 border-emerald-300 text-emerald-950 font-medium'
+                                  : 'bg-rose-50 border-rose-300 text-rose-950 font-medium'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between font-black mb-1">
+                                <span>&ldquo;{c.targetText}&rdquo;</span>
+                                <span>
+                                  {isCorrectSelection
+                                    ? isEn ? '✓ Correct' : '✓ Tepat'
+                                    : isEn ? '⚠ Review Needed' : '⚠ Perlu Diperbaiki'}
+                                </span>
+                              </div>
+                              <p className="text-xs sm:text-sm text-slate-700">{c.explanation}</p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Step 2 Decision */}
+                    <div className="space-y-3 pt-1">
+                      <div>
+                        <h3 className="text-xl font-black text-slate-900 tracking-tight">
+                          {isEn ? 'Step 2: Choose Safe Action' : 'Langkah 2: Pilih Tindakan Selamat'}
+                        </h3>
+                        <p className="text-base text-slate-600 mt-1 font-medium">
+                          {isEn
+                            ? 'What should you do next to protect your accounts and identity?'
+                            : 'Apakah tindakan terbaik yang wajar diambil untuk melindungi akaun anda?'}
+                        </p>
+                      </div>
+
+                      <div className="space-y-3">
+                        {currentCase.actions.map(action => {
+                          const isChosen = selectedActionId === action.id;
+
+                          return (
+                            <button
+                              key={action.id}
+                              type="button"
+                              disabled={isActionSubmitted}
+                              onClick={() => handleSelectAction(action.id)}
+                              className={`w-full p-4 sm:p-5 rounded-2xl border-2 text-left transition-all min-h-[64px] shadow-2xs ${
+                                isChosen
+                                  ? 'bg-blue-50 border-blue-600 text-blue-950 shadow-xs'
+                                  : 'bg-white text-slate-800 border-slate-200 hover:border-blue-300 hover:bg-slate-50'
+                              } ${isActionSubmitted ? 'cursor-default' : 'cursor-pointer active:scale-95'}`}
+                            >
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="space-y-1">
+                                  <strong className="text-base font-black block leading-snug">
+                                    {action.title}
+                                  </strong>
+                                  <p className="text-sm text-slate-600 font-medium leading-relaxed">
+                                    {action.description}
+                                  </p>
+                                </div>
+                                <span
+                                  className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5 ${
+                                    isChosen
+                                      ? 'border-blue-600 bg-blue-600 text-white'
+                                      : 'border-slate-300'
+                                  }`}
+                                >
+                                  {isChosen && <Check className="w-4 h-4 stroke-[3]" />}
+                                </span>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Feedback if action submitted */}
+                      {isActionSubmitted && activeAction && (
+                        <motion.div
+                          initial={shouldReduceMotion ? false : { opacity: 0, y: 6 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className={`p-5 rounded-2xl border-2 space-y-2 ${
+                            activeAction.isSafe
+                              ? 'bg-emerald-50 border-emerald-400 text-emerald-950'
+                              : 'bg-rose-50 border-rose-400 text-rose-950'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 font-black text-base">
+                            {activeAction.isSafe ? (
+                              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                            ) : (
+                              <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
+                            )}
+                            <span>
+                              {activeAction.isSafe
+                                ? isEn
+                                  ? 'EXCELLENT DECISION'
+                                  : 'KEPUTUSAN PALING TEPAT'
+                                : isEn
+                                ? 'HIGH RISK ACTION'
+                                : 'TINDAKAN BERISIKO TINGGI'}
+                            </span>
+                          </div>
+                          <p className="text-sm sm:text-base font-medium leading-relaxed">
+                            {activeAction.consequence}
+                          </p>
+                        </motion.div>
+                      )}
+
+                      {/* Golden Takeaway Card displayed after action decision */}
+                      {isActionSubmitted && (
+                        <div className="pt-2">
+                          <TakeawayCard
+                            takeawayNumber={currentTakeaway.number}
+                            title={
+                              isEn
+                                ? `Golden Takeaway #${currentTakeaway.number}:`
+                                : `Prinsip Emas #${currentTakeaway.number}:`
+                            }
+                            text={currentTakeaway.text}
+                            variant="emerald"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* Bottom Step Actions */}
-            <div className="pt-4 border-t border-slate-100">
+            {/* Bottom Action CTA */}
+            <div className="pt-4 border-t-2 border-slate-100">
               {!isFindingsSubmitted ? (
-                <button
-                  type="button"
+                <PrimaryButton
                   onClick={handleSubmitFindings}
-                  className="w-full py-4 px-6 min-h-[52px] rounded-2xl font-bold text-base text-white bg-blue-600 hover:bg-blue-700 transition-all cursor-pointer shadow-md hover:shadow-lg flex items-center justify-center gap-2"
+                  icon={<ArrowRight className="w-5 h-5" />}
+                  className="w-full"
                 >
-                  <span>{t('game.submitStep1')}</span>
-                  <ArrowRight className="w-5 h-5" />
-                </button>
+                  {isEn ? 'Submit Clues & Proceed to Action →' : 'Hantar Petunjuk & Pilih Tindakan →'}
+                </PrimaryButton>
               ) : !isActionSubmitted ? (
-                <button
-                  type="button"
+                <PrimaryButton
                   disabled={!selectedActionId}
                   onClick={handleSubmitAction}
-                  className={`w-full py-4 px-6 min-h-[52px] rounded-2xl font-bold text-base flex items-center justify-center gap-2 transition-all ${
+                  icon={<Check className="w-5 h-5" />}
+                  className={`w-full ${
                     selectedActionId
-                      ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer shadow-md hover:shadow-lg'
-                      : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                      ? 'bg-emerald-600 hover:bg-emerald-700'
+                      : 'bg-slate-300 text-slate-500 cursor-not-allowed'
                   }`}
                 >
-                  <Check className="w-5 h-5" />
-                  <span>{t('game.submitStep2')}</span>
-                </button>
+                  {isEn ? 'Confirm Safe Action' : 'Sahkan Tindakan Selamat'}
+                </PrimaryButton>
               ) : (
-                <button
-                  type="button"
+                <PrimaryButton
                   onClick={handleNextCase}
-                  className="w-full py-4 px-6 min-h-[52px] rounded-2xl font-bold text-base text-white bg-blue-600 hover:bg-blue-700 transition-all cursor-pointer shadow-md hover:shadow-lg flex items-center justify-center gap-2"
+                  icon={<ArrowRight className="w-5 h-5" />}
+                  className="w-full"
                 >
-                  <span>
-                    {currentCaseIndex + 1 < cases.length
-                      ? `${t('game.nextScenario')} (${currentCaseIndex + 2}/${cases.length}) →`
-                      : t('game.viewFinalReport')}
-                  </span>
-                  <ArrowRight className="w-5 h-5" />
-                </button>
+                  {currentCaseIndex + 1 < cases.length
+                    ? isEn
+                      ? `Proceed to Case ${currentCaseIndex + 2} of 3 →`
+                      : `Seterusnya: Kes ${currentCaseIndex + 2} daripada 3 →`
+                    : isEn
+                    ? 'View Final Station Assessment →'
+                    : 'Lihat Penilaian Akhir Stesen →'}
+                </PrimaryButton>
               )}
             </div>
           </div>
